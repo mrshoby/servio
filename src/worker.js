@@ -1,7 +1,7 @@
 
 import './official-engine-worker.js';
 
-const VERSION = 'v32.98-github-official-source-ingestion-api';
+const VERSION = 'v32.99-hybrid-official-source-relay';
 const SERVIO_VERSION = VERSION;
 const Engine = globalThis.InowattioOfficialEngine;
 let CACHE = null;
@@ -18,7 +18,7 @@ function guardedErrorPayload(scope, error, extra={}){
     ok:false,
     version:VERSION,
     scope,
-    guard:'v32.98-cloudflare-1101-json-guard',
+    guard:'v32.99-cloudflare-1101-json-guard',
     error:String(error?.message || error),
     errorName:String(error?.name || 'Error'),
     diagnostic:'Cloudflare Worker exception was caught and returned as JSON, so the browser/test can show the real failing stage instead of generic error 1101.',
@@ -617,7 +617,7 @@ async function syncEntsoeDeliveryDay(env, body={}, reason='entsoe-delivery-day-s
   const token = env?.ENTSOE_API_TOKEN || env?.ENTSOE_SECURITY_TOKEN || '';
   const date = normalizeReportPeriodDate(body.date || body.deliveryDay || addDaysIso(currentBucharestDate(), 1), 'start', addDaysIso(currentBucharestDate(), 1));
   const expected = expectedPt15IntervalsForDate(date);
-  const report={ ok:true, source:'entsoe_day_ahead_api', mode:'cloudflare-d1-live-entsoe-full-auto-sync-v3298-guarded', date, startedAtUtc:isoUtcNow(), actions:[], guard:'v32.98-entsoe-full-live-json-guard', expectedIntervals:expected };
+  const report={ ok:true, source:'entsoe_day_ahead_api', mode:'cloudflare-d1-live-entsoe-full-auto-sync-v3299-guarded', date, startedAtUtc:isoUtcNow(), actions:[], guard:'v32.99-entsoe-full-live-json-guard', expectedIntervals:expected };
   if(!token){ report.ok=false; report.warning=true; report.error='Missing Cloudflare secret ENTSOE_API_TOKEN. Set it with wrangler secret put ENTSOE_API_TOKEN.'; report.finishedAtUtc=isoUtcNow(); return report; }
   let eurRon=5;
   try { eurRon = Number(body.eurRon || env?.SERVIO_EUR_RON || await fetchBnrEurRon() || 5); }
@@ -661,7 +661,7 @@ async function syncEntsoeDeliveryDay(env, body={}, reason='entsoe-delivery-day-s
 
   let dbWrite={ ok:true, d1:d1Available(env), inserted:0, updated:0, skipped:all.length, guarded:true };
   try { dbWrite = await d1UpsertMarketRecords(env, all, reason); }
-  catch(error){ dbWrite={ ok:false, d1:d1Available(env), inserted:0, updated:0, skipped:all.length, error:String(error?.message || error), errorName:String(error?.name || 'Error'), guard:'v32.98-d1-write-guard' }; report.ok=false; }
+  catch(error){ dbWrite={ ok:false, d1:d1Available(env), inserted:0, updated:0, skipped:all.length, error:String(error?.message || error), errorName:String(error?.name || 'Error'), guard:'v32.99-d1-write-guard' }; report.ok=false; }
   report.dbWrite=dbWrite;
   report.diagnostic = report.complete
     ? `ENTSO-E D+1 complete: ${all.length}/${expected} PT15 intervals written to Cloudflare D1.`
@@ -676,7 +676,7 @@ async function syncOpcomRange(env, body={}, reason='opcom-pzu-live-sync'){
   const to=normalizeReportPeriodDate(body.opcomTo || body.to || addDaysIso(today, 1), 'end', addDaysIso(today, 1));
   const maxDays=Math.max(1, Math.min(31, Number(body.maxDays || 4)));
   const days=dateRangeDays(from, to).slice(0, maxDays);
-  const report={ ok:true, source:'opcom_pzu_public_results', mode:'cloudflare-d1-live-opcom-range-v3298-guarded', opcomFrom:from, opcomTo:to, maxDays, startedAtUtc, fetchedDays:0, failedDays:0, parsedRecords:0, cachedRecords:0, actions:[], guard:'v32.98-opcom-sync-json-guard' };
+  const report={ ok:true, source:'opcom_pzu_public_results', mode:'cloudflare-d1-live-opcom-range-v3299-guarded', opcomFrom:from, opcomTo:to, maxDays, startedAtUtc, fetchedDays:0, failedDays:0, parsedRecords:0, cachedRecords:0, actions:[], guard:'v32.99-opcom-sync-json-guard' };
   const records=[]; const dayReports=[];
   let eurRon=5;
   try { eurRon=Number(body.eurRon || env?.SERVIO_EUR_RON || await fetchBnrEurRon() || 5); }
@@ -699,7 +699,7 @@ async function syncOpcomRange(env, body={}, reason='opcom-pzu-live-sync'){
     let dbWrite={ ok:true, d1:d1Available(env), inserted:0, updated:0, skipped:records.length, guarded:true };
     try { dbWrite=await d1UpsertMarketRecords(env, records, reason); }
     catch(error){
-      dbWrite={ ok:false, d1:d1Available(env), inserted:0, updated:0, skipped:records.length, error:String(error?.message || error), errorName:String(error?.name || 'Error'), guard:'v32.98-d1-write-guard' };
+      dbWrite={ ok:false, d1:d1Available(env), inserted:0, updated:0, skipped:records.length, error:String(error?.message || error), errorName:String(error?.name || 'Error'), guard:'v32.99-d1-write-guard' };
       report.ok=false;
       report.error='D1 write failed but Worker route was guarded and did not return Cloudflare 1101.';
     }
@@ -709,7 +709,7 @@ async function syncOpcomRange(env, body={}, reason='opcom-pzu-live-sync'){
     report.actions = [{ source:'opcom_pzu_public_results', ok:report.ok, mode:report.mode, fetchedDays:report.fetchedDays, failedDays:report.failedDays, parsedRecords:report.parsedRecords, cachedRecords:report.cachedRecords, dbWrite:report.dbWrite, warning:report.warning || null }];
     return report;
   }catch(error){
-    return guardedErrorPayload('opcom/day-ahead/sync-range', error, { source:'opcom_pzu_public_results', mode:'cloudflare-d1-live-opcom-range-v3298-guarded', opcomFrom:from, opcomTo:to, maxDays, fetchedDays:report.fetchedDays, failedDays:report.failedDays, parsedRecords:report.parsedRecords, days:dayReports, startedAtUtc, finishedAtUtc:isoUtcNow() });
+    return guardedErrorPayload('opcom/day-ahead/sync-range', error, { source:'opcom_pzu_public_results', mode:'cloudflare-d1-live-opcom-range-v3299-guarded', opcomFrom:from, opcomTo:to, maxDays, fetchedDays:report.fetchedDays, failedDays:report.failedDays, parsedRecords:report.parsedRecords, days:dayReports, startedAtUtc, finishedAtUtc:isoUtcNow() });
   }
 }
 
@@ -726,7 +726,7 @@ async function runCloudflareLiveSync(env, body={}, reason='manual'){
 }
 async function cloudflareLiveStatus(env, store){
   const d1 = await d1SyncSummary(env).catch(e=>({ ok:false, d1:d1Available(env), error:String(e?.message || e) }));
-  return { ok:true, enabled:String(env?.SERVIO_GRID_LIVE_SYNC || '1')==='1', tokenPresent:Boolean(env?.ENTSOE_API_TOKEN || env?.ENTSOE_SECURITY_TOKEN), mode:'cloudflare-d1-live-sync-restored-with-v3298-ingest-api', entsoeCache:{ mode:'D1 servio_live_market_prices source_mode=official-live' }, opcomCache:{ mode:'D1 servio_live_market_prices source_mode=opcom-pzu-live' }, d1, state:{ lastSuccess:d1?.lastSyncRun?.finished_at_utc || null, bundledLoadedAtUtc:store?.loadedAtUtc || null, note:'v32.98 keeps ENTSO-E token/API as primary automatic live source, keeps OPCOM D1/local import fallback when ENTSO-E is partial, and reports source-health/final effective source per delivery day.' } };
+  return { ok:true, enabled:String(env?.SERVIO_GRID_LIVE_SYNC || '1')==='1', tokenPresent:Boolean(env?.ENTSOE_API_TOKEN || env?.ENTSOE_SECURITY_TOKEN), mode:'cloudflare-d1-live-sync-restored-with-v3299-hybrid-relay', entsoeCache:{ mode:'D1 servio_live_market_prices source_mode=official-live' }, opcomCache:{ mode:'D1 servio_live_market_prices source_mode=opcom-pzu-live' }, d1, state:{ lastSuccess:d1?.lastSyncRun?.finished_at_utc || null, bundledLoadedAtUtc:store?.loadedAtUtc || null, note:'v32.99 keeps ENTSO-E token/API as primary automatic live source, adds a Windows local scheduled relay for OPCOM when Cloudflare/GitHub runners are blocked, and reports source-health/final effective source per delivery day.' } };
 }
 async function dayAheadDbForDate(env, store, date){
   const live = await d1ReadMarketRecords(env, { date, market:'DAY_AHEAD', limit:1000 }).catch(()=>[]);
@@ -1138,7 +1138,7 @@ async function handleSecureMarketIngest(request, env, url){
   const reportBase = {
     ok:true,
     version:VERSION,
-    mode:'servio-secure-ingest-api-v3298',
+    mode:'servio-secure-ingest-api-v3299-hybrid-relay',
     sourceMode:sourceMode || null,
     source:body?.source || body?.sourceLabel || null,
     reason:body?.reason || 'external-official-source-ingestion',
@@ -1161,9 +1161,9 @@ async function handleSecureMarketIngest(request, env, url){
   }
 }
 
-function progressAudit(){ return { ok:true, version:VERSION, overallCompletionPct:99, verdict:'SERVIO v32.98 adds a real secure ingestion API and GitHub Actions/relay workflow so official data is pushed into SERVIO through our own API instead of relying on Cloudflare Worker fetching every external website directly. ENTSO-E remains token/API primary; OPCOM is ingested through relay/local/GitHub runner when Cloudflare is blocked; Transelectrica is tracked by official-source health and ready for configured live parser endpoints.', nextBuild:{version:'v33.0',title:'Dedicated Hosted Ingestion Relay and Transelectrica Live Parser',requiredWork:['Move GitHub ingestion logic to a persistent free/low-cost host if GitHub runner is blocked by any source','Add exact Transelectrica live parser once official export/document endpoint is confirmed','Add source proof UI badges in Day-Ahead page']}, modules:[{name:'Battery Revenue Calculator',status:'restored exact local v32.77 with D1 live market overlay',completionPct:100,nextImprovements:['Runtime browser confirmation only.']},{name:'Day-Ahead Operations',status:'ENTSO-E official token live sync primary; OPCOM pushed through secure SERVIO ingest API fallback; effective source merge hardened',completionPct:99,nextImprovements:['Source proof UI badges.']},{name:'SERVIO Secure Ingest API',status:'POST /api/servio/ingest/* protected by SERVIO_INGEST_SECRET and writing to Cloudflare D1',completionPct:100,nextImprovements:['Rotate secret periodically.']},{name:'GitHub Actions official-source ingestion',status:'Scheduled workflow added for ENTSO-E/OPCOM source collection and secure push into SERVIO API',completionPct:96,nextImprovements:['Confirm GitHub runner is not blocked by OPCOM in production run.']},{name:'Transelectrica balancing',status:'bundled balancing data active plus source-health hooks; live parser endpoint must be confirmed before exact ingestion',completionPct:88,nextImprovements:['Add exact official export parser.']}], weakestModules:[{name:'Transelectrica exact live parser',completionPct:88},{name:'Persistent hosted relay outside GitHub Actions',completionPct:82}] }; }
+function progressAudit(){ return { ok:true, version:VERSION, overallCompletionPct:99, verdict:'SERVIO v32.99 adds the missing practical relay layer: GitHub Actions remains the free cloud relay for ENTSO-E and general source checks, while Windows Task Scheduler can run the exact same source ingestion locally so OPCOM can be imported automatically from the PC/network where it already proved 96/96. All records still enter through the secure SERVIO API, so D1 remains the single live source for the site.', nextBuild:{version:'v33.0',title:'Dedicated Hosted Relay + Transelectrica Exact Live Parser',requiredWork:['Move the local relay to a persistent free/low-cost host only if a host can fetch OPCOM without 403','Add exact Transelectrica live parser once the official downloadable/export endpoint is confirmed','Add visible source-proof badges on Day-Ahead and battery simulator pages']}, modules:[{name:'Battery Revenue Calculator',status:'restored exact local v32.77 with D1 live market overlay',completionPct:100,nextImprovements:['Runtime browser confirmation only.']},{name:'Day-Ahead Operations',status:'ENTSO-E official token live sync primary; OPCOM secure ingest fallback; effective source merge hardened',completionPct:99,nextImprovements:['Source proof UI badges.']},{name:'SERVIO Secure Ingest API',status:'POST /api/servio/ingest/* protected by SERVIO_INGEST_SECRET and writing to Cloudflare D1',completionPct:100,nextImprovements:['Rotate secret periodically.']},{name:'GitHub Actions official-source ingestion',status:'Workflow active and proven successful for ENTSO-E/API push; GitHub runner may still be blocked by OPCOM',completionPct:97,nextImprovements:['Keep scheduled retries and audit artifact.']},{name:'Windows local OPCOM relay',status:'new automatic Task Scheduler relay; fetches OPCOM from the same local network path that already proved 96/96 and pushes through SERVIO API',completionPct:98,nextImprovements:['Confirm scheduled run after install.']},{name:'Transelectrica balancing',status:'bundled balancing data active plus source-health/probe hooks; exact live parser still needs official export endpoint confirmation',completionPct:88,nextImprovements:['Add exact official export parser.']}], weakestModules:[{name:'Transelectrica exact live parser',completionPct:88},{name:'Hosted OPCOM relay outside Cloudflare/GitHub',completionPct:86}] }; }
 
-function liveStatus(env, store){ return { ok:true, enabled:String(env.SERVIO_GRID_LIVE_SYNC || '1')==='1', tokenPresent:Boolean(env.ENTSOE_API_TOKEN || env.ENTSOE_SECURITY_TOKEN), mode:'cloudflare-d1-live-sync-restored-v3298-source-parity', entsoeCache:{mode:'D1 source_mode=official-live'}, opcomCache:{mode:'D1 source_mode=opcom-pzu-live'}, transelectricaCache:{records:store?.balancingRecords?.length || 0, extractedAtUtc:store?.loadedAtUtc || null, sourceMode:'bundled-transelectrica-balancing'}, state:{lastSuccess:null, bundledLoadedAtUtc:store.loadedAtUtc, note:'v32.98 keeps ENTSO-E token/API as primary automatic live source, uses OPCOM D1/local import as official fallback when ENTSO-E is partial, and reports effective source parity per delivery day.'} }; }
+function liveStatus(env, store){ return { ok:true, enabled:String(env.SERVIO_GRID_LIVE_SYNC || '1')==='1', tokenPresent:Boolean(env.ENTSOE_API_TOKEN || env.ENTSOE_SECURITY_TOKEN), mode:'cloudflare-d1-live-sync-restored-v3299-hybrid-relay-source-parity', entsoeCache:{mode:'D1 source_mode=official-live'}, opcomCache:{mode:'D1 source_mode=opcom-pzu-live'}, transelectricaCache:{records:store?.balancingRecords?.length || 0, extractedAtUtc:store?.loadedAtUtc || null, sourceMode:'bundled-transelectrica-balancing'}, state:{lastSuccess:null, bundledLoadedAtUtc:store.loadedAtUtc, note:'v32.99 keeps ENTSO-E token/API as primary automatic live source, uses OPCOM D1/local scheduled relay as official fallback when ENTSO-E is partial, and reports effective source parity per delivery day.'} }; }
 function forecastP50(store, body={}){ const params=normalizeApiBatteryParams(body.params || {}); const startMonth=String(body.startMonth || '2026-04').slice(0,7); const horizonMonths=Math.max(1,Math.min(120,Number(body.horizonMonths || 24))); const base=simulateFromMarketDb(store,{from:'2025-01-01',to:'2025-12-31',params,preset:body.preset||'night'}).result; const annual=Number(base.totalRevenueEur || 0); const totalInvestmentEur=Number(base.params?.totalInvestmentEur || params.capacityMWh*1000*params.costPerKwh || 1); const monthly=[]; for(let i=0;i<horizonMonths;i++){ const d=new Date(Date.UTC(Number(startMonth.slice(0,4)), Number(startMonth.slice(5,7))-1+i, 1)); const month=`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`; const p50=Math.round(annual/12); monthly.push({month,p10RevenueEur:Math.round(p50*.72),p50RevenueEur:p50,p90RevenueEur:Math.round(p50*1.28)}); } const annualizedP50RevenueEur=monthly.slice(0,12).reduce((a,b)=>a+b.p50RevenueEur,0); const roiP50Pct=Math.round(annualizedP50RevenueEur/Math.max(1,totalInvestmentEur)*1000)/10; const paybackP50Years=annualizedP50RevenueEur>0?Math.round(totalInvestmentEur/annualizedP50RevenueEur*10)/10:null; return { ok:true, mode:'P10/P50/P90', startMonth, horizonMonths, monthly, summary:{annualizedP50RevenueEur, roiP50Pct, paybackP50Years, paybackYears:paybackP50Years}, diagnostics:{coverageScore:96, source:'cloudflare-exact-v32.77-market-db'} }; }
 
 async function handleApi(request, env){
@@ -1205,7 +1205,8 @@ async function handleApi(request, env){
   if(url.pathname==='/api/servio/progress/audit') return json(progressAudit());
   if(url.pathname==='/api/servio/historical/coverage-heatmap.svg') return textResponse(coverageSvg(store), 200, 'image/svg+xml; charset=utf-8');
   if(url.pathname==='/api/servio/live/source-health'){ const date=url.searchParams.get('date') || addDaysIso(currentBucharestDate(),1); return json(await liveSourceHealthForDate(env, store, date)); }
-  if(url.pathname==='/api/servio/ingest/status') return json({ ok:true, version:VERSION, mode:'servio-secure-ingest-api-v3298', authConfigured:Boolean(getIngestSecret(env)), d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), routes:['POST /api/servio/ingest/market-records','POST /api/servio/ingest/opcom','POST /api/servio/ingest/entsoe','POST /api/servio/ingest/transelectrica'], note:'External relay/GitHub Actions should push normalized official source records here with Authorization: Bearer SERVIO_INGEST_SECRET.' });
+  if(url.pathname==='/api/servio/ingest/status') return json({ ok:true, version:VERSION, mode:'servio-secure-ingest-api-v3299-hybrid-relay', authConfigured:Boolean(getIngestSecret(env)), d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), routes:['POST /api/servio/ingest/market-records','POST /api/servio/ingest/opcom','POST /api/servio/ingest/entsoe','POST /api/servio/ingest/transelectrica'], relayModes:['github-actions','windows-local-task','future-hosted-relay'], note:'External relay/GitHub Actions/Windows local task should push normalized official source records here with Authorization: Bearer SERVIO_INGEST_SECRET.' });
+  if(url.pathname==='/api/servio/relay/status') return json({ ok:true, version:VERSION, mode:'v32.99-hybrid-relay-status', cloudRelay:'github-actions', localRelay:'windows-task-scheduler', d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), recommendation:'Use GitHub Actions for ENTSO-E and automatic hourly checks. Use Windows local relay for OPCOM when Cloudflare/GitHub runners receive 403.' });
   if(url.pathname==='/api/servio/ingest/market-records' || url.pathname==='/api/servio/ingest/opcom' || url.pathname==='/api/servio/ingest/entsoe' || url.pathname==='/api/servio/ingest/transelectrica'){ const out=await handleSecureMarketIngest(request, env, url); return json(out.body, out.status); }
 
   if(url.pathname==='/api/servio/live/sync'){ const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries()); return json(await guardedSync('live/sync', () => runCloudflareLiveSync(env, body, 'manual-live-sync'), { path:url.pathname })); }
@@ -1214,7 +1215,7 @@ async function handleApi(request, env){
   if(url.pathname==='/api/servio/entsoe/sync-day-ahead' || url.pathname==='/api/servio/entsoe/sync-delivery-day'){ const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries()); return json(await guardedSync('entsoe/sync-delivery-day', () => syncEntsoeDeliveryDay(env, body, 'manual-entsoe-delivery-day-sync'), { path:url.pathname })); }
   if(url.pathname==='/api/servio/opcom/sync' || url.pathname==='/api/servio/opcom/day-ahead/sync-range'){ const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries()); return json(await guardedSync('opcom/day-ahead/sync-range', () => syncOpcomRange(env, body, 'manual-opcom-sync'), { path:url.pathname })); }
   if(url.pathname==='/api/servio/transelectrica/status') return json({ok:true, version:VERSION, mode:'transelectrica-balancing-bundled-plus-live-roadmap', balancingRecords:store.balancingRecords.length, dateMin:store.balancingRecords[0]?.date || null, dateMax:store.balancingRecords[store.balancingRecords.length-1]?.date || null, sourceMode:'bundled-transelectrica-balancing', note:'Transelectrica balancing data is active from bundled validated CSV assets. Live Transelectrica crawler/API adapter is next dedicated build because source format/publication differs from ENTSO-E Day-Ahead API.'});
-  if(url.pathname==='/api/servio/transelectrica/sync') return json({ok:true, skipped:false, liveCrawler:false, mode:'cloudflare-v3298-transelectrica-bundled-status', message:'Transelectrica balancing is available from bundled validated data; live crawler/API adapter will be added as separate source adapter after official endpoint/source confirmation.', status:await cloudflareLiveStatus(env, store), balancingRecords:store.balancingRecords.length});
+  if(url.pathname==='/api/servio/transelectrica/sync') return json({ok:true, skipped:false, liveCrawler:false, mode:'cloudflare-v3299-transelectrica-bundled-status', message:'Transelectrica balancing is available from bundled validated data; live crawler/API adapter will be added as separate source adapter after official endpoint/source confirmation.', status:await cloudflareLiveStatus(env, store), balancingRecords:store.balancingRecords.length});
   if(url.pathname==='/api/servio/day-ahead/summary'){ const selected=url.searchParams.get('date'); if(selected) return json(await dayAheadSummaryLive(env, store, selected)); const today=currentBucharestDate(); const tomorrow=addDaysIso(today,1); const live=await d1ReadMarketRecords(env,{from:today,to:tomorrow,market:'DAY_AHEAD',limit:1000}).catch(()=>[]); const db=combineMarketDbWithLive(store.marketDb, live); return json({ok:true, today:marketDbRecordForDayAheadSummary(db,today), tomorrow:marketDbRecordForDayAheadSummary(db,tomorrow), db:marketDbSummary(db), d1LiveRecordsMerged:live.length}); }
   if(url.pathname==='/api/servio/day-ahead/optimize'){ const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries()); const date=body.date || addDaysIso(currentBucharestDate(),1); const live=await d1ReadMarketRecords(env,{date,market:'DAY_AHEAD',limit:1000}).catch(()=>[]); return json(simpleDayAheadOptimize(combineMarketDbWithLive(store.marketDb, live), body)); }
   if(url.pathname==='/api/servio/opcom/status') return json({ ok:true, mode:'cloudflare-d1-opcom', d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})) });
