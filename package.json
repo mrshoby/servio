@@ -1,0 +1,19 @@
+{
+  "name": "servio-energy-market-os",
+  "version": "32.98.0",
+  "private": true,
+  "description": "SERVIO v32.98 secure official source ingestion API + GitHub Actions relay for ENTSO-E, OPCOM and Transelectrica source health.",
+  "scripts": {
+    "start": "node servio/api/server.mjs",
+    "qa:v29.46": "node servio/tests/servio-v29-46-vector-login-brand-cleanup-ui-fix-qa.mjs",
+    "qa:v29.47": "node servio/tests/servio-v29-47-login-reentry-centered-brand-animation-fix-qa.mjs",
+    "qa:v29.49": "node servio/tests/servio-v29-49-vector-login-crisp-rendering-fix-qa.mjs",
+    "qa:v29.51": "node servio/tests/servio-v29-51-login-compact-textplugin-timing-ui-fix-qa.mjs",
+    "qa:v29.52": "node servio/tests/servio-v29-52-login-layout-bracket-hover-ui-fix-qa.mjs",
+    "check:worker": "node --check src/worker.js && node --check src/official-engine-worker.js && node --check scripts/servio-official-source-ingestion-v3298.mjs",
+    "ingest:v32.98": "node scripts/servio-official-source-ingestion-v3298.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5"
+  }
+}
