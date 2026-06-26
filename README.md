@@ -1,7 +1,5 @@
-# SERVIO Exact Claude JSX Preview + API Worker
+# SERVIO Claude JSX exact + OPCOM/ENTSO-E API fix
 
-Baza UI este fișierul încărcat `Servio (1).jsx` — același shell din captura Claude: sidebar, topbar, Overview, Day-Ahead, Prognoză, Baterie/BESS, Surse & relay, Settings, tema dark/light.
+Bază UI: fișierul încărcat `Servio (2).jsx`.
 
-Nu include shell v36/custom, nu folosește Cloudflare Assets, nu folosește D1 și nu folosește `env.ASSETS.fetch()`.
-
-Worker-ul servește aplicația React pentru `/`, `/dashboard/module-menu.html`, `/battery-revenue-simulator`, `/dashboard/battery-revenue-simulator.html` și păstrează endpointurile API minime SERVIO / OPCOM / ENTSO-E.
+Nu reconstruiește shell-ul. Worker-ul servește exact preview-ul React/JSX Claude și expune endpointurile `/api/servio/*` pentru OPCOM/ENTSO-E/Transelectrica.

@@ -1,3 +1,4 @@
+import { createRoot } from "react-dom/client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, ComposedChart,
@@ -17,6 +18,10 @@ const fmt = (n, d = 0) => Number(n).toLocaleString("ro-RO", { minimumFractionDig
 const fmtLei = (n) => fmt(n) + " " + LEI;
 function rng(seed) { let s = seed % 2147483647; if (s <= 0) s += 2147483646; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 const gauss = (x, mu, sig) => Math.exp(-((x - mu) ** 2) / (2 * sig * sig));
+
+/* ---- REAL balancing data (OPCOM/ENTSO-E export 2023-10 .. 2025-12, 15-min, Lei/MWh) ---- */
+const REAL = {"start":"2023-10-01","shape":[0.383,0.148,0.105,0.084,0.007,-0.106,0.079,0.063,-0.245,-0.451,-0.459,-1.0,-0.849,-0.936,-0.737,-0.526,0.211,0.48,0.548,0.839,0.984,0.771,0.4,0.206],"avg":[-157,230,422,-224,99,-85,-155,473,795,129,489,565,1570,-302,-395,582,1273,1083,884,1352,350,220,1133,505,477,189,626,277,-132,17,437,334,342,1396,549,84,13,517,577,1074,1324,931,937,709,532,1109,955,1239,1199,1019,1002,1501,-24,1154,390,1179,1462,1690,1343,889,565,215,536,-56,874,304,404,302,1540,1568,1180,2033,809,929,603,691,1198,437,-504,1088,1169,-259,-181,977,1049,-407,-608,-338,134,13,945,-88,463,499,-50,628,136,173,746,829,1134,-575,-35,1632,807,1208,954,1147,1266,871,-511,749,1204,2141,1199,1450,-59,326,1764,199,-553,1280,295,1185,72,-424,467,-658,-580,-822,-559,-483,-1028,-365,-132,-665,-1238,-1374,-1251,531,114,389,-1545,-1045,26,-561,-1568,592,-760,-426,-759,-110,295,-2100,-1733,-963,-1979,-1986,256,-1149,-2646,-1100,1081,-291,-1548,-1155,-2045,-825,-1633,-75,-221,403,167,-696,-696,-102,-453,-223,470,357,-263,208,-964,-717,-421,-1499,-510,-671,-181,-188,-868,-1755,-1476,-971,592,562,-707,686,803,791,-235,-774,20,-104,1376,1690,166,-686,93,640,-675,974,-318,989,-188,-359,443,-521,-1635,-688,1449,167,474,1296,-324,-2163,-3451,-3099,-2190,-1136,824,873,-531,-1284,-360,-275,-395,344,-373,-1054,-2378,-1416,-2779,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,-1669,1373,1048,451,-117,-221,15,468,1296,1071,1019,1336,1465,1301,1069,1771,1719,1659,1196,1234,658,603,206,-330,617,-981,-274,-225,-611,-1142,-675,217,71,705,465,535,207,-183,-69,12,589,-133,-113,407,710,693,712,622,310,588,868,519,201,7,298,312,-15,1329,954,457,-368,217,791,346,918,1172,4,358,1107,344,-55,-843,782,1118,339,535,46,-769,-1808,116,659,522,-278,642,-1251,-136,530,-132,557,449,-513,124,172,-433,-2075,492,1162,876,279,-362,-2255,179,-422,1186,899,-594,-417,1477,576,-564,802,1131,1383,825,217,-1135,705,1280,731,413,157,130,2,374,-1823,1097,1171,1733,1597,2909,1070,753,2010,1801,2297,1994,2478,2616,1189,831,773,2088,1220,616,868,1345,1227,479,650,926,1596,1040,1083,956,582,488,761,336,480,741,887,1567,579,-12,1704,1638,1779,422,605,562,700,58,460,962,459,1532,1661,594,574,860,1183,1758,1277,1357,1363,134,472,272,875,113,54,63,-689,121,352,73,254,1107,833,598,369,128,214,753,1211,867,256,-703,843,8,138,100,-48,147,-746,183,845,897,959,902,1095,-44,-783,1295,802,231,608,2248,669,448,972,1058,1381,1511,609,455,787,1594,1688,542,1130,54,1113,539,1092,1109,920,718,607,110,398,513,318,869,985,169,30,288,1668,41,1059,402,-442,-276,-777,152,1275,593,-1027,-505,-180,452,939,723,-711,1490,1280,1853,-283,-839,370,1205,165,261,1016,1526,1060,96,545,243,-453,491,754,1581,-16,-717,-670,-686,73,145,489,513,202,-308,-27,1842,248,-484,78,330,676,294,365,166,598,95,1449,303,143,665,1687,1853,1403,560,1397,166,1292,308,820,413,1278,809,320,465,277,179,-417,-231,-221,535,467,469,269,-368,-646,366,549,801,197,156,-296,284,293,880,355,-179,-88,272,373,-142,639,1522,921,764,-35,714,106,-481,776,913,230,-18,717,1448,1036,-316,-15,74,152,614,387,596,855,-843,838,-432,461,625,524,1404,1586,967,917,1003,435,399,652,-68,676,618,500,113,198,268,138,345,821,-383,-21,800,899,77,610,328,-71,-251,-492,747,646,-955,-596,-254,127,370,411,-199,802,90,507,1109,1664,26,203,450,202,68,811,919,383,553,-144,76,-106,636,439,-808,413,1012,-442,573,798,863,1047,865,443,118,944,1376,152,1415,842,1002,211,1885,1767,1515,698,700,1007,773,817,408,851,853,724,1629,75,1093,507,547,1257,244,255,864,1008,869,366,678,1008,-118,343,120,322,838,465,1133,154,407,1115,1400,946,1239,1629,633,1015,1069,737,1262,1042,367,1364,1252,-26,456,1511,970,1346,352,584,259,374,69,-50,-215,50,115,942,318,534,456,844,597,442,1913,1542,1201,606,-350,1600,1153,1035,1891,741,1047,785,215,1076,851,1568,725],"spread":[1746,2765,3319,2879,2800,3271,829,3273,3300,2850,3498,3300,2500,835,1161,3300,2940,3500,3500,1096,3655,3010,3088,3500,3588,3164,2862,3500,2281,2900,3142,3700,3746,2700,3700,3000,3000,3700,3518,3628,3700,3700,3700,3400,3700,3700,3700,2700,2168,3123,3000,2920,4182,4100,4100,4100,965,1806,993,3117,4103,3380,4153,3200,3403,4100,4100,4100,1466,2003,1159,1764,4100,4500,4500,4500,4426,3985,1400,4500,4500,3400,4418,3434,4500,781,1003,1366,4080,3811,4500,3400,4412,4163,3400,4900,4900,4900,3291,4803,4900,3922,4900,3448,4900,4670,3617,4352,4900,4900,2550,4900,4900,2261,1521,2511,5884,5300,5100,3612,5634,5300,5300,5769,5500,6404,6000,1841,6035,1593,5596,3280,2361,8000,8000,8000,2633,2423,2786,8875,8022,8000,2872,8000,8000,8000,9370,8000,5220,8000,8973,8000,15815,4571,16061,15060,7439,10000,9500,10000,8626,10500,10500,7000,7705,7000,8000,7993,8500,6200,6200,4308,3475,4000,8727,9422,5225,6200,4976,3182,5200,6200,5200,2348,6200,3075,5200,5152,6200,6743,6141,2853,5478,3874,5596,6000,6553,5500,5500,5500,5820,6200,6200,5780,887,2130,6177,6200,6200,6198,6153,3616,7000,4222,8000,8000,8000,6274,4974,7912,2670,7692,7621,6412,6913,6828,4251,4997,9000,9000,10072,9080,9000,6000,6100,6200,6221,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,8000,1107,1831,1396,2311,4429,2194,2351,2402,2179,2497,2139,2423,3338,1959,2928,3254,3533,5049,3940,2399,1742,1583,1994,1797,4112,3297,4231,3498,6355,4237,1800,1850,1582,1457,1503,1534,2409,3312,2148,1626,2060,3675,1573,2618,1378,1389,2061,1151,1403,2756,1878,1743,2096,1289,1189,1702,2837,2266,3556,3116,1966,1824,1845,4228,5328,1570,2090,2952,1451,3872,5752,2225,3660,2766,1162,2343,3500,6368,4301,3607,4835,6407,10426,8026,3979,1539,2752,1430,3210,4586,1192,3151,4332,11784,2672,1660,873,1840,3924,10033,2630,4267,3061,2610,4798,4313,2718,1538,5167,3298,1547,4876,4131,3965,2991,2793,2927,2089,1261,2516,1229,1037,1182,4026,3664,2405,4493,5386,6914,2146,1921,4365,5796,3425,3295,4291,4240,1204,2067,1113,3353,2396,1203,1636,2840,1641,1124,1257,2845,2104,1929,2214,1299,990,3079,1938,1600,942,2363,3297,2670,4700,2305,4241,4814,2927,1077,4092,3033,4598,3247,1907,1509,4027,4583,2733,1582,912,533,1012,2971,1583,1475,3820,1030,1631,1641,1569,2805,1237,818,3485,1109,1346,1088,888,2970,3045,2027,1249,1826,1121,2725,3281,2532,3471,4980,2044,2408,1023,2050,2241,2151,2533,1612,3351,2269,1923,1571,2593,2902,5423,2289,2878,3870,1898,6158,2865,1988,1151,374,3266,1399,2002,3241,2281,4438,2800,4141,3419,4158,3672,2051,1382,3198,3854,4497,5593,3357,1989,1448,1327,1046,3154,2080,4662,7499,5065,4068,4762,5399,4266,5212,5655,2249,4223,1677,5099,3682,3181,1490,904,2737,5324,5305,4930,5188,3149,4986,1043,3513,4338,5405,3157,5527,4487,4159,1523,1736,3233,3341,1361,3924,3150,3214,4464,3168,2180,3262,1345,901,2420,3442,2240,4103,1806,3274,2798,2022,3772,1489,1702,1708,6154,2428,4384,2399,3051,2089,4603,5582,4764,4713,4978,1321,4025,1646,4511,1936,3057,4438,1022,1602,2419,4158,2226,2749,4493,1709,1504,1960,761,2510,4433,5668,1865,4010,1774,877,1621,996,1495,2732,1120,2448,3645,2037,1207,1494,1419,3727,1140,7380,4949,2684,3905,3693,1073,1019,1750,6985,1408,3673,4039,3229,644,1727,1114,1479,614,1609,3723,5270,3896,5129,979,3077,5045,4080,5442,1871,1776,2485,2191,3115,1134,2105,1122,3512,678,1546,8335,6873,2689,699,2499,4754,2765,2763,1700,983,1138,501,560,2980,3601,901,1696,5273,3797,3148,1590,975,1079,1131,1428,1487,1132,3605,5328,3869,769,2673,764,1893,1441,1584,1627,1392,3976,1161,3021,1167,3513,3524,1875,3519,4894,1549,1705,1602,1097,1193,1299,1607,2123,3653,1043,4340,1115,1562,753,3345,5893,1927,1463,1749,1697,893,1597,1484,1576,1931,2765,3788,686,3545,1178,1456,3212,1555,1178,1495,5966,2462,1308,1102,2400,2055,802,770,1135,1541,1024,2853,1219,953,2418,5068,1267,2690,2623,1260,2103,1741,2483,2877,2316,1444,5334,6060,945,1144,4083,1346,2617,1457,1766,1974,1871,1747,996,3145,1387,1087,2482,1337,1425,711,1200,719,1446,4601,4534,1812,836,1682,3123,3107,2742,2990,2111,2334,1191,1063,3543,3070,3986,1707],"today":[1269,1269,1269,186,186,186,110,56,187,-1,58,-6,-6,1409,741,667,1020,823,839,826,827,1278,1278,243,239,152,-38,-38,-75,177,-16,5,-71,4,-54,-78,-370,-370,143,144,101,107,107,107,3,12,4,101,101,752,791,1537,0,273,569,867,880,879,881,880,1389,1515,1588,2895,2895,1232,1232,27803,4658,2958,2958,-2844,-1121,-1121,-1121,-1121,-1121,-1121,-1121,-1046,-269,-573,-2715,-958,-252,-171,9,39,-891,-227,-53,-112,981,752,734,1112],"tomorrow":[770,756,704,764,764,764,17,670,670,636,677,712,712,604,757,849,768,704,788,1166,1397,4419,1230,906,907,890,909,913,1018,979,1080,1009,991,995,996,1525,928,762,400,372,822,783,235,235,18,700,700,251,700,774,700,700,701,700,700,135,-729,-729,187,252,251,786,4633,7000,4413,7000,4346,3662,2373,1753,3908,2082,1049,1051,1052,2139,2824,4074,1855,1964,1660,1156,1427,2775,1843,1843,1843,27,27,27,10283,4674,2371,5203,1314,1314],"lastDay":"2025-12-31","stats":{"days":823,"start":"2023-10-01","end":"2025-12-31","avg":411,"min":-49268,"max":29517,"neg":30.1,"lastDay":"2025-12-31"}};
+
 
 // Romanian-style day-ahead / balancing price curve, 96 quarter-hours, Lei/MWh
 function priceCurve(dayOffset = 0) {
@@ -71,6 +76,12 @@ const TODAY = priceCurve(0);
 const TOMORROW = priceCurve(1);
 const TODAY_H = hourly(TODAY);
 const TOMORROW_H = hourly(TOMORROW);
+
+// build interval curves from the real dataset's most-recent days
+function realCurve(arr) { return arr.map((price, i) => { const h = i / 4; return { i, hour: h, label: String(Math.floor(h)).padStart(2, "0") + ":" + String((i % 4) * 15).padStart(2, "0"), price: Math.round(price) }; }); }
+const RT = realCurve(REAL.today), RTM = realCurve(REAL.tomorrow);
+const RTH = hourly(RT), RTMH = hourly(RTM);
+const realIdx = (date) => Math.round((date - new Date(REAL.start)) / 86400000);
 
 // ---- Battery revenue simulation over a period (EUR) ----
 const EURLEI = 4.97;
@@ -157,7 +168,7 @@ function useMarketData(base, token) {
           apiGet(base, ENDPOINTS.dayAhead + "?day=today", token),
           apiGet(base, ENDPOINTS.dayAhead + "?day=tomorrow", token),
         ]);
-        const today = parseSeries(t) || TODAY, tomorrow = parseSeries(tm) || TOMORROW;
+        const today = parseSeries(t) || RT, tomorrow = parseSeries(tm) || RTM;
         if (!alive) return;
         setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: "live", error: null, loading: false });
       } catch (e) {
@@ -376,11 +387,11 @@ function runRevenue(sp, grid, fromD, toD) {
   const r = rng(99);
   const out = []; const cur = new Date(fromD); const end = new Date(toD); let guard = 0;
   while (cur <= end && guard < 1200) {
-    const doy = Math.floor((cur - new Date(cur.getFullYear(), 0, 0)) / 86400000);
-    const winter = 0.5 + 0.5 * Math.cos((doy - 15) / 365 * 2 * Math.PI);
-    const avgLei = 560 + 180 * winter;
-    const spreadLei = (430 + 360 * winter) * (0.85 + 0.3 * r());
-    const price = SHAPE24.map((n) => avgLei + n * spreadLei * 0.5);
+    const ri = realIdx(cur);
+    let avgLei, spreadLei, shapeArr;
+    if (ri >= 0 && ri < REAL.avg.length) { avgLei = REAL.avg[ri]; spreadLei = REAL.spread[ri]; shapeArr = REAL.shape; }
+    else { const doy = Math.floor((cur - new Date(cur.getFullYear(), 0, 0)) / 86400000); const winter = 0.5 + 0.5 * Math.cos((doy - 15) / 365 * 2 * Math.PI); avgLei = 560 + 180 * winter; spreadLei = (430 + 360 * winter) * (0.85 + 0.3 * r()); shapeArr = SHAPE24; }
+    const price = shapeArr.map((n) => avgLei + n * spreadLei * 0.5);
     const cH = []; const dH = [];
     for (let h = 0; h < 24; h++) { if (grid[h] === "charge" && price[h] <= sp.maxChargePriceRonMwh) cH.push(h); if (grid[h] === "discharge" && price[h] >= sp.minDischargePriceRonMwh) dH.push(h); }
     const chargeE = Math.min(usable, sp.maxChargePowerMW * cH.length);
@@ -420,7 +431,7 @@ function Battery() {
   const [sp, setSp] = useState({
     capacityMWh: 2, maxChargePowerMW: 1, maxDischargePowerMW: 1, efficiencyPct: 88, maxCyclesDay: 2, minSocPct: 10, maxSocPct: 95,
     batteryCostEurKwh: 200, eurRon: 4.97, lifecycleCycles: 6000, fixedOmEurYear: 4000, discountPct: 8, projectYears: 10,
-    degradationCostRonMwh: 120, maxChargePriceRonMwh: 480, minDischargePriceRonMwh: 600, maxIdChargePriceRonMwh: 400,
+    degradationCostRonMwh: 120, maxChargePriceRonMwh: 700, minDischargePriceRonMwh: 450, maxIdChargePriceRonMwh: 400,
   });
   const set = (k) => (v) => setSp((s) => ({ ...s, [k]: v }));
   const [grid, setGrid] = useState(() => presetGrid("balanced"));
@@ -428,9 +439,9 @@ function Battery() {
   const [activePreset, setActivePreset] = useState("balanced");
   const [custom, setCustom] = useState(false);
   const [from, setFrom] = useState("2023-10-01");
-  const [to, setTo] = useState("2026-03-31");
-  const fromEff = custom ? from : "2023-10-01";
-  const toEff = custom ? to : "2026-03-31";
+  const [to, setTo] = useState("2025-12-31");
+  const fromEff = custom ? from : REAL.start;
+  const toEff = custom ? to : REAL.stats.end;
 
   const res = useMemo(() => runRevenue(sp, grid, fromEff, toEff), [sp, grid, fromEff, toEff]);
   const scenarios = useMemo(() => Object.keys(DISP_PRESETS).map((k) => { const rr = runRevenue(sp, presetGrid(k), fromEff, toEff); return { key: k, label: DISP_PRESETS[k].label, investment: rr.investment, annual: rr.annual, payback: rr.payback }; }), [sp, fromEff, toEff]);
@@ -506,6 +517,7 @@ function Battery() {
             <button className="btn ghost" onClick={() => { setCustom(false); }}><Database size={14} /> Use full dataset</button>
             <span className="dim small">{daysBetween(fromEff, toEff)} zile · {res.totalMonths} luni</span>
           </div>
+          <div className="hint" style={{ marginTop: 12 }}><Database size={13} /> Date reale OPCOM/ENTSO-E: <b>{REAL.stats.days} zile</b> · {REAL.start} → {REAL.stats.end} · medie {fmt(REAL.stats.avg)} Lei/MWh · <b>{REAL.stats.neg}%</b> intervale negative.</div>
         </Card>
       </div>
 
@@ -810,12 +822,21 @@ function Palette({ open, setOpen, go }) {
 
 /* ============================ App shell ============================ */
 export default function App() {
-  const [view, setView] = useState("overview");
+  const [view, setView] = useState(() => {
+    const p = (globalThis.location && globalThis.location.pathname ? globalThis.location.pathname : "/").toLowerCase();
+    if (p.includes("battery") || p.includes("bess")) return "battery";
+    if (p.includes("day-ahead") || p.includes("dayahead") || p.includes("pzu")) return "dayahead";
+    if (p.includes("forecast") || p.includes("prognoza")) return "forecast";
+    if (p.includes("map") || p.includes("harta")) return "map";
+    if (p.includes("sources") || p.includes("relay") || p.includes("surse")) return "sources";
+    if (p.includes("settings") || p.includes("setari")) return "settings";
+    return "overview";
+  });
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navQuery, setNavQuery] = useState("");
-  const [apiBase, setApiBase] = useState("");
+  const [apiBase, setApiBase] = useState(() => (globalThis.location && globalThis.location.origin) || "");
   const [apiToken, setApiToken] = useState("");
   const md = useMarketData(apiBase, apiToken);
   const market = useMarketNow();
@@ -866,7 +887,7 @@ export default function App() {
         <header className="topbar">
           <div className="crumbs"><span className="crumb dim">Servio</span><ChevronRight size={13} className="crsep" /><span className="crumb">{TITLES[view]}</span></div>
           <div className="topspace" />
-          <div className={"datamode " + md.mode} title={md.mode === "live" ? "Date live din OPCOM / ENTSO-E" : (apiBase ? "API indisponibil — date demo" : "Date demonstrative")}><span className={"mdot " + md.mode} />{md.mode === "live" ? "Live" : "Demo"}</div>
+          <div className={"datamode " + md.mode} title={md.mode === "live" ? "Date live din OPCOM / ENTSO-E" : (apiBase ? "API indisponibil — date istorice" : "Date istorice reale OPCOM/ENTSO-E 2023–2025 · conectează backend-ul pentru live")}><span className={"mdot " + md.mode} />{md.mode === "live" ? "Live" : "Istoric"}</div>
           <div className="marketclock"><Dot status="live" /><span className="mclabel">Piață</span><span className="mctime">{market.clock}</span><span className="mcsep">·</span><span className="mcprice">{fmtLei(md.today[market.idx].price)}</span></div>
           <button className="cmdk" onClick={() => setPaletteOpen(true)}><Search size={13} /> <span className="cmdklabel">Caută</span> <kbd className="kbd2"><Command size={10} />K</kbd></button>
           <button className="ticon" title="Notificări"><Bell size={16} /><span className="tdot" /></button>
@@ -1132,6 +1153,39 @@ const CSS = `
 .spin{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .g{color:var(--green)}.r{color:var(--red)}
+.ingrid{display:grid;grid-template-columns:1fr 1fr;gap:11px 14px}
+.infield{display:flex;flex-direction:column;gap:5px}
+.inlabel{font-size:11.5px;color:var(--text-dim);font-weight:500}
+.inwrap{display:flex;align-items:center;border:1px solid var(--border);border-radius:7px;background:var(--bg);overflow:hidden}
+.inwrap:focus-within{border-color:var(--accent)}
+.inwrap input{flex:1;min-width:0;border:none;background:none;color:var(--text);font-size:13px;font-weight:550;padding:7px 9px;outline:none;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.inwrap input::-webkit-outer-spin-button,.inwrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.inunit{font-size:10.5px;color:var(--text-faint);padding:0 9px;border-left:1px solid var(--border);white-space:nowrap}
+.inunit:empty{display:none}
+.switch{width:40px;height:23px;border-radius:12px;background:var(--border-strong);border:none;position:relative;cursor:pointer;flex:none;transition:background .15s}
+.switch.on{background:var(--accent)}
+.knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s}
+.switch.on .knob{left:19px}
+.brushbar{display:inline-flex;align-items:center;gap:6px}
+.brushbtn{border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer}
+.brushbtn:hover{background:var(--hover)}
+.brushbtn.charge.on{background:color-mix(in srgb,var(--green) 16%,transparent);color:var(--green);border-color:color-mix(in srgb,var(--green) 40%,transparent)}
+.brushbtn.discharge.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.brushbtn.erase.on{background:var(--hover);color:var(--text);border-color:var(--border-strong)}
+.dispwrap{padding:2px 0}
+.dispgrid{display:grid;grid-template-columns:repeat(24,1fr);gap:3px}
+.dispcell{height:46px;border:1px solid var(--border);border-radius:5px;background:var(--bg);cursor:pointer;display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;transition:filter .1s}
+.dispcell.charge{background:color-mix(in srgb,var(--green) 22%,transparent);border-color:color-mix(in srgb,var(--green) 45%,transparent)}
+.dispcell.discharge{background:color-mix(in srgb,var(--accent) 22%,transparent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.dispcell:hover{filter:brightness(1.25)}
+.dhour{font-size:9px;color:var(--text-faint);font-variant-numeric:tabular-nums}
+.disprow{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.dispcounts{display:flex;gap:14px;font-size:12px;color:var(--text-dim)}
+.dispcounts span{display:inline-flex;align-items:center;gap:5px}
+.dispcounts b{color:var(--text)}
+.chip.on{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tbl tr.rowsel{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.tbl tr.rowsel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 
 /* map */
 .zflag{display:inline-flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;border:1px solid var(--border-strong);border-radius:4px;padding:1px 4px;margin-right:6px;color:var(--text-dim)}
@@ -1173,6 +1227,10 @@ const CSS = `
 .palrow:hover .palenter{opacity:1}
 
 /* responsive */
-@media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}}
+@media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
 @media(max-width:820px){.side{position:fixed;z-index:50;height:100vh;box-shadow:0 0 40px rgba(0,0,0,.5)}.content{padding:20px 16px 50px}.marketclock{display:none}.cmdklabel{display:none}}
 `;
+
+
+const __servioRoot = document.getElementById("root");
+if (__servioRoot) createRoot(__servioRoot).render(<App />);
