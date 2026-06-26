@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVIO — Relay &amp; Surse date</title>
+<link rel="stylesheet" href="/s.css">
+<style>
+.infra-row { display:flex; align-items:flex-start; gap:16px; padding:16px; border-bottom:1px solid var(--c-border); }
+.infra-row:last-child { border-bottom:none; }
+.infra-icon { width:36px; height:36px; border-radius:var(--r-md); background:var(--c-bg-sub); border:1px solid var(--c-border); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--c-text3); }
+.infra-info { flex:1; min-width:0; }
+.infra-name { font-size:13px; font-weight:600; color:var(--c-text); margin-bottom:2px; }
+.infra-detail { font-size:12px; color:var(--c-text3); }
+.infra-right { flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.kv-row { display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--c-border); font-size:12px; }
+.kv-row:last-child { border-bottom:none; }
+.kv-key { flex:1; color:var(--c-text3); font-family:var(--font-mono); }
+.kv-val { color:var(--c-text2); font-family:var(--font-mono); font-size:11px; }
+.json-pre { background:var(--c-bg-sub); border:1px solid var(--c-border); border-radius:var(--r-md); padding:12px; font-family:var(--font-mono); font-size:11px; color:var(--c-text2); overflow-x:auto; white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="ws-header"><div class="ws-logo">S</div><div class="ws-info"><div class="ws-name">SERVIO</div><div class="ws-sub">Energy market operations</div></div><div class="ws-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>
+    <div class="sidebar-search"><div class="ss-wrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="ss-input" type="text" placeholder="Find module, route, source..."><span class="ss-kbd">F</span></div></div>
+    <nav class="nav">
+      <div class="nav-section">
+        <a href="/module-menu" class="nav-item" data-route="overview"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="sidebar-label">Overview</span></a>
+        <a href="/incarcare-curba-sarcina" class="nav-item" data-route="consum"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><span class="sidebar-label">Consum / Curba de sarcină</span></a>
+        <a href="/battery-calculator" class="nav-item" data-route="bess"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M22 11v4"/></svg></span><span class="sidebar-label">Calculator baterie / BESS</span></a>
+        <a href="/day-ahead-operations" class="nav-item" data-route="day-ahead"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="sidebar-label">Day-Ahead / Piață energie</span></a>
+        <a href="/future-scenarios" class="nav-item" data-route="scenarios"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span class="sidebar-label">Scenarii viitoare</span></a>
+        <a href="/electricity-map" class="nav-item" data-route="map"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg></span><span class="sidebar-label">Hartă energie</span></a>
+        <a href="/relay-sources" class="nav-item active" data-route="relay"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span><span class="sidebar-label">Relay &amp; Surse date</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Operations</div>
+        <a href="/relay-sources" class="nav-item active" data-route="live-sources"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg></span><span class="sidebar-label">Live Sources</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="ingest"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span><span class="sidebar-label">Ingest API</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="d1"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span><span class="sidebar-label">D1 Storage</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="audit"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="sidebar-label">Audit Logs</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="github"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span><span class="sidebar-label">GitHub Actions</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="windows-relay"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><span class="sidebar-label">Windows Relay</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Settings</div>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span><span class="sidebar-label">Environment</span></a>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><span class="sidebar-label">API Routes</span></a>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="sidebar-label">Integrations</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row"><div class="user-avatar">A</div><div class="user-name">local / admin</div></div>
+      <button class="collapse-btn" id="collapse-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span class="collapse-label">Restrânge</span></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="mobile-menu-btn" id="mobile-menu-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="topbar-breadcrumb"><span>SERVIO</span><span class="crumb-sep">/</span><span class="crumb-current">Relay &amp; Surse date</span></div>
+      <div class="topbar-right">
+        <div class="topbar-status"><span class="status-dot loading" id="topbar-status-dot"></span><span id="topbar-status-text">Checking...</span></div>
+        <button class="btn btn-secondary btn-sm" id="btn-refresh-all">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Reîncarcă
+        </button>
+        <button class="btn btn-primary btn-sm" id="btn-sync-now">Sync acum</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="content-inner">
+        <div class="page-header">
+          <h1 class="page-title">Relay &amp; Surse date</h1>
+          <p class="page-subtitle">Observabilitate Worker, D1, surse live și starea ingestiei de date</p>
+        </div>
+
+        <!-- Worker / Runtime -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">Worker Runtime</span><span class="badge badge-gray" id="worker-badge">—</span></div>
+          <div id="worker-infra">
+            <div class="infra-row">
+              <div class="infra-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div class="infra-info"><div class="infra-name">Cloudflare Worker</div><div class="infra-detail" id="worker-runtime">Se verifică...</div></div>
+              <div class="infra-right"><span class="badge badge-gray" id="worker-status-badge">—</span><span class="infra-detail" id="worker-version">v—</span></div>
+            </div>
+            <div class="infra-row">
+              <div class="infra-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+              <div class="infra-info"><div class="infra-name">D1 Storage</div><div class="infra-detail" id="d1-detail">Se verifică...</div></div>
+              <div class="infra-right"><span class="badge badge-gray" id="d1-badge">—</span><span class="infra-detail" id="d1-records">—</span></div>
+            </div>
+            <div class="infra-row">
+              <div class="infra-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+              <div class="infra-info"><div class="infra-name">Ingest API</div><div class="infra-detail">POST /api/servio/ingest/market-records</div></div>
+              <div class="infra-right"><span class="badge badge-gray" id="ingest-badge">—</span><span class="infra-detail" id="ingest-auth-label">—</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Sources -->
+        <div class="cards-grid" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Live Sources</span><span class="card-meta" id="live-updated">—</span></div>
+            <div class="card-body" id="live-sources-body">
+              <div class="source-row"><div class="source-dot" id="sd-entsoe" style="background:#ccc"></div><div class="source-name">ENTSO-E Transparency</div><div class="source-detail" id="sd-entsoe-detail">—</div><span class="badge badge-gray" id="sd-entsoe-badge">—</span></div>
+              <div class="source-row"><div class="source-dot" id="sd-opcom" style="background:#ccc"></div><div class="source-name">OPCOM PZU live</div><div class="source-detail" id="sd-opcom-detail">—</div><span class="badge badge-gray" id="sd-opcom-badge">—</span></div>
+              <div class="source-row"><div class="source-dot" id="sd-trans" style="background:#ccc"></div><div class="source-name">Transelectrica balancing</div><div class="source-detail" id="sd-trans-detail">Bundled CSV</div><span class="badge badge-gray" id="sd-trans-badge">Bundled</span></div>
+              <div class="row-item" style="margin-top:8px"><span class="row-label">Mod curent</span><span class="row-value" id="live-mode">—</span></div>
+              <div class="row-item"><span class="row-label">Token ENTSO-E</span><span id="live-token">—</span></div>
+              <div class="row-item"><span class="row-label">Ultimul sync reușit</span><span class="row-mono" id="live-last">—</span></div>
+            </div>
+          </div>
+
+          <!-- Ingest status -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Ingest &amp; Relay Config</span><span class="card-meta" id="ingest-meta">—</span></div>
+            <div class="card-body" id="ingest-body">
+              <div class="row-item"><span class="row-label">Auth configurat</span><span id="ing-auth">—</span></div>
+              <div class="row-item"><span class="row-label">Endpoint ingest</span><span class="row-mono">/api/servio/ingest/...</span></div>
+              <div class="row-item"><span class="row-label">Source mode acceptat</span><span id="ing-modes">—</span></div>
+              <div class="row-item"><span class="row-label">Relay Windows activ</span><span id="ing-relay">—</span></div>
+              <div class="row-item"><span class="row-label">GitHub Actions trigger</span><span id="ing-github">—</span></div>
+              <hr class="section-sep" style="margin:12px 0">
+              <div class="form-group" style="margin:0">
+                <label class="form-label">Test ingest rapid (JSON)</label>
+                <textarea class="form-input" id="ingest-test-body" rows="3" style="font-family:var(--font-mono);font-size:11px" placeholder='{"date":"2025-01-15","interval":1,"priceRonMwh":280.5,"sourceMode":"test-relay"}'></textarea>
+                <button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" id="btn-test-ingest">Trimite test record</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- API Routes reference -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">API Routes</span><button class="btn btn-ghost btn-sm" id="btn-expand-routes">Expand</button></div>
+          <div id="routes-body" style="display:none">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Method</th><th>Route</th><th>Descriere</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/health</td><td>Worker health + version</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/day-ahead/summary</td><td>Sumar azi/mâine</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/opcom/day-ahead/records</td><td>Records filtrate</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/live/status</td><td>Status surse live</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/live/sync</td><td>Trigger sync manual</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/ingest/market-records</td><td>Ingest record(s) universal</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/ingest/opcom</td><td>Ingest records OPCOM</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/ingest/entsoe</td><td>Ingest records ENTSO-E</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/ingest/transelectrica</td><td>Ingest Transelectrica</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/simulate-market-period</td><td>Simulare BESS perioadă</td></tr>
+                  <tr><td><span class="badge badge-blue">POST</span></td><td class="mono">/api/servio/forecast/p10-p50-p90</td><td>Forecast scenarii</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/db/status</td><td>Status D1 database</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/ingest/status</td><td>Config ingest + auth</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/progress/audit</td><td>Audit module completitudine</td></tr>
+                  <tr><td><span class="badge badge-gray">GET</span></td><td class="mono">/api/servio/transelectrica/status</td><td>Status bundled balancing</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audit log -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Audit log module</span>
+            <button class="btn btn-secondary btn-sm" id="btn-audit">Rulează audit</button>
+          </div>
+          <div id="audit-body">
+            <div class="empty-state"><span class="empty-icon">📋</span><div class="empty-title">Apasă „Rulează audit"</div><div class="empty-desc">Verifică completitudinea datelor din toate modulele</div></div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+<script src="/app.js"></script>
+<script>
+(function() {
+  'use strict';
+  var S = window.SERVIO;
+
+  function loadAll() {
+    // Health
+    fetch('/api/servio/health').then(function(r){return r.json();}).then(function(d){
+      if (!d) return;
+      var ok = d.ok;
+      document.getElementById('worker-badge').className = 'badge ' + (ok ? 'badge-green' : 'badge-red');
+      document.getElementById('worker-badge').textContent = ok ? 'Online' : 'Error';
+      document.getElementById('worker-status-badge').className = 'badge ' + (ok ? 'badge-green' : 'badge-red');
+      document.getElementById('worker-status-badge').textContent = ok ? 'OK' : 'Error';
+      document.getElementById('worker-version').textContent = 'v' + (d.version || '—');
+      document.getElementById('worker-runtime').textContent = 'Cloudflare Workers · ' + (d.runtime || 'edge') + ' · ' + (d.timestamp ? new Date(d.timestamp).toLocaleString('ro') : '—');
+    }).catch(function(){});
+
+    // DB status
+    fetch('/api/servio/db/status').then(function(r){return r.json();}).then(function(d){
+      if (!d) return;
+      var ok = d.ok !== false;
+      document.getElementById('d1-badge').className = 'badge ' + (ok ? 'badge-green' : 'badge-red');
+      document.getElementById('d1-badge').textContent = ok ? 'Connected' : 'Error';
+      var total = Number(d.totalRecords || d.marketPrices || 0);
+      document.getElementById('d1-records').textContent = total.toLocaleString() + ' records';
+      document.getElementById('d1-detail').textContent = 'D1 SQLite · ' + (d.databaseName || 'servio-live-db') + ' · ' + S.ago(d.updatedAtUtc);
+    }).catch(function(){
+      document.getElementById('d1-badge').className = 'badge badge-yellow';
+      document.getElementById('d1-badge').textContent = 'N/A';
+      document.getElementById('d1-detail').textContent = 'D1 binding nu este configurat local';
+    });
+
+    // Ingest status
+    fetch('/api/servio/ingest/status').then(function(r){return r.json();}).then(function(d){
+      if (!d) return;
+      document.getElementById('ingest-badge').className = 'badge ' + (d.authConfigured ? 'badge-green' : 'badge-yellow');
+      document.getElementById('ingest-badge').textContent = d.authConfigured ? 'Auth OK' : 'No Auth';
+      document.getElementById('ingest-auth-label').textContent = d.authConfigured ? 'Configurat' : 'Lipsă INGEST_AUTH_TOKEN';
+
+      var authEl = document.getElementById('ing-auth');
+      authEl.innerHTML = d.authConfigured ? '<span class="badge badge-green">Configurat</span>' : '<span class="badge badge-yellow">Lipsă token</span>';
+      document.getElementById('ing-modes').textContent = (d.acceptedSourceModes || []).join(', ') || '—';
+      document.getElementById('ing-relay').innerHTML = d.windowsRelayEnabled ? '<span class="badge badge-green">Activ</span>' : '<span class="badge badge-gray">Inactiv</span>';
+      document.getElementById('ing-github').innerHTML = d.githubActionsEnabled ? '<span class="badge badge-green">Activ</span>' : '<span class="badge badge-gray">Inactiv</span>';
+      document.getElementById('ingest-meta').textContent = S.ago(d.lastIngestAt);
+    }).catch(function(){});
+
+    // Live status
+    fetch('/api/servio/live/status').then(function(r){return r.json();}).then(function(d){
+      if (!d) return;
+      document.getElementById('live-mode').textContent = d.mode || '—';
+      document.getElementById('live-token').innerHTML = d.tokenPresent ? '<span class="badge badge-green">Prezent</span>' : '<span class="badge badge-yellow">Lipsă</span>';
+      document.getElementById('live-last').textContent = S.ago(d.state && d.state.lastSuccess);
+      document.getElementById('live-updated').textContent = S.ago(d.checkedAt || null);
+
+      function updateSource(key, idDot, idDetail, idBadge, name) {
+        var src = d[key] || {};
+        var ok = src.ok !== false && src.records > 0;
+        var dot = document.getElementById(idDot);
+        if (dot) dot.style.background = ok ? '#22c55e' : (src.records > 0 ? '#f59e0b' : '#ccc');
+        var detail = document.getElementById(idDetail);
+        if (detail) detail.textContent = src.records !== undefined ? src.records + ' records · ' + (src.mode || '') : '—';
+        var badge = document.getElementById(idBadge);
+        if (badge) {
+          badge.className = 'badge ' + (ok ? 'badge-green' : 'badge-gray');
+          badge.textContent = ok ? 'OK' : (src.error ? 'Error' : '—');
+        }
+      }
+      updateSource('entsoeCache', 'sd-entsoe', 'sd-entsoe-detail', 'sd-entsoe-badge');
+      updateSource('opcomCache', 'sd-opcom', 'sd-opcom-detail', 'sd-opcom-badge');
+      updateSource('transelectricaCache', 'sd-trans', 'sd-trans-detail', 'sd-trans-badge');
+    }).catch(function(){});
+  }
+
+  loadAll();
+
+  // Expand routes
+  document.getElementById('btn-expand-routes').addEventListener('click', function() {
+    var body = document.getElementById('routes-body');
+    var isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'block' : 'none';
+    this.textContent = isHidden ? 'Restrânge' : 'Expand';
+  });
+
+  // Audit
+  document.getElementById('btn-audit').addEventListener('click', function() {
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Se auditează...';
+    fetch('/api/servio/progress/audit').then(function(r){return r.json();}).then(function(d){
+      btn.disabled = false; btn.textContent = 'Rulează audit';
+      if (!d || !d.modules) return;
+      var html = '<div class="table-wrap"><table class="data-table"><thead><tr><th>Modul</th><th>Completare</th><th>Status</th><th>Observații</th></tr></thead><tbody>';
+      d.modules.forEach(function(m) {
+        var pct = m.completionPct || 0;
+        var cls = pct >= 95 ? 'badge-green' : pct >= 80 ? 'badge-yellow' : 'badge-red';
+        html += '<tr><td style="font-weight:500">' + m.name + '</td>' +
+          '<td><div class="progress-row"><div class="progress-bar"><div class="progress-fill ' + (pct >= 95 ? 'ok' : pct >= 80 ? 'partial' : 'missing') + '" style="width:' + pct + '%"></div></div><span class="progress-pct">' + pct + '%</span></div></td>' +
+          '<td><span class="badge ' + cls + '">' + (pct >= 95 ? 'Complet' : pct >= 80 ? 'Parțial' : 'Incomplet') + '</span></td>' +
+          '<td style="color:var(--c-text3);font-size:12px;max-width:280px;white-space:normal">' + (m.status || '').slice(0, 100) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      if (d.overallCompletionPct !== undefined) {
+        html = '<div style="padding:12px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--c-border)"><span style="font-size:13px;color:var(--c-text3)">Completitudine generală</span><div class="progress-row" style="flex:1"><div class="progress-bar"><div class="progress-fill ok" style="width:' + d.overallCompletionPct + '%"></div></div><span class="progress-pct">' + d.overallCompletionPct + '%</span></div></div>' + html;
+      }
+      document.getElementById('audit-body').innerHTML = html;
+    }).catch(function() { btn.disabled = false; btn.textContent = 'Rulează audit'; });
+  });
+
+  // Sync
+  document.getElementById('btn-sync-now').addEventListener('click', function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Sync...';
+    fetch('/api/servio/live/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function(r){return r.json();}).then(function(d) {
+        btn.disabled = false; btn.textContent = d.ok ? '✓ Sync Done' : '⚠ Sync Done';
+        setTimeout(function() { btn.textContent = 'Sync acum'; }, 3000);
+        setTimeout(loadAll, 1000);
+      }).catch(function() { btn.disabled = false; btn.textContent = 'Sync acum'; });
+  });
+
+  document.getElementById('btn-refresh-all').addEventListener('click', loadAll);
+
+  // Test ingest
+  document.getElementById('btn-test-ingest').addEventListener('click', function() {
+    var btn = this;
+    var body = document.getElementById('ingest-test-body').value.trim();
+    if (!body) return;
+    btn.disabled = true; btn.textContent = 'Se trimite...';
+    fetch('/api/servio/ingest/market-records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer test' },
+      body: body
+    }).then(function(r){return r.json();}).then(function(d) {
+      btn.disabled = false; btn.textContent = d.ok ? '✓ Trimis OK' : '⚠ Răspuns: ' + JSON.stringify(d).slice(0, 40);
+      setTimeout(function() { btn.textContent = 'Trimite test record'; }, 3000);
+    }).catch(function(e) { btn.disabled = false; btn.textContent = 'Eroare: ' + e.message.slice(0, 30); setTimeout(function() { btn.textContent = 'Trimite test record'; }, 3000); });
+  });
+})();
+</script>
+</body>
+</html>

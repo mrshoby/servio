@@ -1,0 +1,8 @@
+{
+  "name": "servio",
+  "compatibility_date": "2026-06-26",
+  "main": "src/worker.js",
+  "assets": {
+    "directory": "public"
+  }
+}

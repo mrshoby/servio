@@ -1,0 +1,131 @@
+# SERVIO v36.6 Screenshot Audit Report
+
+Stage: **after**
+Base URL: https://servio.vlad-it-taran.workers.dev
+Generated: 2026-06-26T05:15:29.662Z
+
+## Summary
+
+- Routes: 11
+- Screenshots: 55
+- Failed navigations: 55
+- White screens: 55
+- Horizontal overflow: 0
+- Console errors: 55
+- Iframes: 0
+- Forbidden visible text: none
+
+## Routes
+- overview / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- overview / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- overview / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- overview / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- overview / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- module-menu / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- module-menu / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- module-menu / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- module-menu / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- module-menu / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- load-curve / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- load-curve / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- load-curve / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- load-curve / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- load-curve / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator-html / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator-html / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator-html / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator-html / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- battery-calculator-html / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue-html / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue-html / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue-html / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue-html / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- battery-revenue-html / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- day-ahead / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- day-ahead / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- day-ahead / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- day-ahead / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- day-ahead / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- day-ahead-html / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- day-ahead-html / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- day-ahead-html / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- day-ahead-html / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- day-ahead-html / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- future-scenarios / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- future-scenarios / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- future-scenarios / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- future-scenarios / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- future-scenarios / mobile-390: status=404 ok=false shell=false white=true overflow=false
+- electricity-map / desktop-1440: status=404 ok=false shell=false white=true overflow=false
+- electricity-map / desktop-full: status=404 ok=false shell=false white=true overflow=false
+- electricity-map / laptop-1366: status=404 ok=false shell=false white=true overflow=false
+- electricity-map / tablet-768: status=404 ok=false shell=false white=true overflow=false
+- electricity-map / mobile-390: status=404 ok=false shell=false white=true overflow=false
+
+## Console error details
+
+- overview / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- overview / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- overview / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- overview / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- overview / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- module-menu / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- module-menu / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- module-menu / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- module-menu / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- module-menu / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- load-curve / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- load-curve / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- load-curve / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- load-curve / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- load-curve / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator-html / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator-html / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator-html / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator-html / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- battery-calculator-html / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue-html / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue-html / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue-html / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue-html / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- battery-revenue-html / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead-html / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead-html / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead-html / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead-html / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- day-ahead-html / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- future-scenarios / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- future-scenarios / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- future-scenarios / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- future-scenarios / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- future-scenarios / mobile-390: Failed to load resource: the server responded with a status of 404 ()
+- electricity-map / desktop-1440: Failed to load resource: the server responded with a status of 404 ()
+- electricity-map / desktop-full: Failed to load resource: the server responded with a status of 404 ()
+- electricity-map / laptop-1366: Failed to load resource: the server responded with a status of 404 ()
+- electricity-map / tablet-768: Failed to load resource: the server responded with a status of 404 ()
+- electricity-map / mobile-390: Failed to load resource: the server responded with a status of 404 ()

@@ -1,0 +1,9 @@
+{
+  "zones": 345,
+  "summaryRows": 271,
+  "trainingLines": 2269,
+  "zonesWithCapacity": 271,
+  "zonesWithHistoricalMix": 237,
+  "zonesWithLifecycleFactors": 193,
+  "zonesWithDayAheadPrice": 43
+}

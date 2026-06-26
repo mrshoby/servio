@@ -1,0 +1,1889 @@
+{
+  "summary": {
+    "ok": false,
+    "version": "v36.3",
+    "stage": "after",
+    "baseUrl": "https://servio.vlad-it-taran.workers.dev",
+    "routes": 11,
+    "screenshots": 55,
+    "failed": 55,
+    "whiteScreens": 55,
+    "overflow": 0,
+    "consoleErrors": 55,
+    "iframes": 0,
+    "forbiddenVisible": [],
+    "generatedAtUtc": "2026-06-26T05:01:23.287Z"
+  },
+  "results": [
+    {
+      "route": {
+        "name": "overview",
+        "path": "/"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\overview.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "overview",
+        "path": "/"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\overview.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "overview",
+        "path": "/"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\overview.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "overview",
+        "path": "/"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\overview.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "overview",
+        "path": "/"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\overview.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "module-menu",
+        "path": "/module-menu"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/module-menu",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\module-menu.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "module-menu",
+        "path": "/module-menu"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/module-menu",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\module-menu.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "module-menu",
+        "path": "/module-menu"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/module-menu",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\module-menu.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "module-menu",
+        "path": "/module-menu"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/module-menu",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\module-menu.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "module-menu",
+        "path": "/module-menu"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/module-menu",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\module-menu.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\load-curve.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\load-curve.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\load-curve.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\load-curve.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\load-curve.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator",
+        "path": "/battery-calculator"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\battery-calculator.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator",
+        "path": "/battery-calculator"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\battery-calculator.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator",
+        "path": "/battery-calculator"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\battery-calculator.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator",
+        "path": "/battery-calculator"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\battery-calculator.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator",
+        "path": "/battery-calculator"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\battery-calculator.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator-html",
+        "path": "/battery-calculator.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\battery-calculator-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator-html",
+        "path": "/battery-calculator.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\battery-calculator-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator-html",
+        "path": "/battery-calculator.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\battery-calculator-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator-html",
+        "path": "/battery-calculator.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\battery-calculator-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-calculator-html",
+        "path": "/battery-calculator.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-calculator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\battery-calculator-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\battery-revenue.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\battery-revenue.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\battery-revenue.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\battery-revenue.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\battery-revenue.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue-html",
+        "path": "/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\battery-revenue-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue-html",
+        "path": "/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\battery-revenue-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue-html",
+        "path": "/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\battery-revenue-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue-html",
+        "path": "/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\battery-revenue-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue-html",
+        "path": "/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\battery-revenue-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead",
+        "path": "/day-ahead"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\day-ahead.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead",
+        "path": "/day-ahead"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\day-ahead.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead",
+        "path": "/day-ahead"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\day-ahead.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead",
+        "path": "/day-ahead"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\day-ahead.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead",
+        "path": "/day-ahead"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\day-ahead.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead-html",
+        "path": "/day-ahead.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\day-ahead-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead-html",
+        "path": "/day-ahead.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\day-ahead-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead-html",
+        "path": "/day-ahead.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\day-ahead-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead-html",
+        "path": "/day-ahead.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\day-ahead-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "day-ahead-html",
+        "path": "/day-ahead.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/day-ahead.html",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\day-ahead-html.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "future-scenarios",
+        "path": "/future-scenarios"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/future-scenarios",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\future-scenarios.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "future-scenarios",
+        "path": "/future-scenarios"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/future-scenarios",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\future-scenarios.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "future-scenarios",
+        "path": "/future-scenarios"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/future-scenarios",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\future-scenarios.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "future-scenarios",
+        "path": "/future-scenarios"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/future-scenarios",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\future-scenarios.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "future-scenarios",
+        "path": "/future-scenarios"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/future-scenarios",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\future-scenarios.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "electricity-map",
+        "path": "/electricity-map"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/electricity-map",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-1440\\electricity-map.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "electricity-map",
+        "path": "/electricity-map"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/electricity-map",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\desktop-full\\electricity-map.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "electricity-map",
+        "path": "/electricity-map"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/electricity-map",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\laptop-1366\\electricity-map.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "electricity-map",
+        "path": "/electricity-map"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/electricity-map",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\tablet-768\\electricity-map.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "electricity-map",
+        "path": "/electricity-map"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/electricity-map",
+      "ok": false,
+      "status": 500,
+      "screenshot": "audit\\screenshots\\v36_3\\after\\mobile-390\\electricity-map.png",
+      "consoleErrors": [
+        {
+          "type": "error",
+          "text": "Failed to load resource: the server responded with a status of 500 ()"
+        }
+      ],
+      "pageErrors": [],
+      "title": "",
+      "textLength": 172,
+      "elementCount": 5,
+      "hasShell": false,
+      "whiteScreen": true,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 0,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    }
+  ]
+}

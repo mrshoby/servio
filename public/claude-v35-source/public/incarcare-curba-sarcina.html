@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVIO — Consum / Curba de sarcină</title>
+<link rel="stylesheet" href="/s.css">
+<style>
+.mode-tab { padding:6px 14px; border:1px solid var(--c-border); border-radius:var(--r-md); font-size:12px; cursor:pointer; background:var(--c-bg); color:var(--c-text3); transition:all .1s; margin-right:6px; }
+.mode-tab.on { background:var(--c-text); color:#fff; border-color:var(--c-text); }
+.upload-zone { border:2px dashed var(--c-border); border-radius:var(--r-lg); padding:32px; text-align:center; cursor:pointer; transition:border-color .2s, background .2s; }
+.upload-zone:hover, .upload-zone.drag { border-color:#666; background:var(--c-bg-sub); }
+.file-chosen { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--c-border); border-radius:var(--r-md); background:var(--c-bg-sub); font-size:13px; }
+.analysis-section { margin-top:24px; }
+.tariff-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+@media(max-width:600px){ .tariff-grid { grid-template-columns:1fr 1fr; } }
+.result-row { display:flex; gap:12px; flex-wrap:wrap; }
+.result-tile { flex:1; min-width:140px; border:1px solid var(--c-border); border-radius:var(--r-md); padding:14px; }
+.rt-val { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; line-height:1.1; }
+.rt-label { font-size:11px; color:var(--c-text4); margin-top:3px; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="ws-header"><div class="ws-logo">S</div><div class="ws-info"><div class="ws-name">SERVIO</div><div class="ws-sub">Energy market operations</div></div><div class="ws-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>
+    <div class="sidebar-search"><div class="ss-wrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="ss-input" type="text" placeholder="Find module, route, source..."><span class="ss-kbd">F</span></div></div>
+    <nav class="nav">
+      <div class="nav-section">
+        <a href="/module-menu" class="nav-item" data-route="overview"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="sidebar-label">Overview</span></a>
+        <a href="/incarcare-curba-sarcina" class="nav-item active" data-route="consum"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><span class="sidebar-label">Consum / Curba de sarcină</span></a>
+        <a href="/battery-calculator" class="nav-item" data-route="bess"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M22 11v4"/></svg></span><span class="sidebar-label">Calculator baterie / BESS</span></a>
+        <a href="/day-ahead-operations" class="nav-item" data-route="day-ahead"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="sidebar-label">Day-Ahead / Piață energie</span></a>
+        <a href="/future-scenarios" class="nav-item" data-route="scenarios"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span class="sidebar-label">Scenarii viitoare</span></a>
+        <a href="/electricity-map" class="nav-item" data-route="map"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg></span><span class="sidebar-label">Hartă energie</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="relay"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span><span class="sidebar-label">Relay &amp; Surse date</span></a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Operations</div>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg></span><span class="sidebar-label">Live Sources</span></a>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span><span class="sidebar-label">D1 Storage</span></a>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="sidebar-label">Audit Logs</span></a>
+      </div>
+      <div class="nav-section"><div class="nav-section-label">Settings</div>
+        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span><span class="sidebar-label">Environment</span></a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row"><div class="user-avatar">A</div><div class="user-name">local / admin</div></div>
+      <button class="collapse-btn" id="collapse-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span class="collapse-label">Restrânge</span></button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="mobile-menu-btn" id="mobile-menu-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+      <div class="topbar-breadcrumb"><span>SERVIO</span><span class="crumb-sep">/</span><span class="crumb-current">Consum / Curba de sarcină</span></div>
+      <div class="topbar-right">
+        <div class="topbar-status"><span class="status-dot loading" id="topbar-status-dot"></span><span id="topbar-status-text">Checking...</span></div>
+        <a href="/battery-calculator" class="btn btn-primary btn-sm">Continuă → BESS</a>
+      </div>
+    </header>
+    <main class="content">
+      <div class="content-inner">
+        <div class="page-header">
+          <h1 class="page-title">Consum / Curba de sarcină</h1>
+          <p class="page-subtitle">Analizează profilul de consum orar și pregătește datele pentru calculatorul BESS</p>
+        </div>
+
+        <!-- Mode selector -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <span class="card-title">Sursă date consum</span>
+            <div>
+              <button class="mode-tab on" id="mode-orar" data-mode="orar">Fișier orar</button>
+              <button class="mode-tab" id="mode-factura" data-mode="factura">Factură lunară</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-grid" style="margin-bottom:16px">
+              <div class="form-group">
+                <label class="form-label">Tip energie</label>
+                <select class="form-select" id="energy-type">
+                  <option value="consum">Consum (procurator / furnizor)</option>
+                  <option value="productie">Producție (prosumator)</option>
+                  <option value="net">Net (consum - producție)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Format fișier</label>
+                <select class="form-select" id="file-format" id="file-format-orar">
+                  <option value="enexus">Enexus CSV (pt-15)</option>
+                  <option value="siemens">Siemens PT-15 CSV</option>
+                  <option value="generic-hourly">Generic orar (h1)</option>
+                  <option value="xlsx">Excel XLSX</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Upload zone -->
+            <div id="mode-orar-content">
+              <div class="upload-zone" id="drop-zone">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;color:var(--c-text4)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div class="upload-title">Trage fișierul CSV / XLSX sau apasă pentru upload</div>
+                <div class="upload-desc">Curba de sarcină în format orar (pt-15, h1, h4)</div>
+                <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.txt" style="display:none">
+                <button class="btn btn-secondary btn-sm" style="margin-top:12px" id="btn-browse">Selectează fișier</button>
+              </div>
+              <div id="file-chosen-wrap" style="display:none;margin-top:8px">
+                <div class="file-chosen">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span id="file-name" style="flex:1;font-weight:500">—</span>
+                  <span id="file-size" style="color:var(--c-text4)">—</span>
+                  <button class="btn btn-ghost btn-sm" id="btn-clear-file">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Factura mode -->
+            <div id="mode-factura-content" style="display:none">
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Consum total (kWh/lună)</label><input class="form-input" type="number" id="f-kwh" placeholder="ex: 12500" min="0"></div>
+                <div class="form-group"><label class="form-label">Putere contractată (kW)</label><input class="form-input" type="number" id="f-kw" placeholder="ex: 100" min="0"></div>
+                <div class="form-group"><label class="form-label">Factor de putere</label><input class="form-input" type="number" id="f-pf" placeholder="0.90" value="0.92" step="0.01" min="0.5" max="1"></div>
+                <div class="form-group"><label class="form-label">Tip profil de consum</label>
+                  <select class="form-select" id="f-profile">
+                    <option value="industrial">Industrial (uniform)</option>
+                    <option value="comercial">Comercial (zi activ)</option>
+                    <option value="rezidential">Rezidențial (seară)</option>
+                    <option value="agricol">Agricol (sezonier)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tariff card -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><span class="card-title">Detalii tarif</span><span class="badge badge-gray" id="tariff-badge">Opțional</span></div>
+          <div class="card-body">
+            <div class="tariff-grid">
+              <div class="form-group"><label class="form-label">Tarif energie (RON/kWh)</label><input class="form-input" type="number" id="t-energy" placeholder="0.62" step="0.01"></div>
+              <div class="form-group"><label class="form-label">Tarif rețea distribuit (RON/kWh)</label><input class="form-input" type="number" id="t-dist" placeholder="0.15" step="0.01"></div>
+              <div class="form-group"><label class="form-label">Tarif transport (RON/kWh)</label><input class="form-input" type="number" id="t-trans" placeholder="0.04" step="0.01"></div>
+              <div class="form-group"><label class="form-label">TGS + accize (RON/kWh)</label><input class="form-input" type="number" id="t-taxes" placeholder="0.05" step="0.01"></div>
+              <div class="form-group"><label class="form-label">TVA (%)</label><input class="form-input" type="number" id="t-tva" value="19" min="0" max="25"></div>
+              <div class="form-group"><label class="form-label">Producție locală / PV (kW peak)</label><input class="form-input" type="number" id="t-pv" placeholder="0" min="0"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analyze button -->
+        <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn btn-primary" id="btn-analyze" style="min-width:160px">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Analizează consum
+          </button>
+          <button class="btn btn-secondary" id="btn-reset">Resetează</button>
+          <span id="analyze-status" style="font-size:12px;color:var(--c-text3)"></span>
+        </div>
+
+        <!-- Results -->
+        <div id="results-section" style="display:none">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-header"><span class="card-title">Rezultate analiză consum</span><span class="badge badge-green" id="result-badge">Analiză completă</span></div>
+            <div class="card-body">
+              <div class="result-row" id="result-tiles"></div>
+            </div>
+            <div class="card-footer">
+              <a href="/battery-calculator" class="btn btn-primary btn-sm">Continuă → Calculator BESS</a>
+              <button class="btn btn-secondary btn-sm" id="btn-export-csv">Exportă CSV</button>
+            </div>
+          </div>
+
+          <!-- Preview table -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Preview date (primele 24 ore)</span><span class="card-meta" id="preview-meta">—</span></div>
+            <div id="preview-body"></div>
+          </div>
+        </div>
+
+        <!-- How to get the file -->
+        <div class="card" style="margin-top:16px">
+          <div class="card-header"><span class="card-title">Cum obții fișierul orar / curba de sarcină?</span><button class="btn btn-ghost btn-sm" id="btn-toggle-help">Arată</button></div>
+          <div id="help-content" style="display:none">
+            <div class="card-body">
+              <div class="row-item"><span class="row-label" style="font-weight:500">ENEXUS / Smart metering</span><span class="row-value mono" style="font-size:11px">Export CSV din portalul furnizorului</span></div>
+              <div class="row-item"><span class="row-label" style="font-weight:500">OPCOM / BRM</span><span class="row-value mono" style="font-size:11px">Raport orar descărcat din platforma BRM</span></div>
+              <div class="row-item"><span class="row-label" style="font-weight:500">Contor inteligent AMI</span><span class="row-value mono" style="font-size:11px">Export PT-15 sau H1 din aplicația contorului</span></div>
+              <div class="row-item"><span class="row-label" style="font-weight:500">Fișier Excel manual</span><span class="row-value mono" style="font-size:11px">Coloana A = datetime, Coloana B = kWh</span></div>
+              <div style="margin-top:12px">
+                <div class="callout callout-info">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Formatul recomandat: CSV cu header <code style="font-family:var(--font-mono);font-size:11px">datetime,kwh</code>, interval 15 minute (96 rânduri/zi), encoding UTF-8.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+<script src="/app.js"></script>
+<script>
+(function() {
+  'use strict';
+  var chosenFile = null;
+  var parsedData = null;
+
+  // Mode tabs
+  document.querySelectorAll('.mode-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.mode-tab').forEach(function(b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      var mode = btn.dataset.mode;
+      document.getElementById('mode-orar-content').style.display = mode === 'orar' ? '' : 'none';
+      document.getElementById('mode-factura-content').style.display = mode === 'factura' ? '' : 'none';
+    });
+  });
+
+  // File upload
+  var dropZone = document.getElementById('drop-zone');
+  var fileInput = document.getElementById('file-input');
+
+  document.getElementById('btn-browse').addEventListener('click', function() { fileInput.click(); });
+  fileInput.addEventListener('change', function() { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.classList.add('drag'); });
+  dropZone.addEventListener('dragleave', function() { dropZone.classList.remove('drag'); });
+  dropZone.addEventListener('drop', function(e) { e.preventDefault(); dropZone.classList.remove('drag'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  function handleFile(file) {
+    chosenFile = file;
+    dropZone.style.display = 'none';
+    document.getElementById('file-chosen-wrap').style.display = '';
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('file-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  }
+
+  document.getElementById('btn-clear-file').addEventListener('click', function() {
+    chosenFile = null; fileInput.value = '';
+    dropZone.style.display = ''; document.getElementById('file-chosen-wrap').style.display = 'none';
+  });
+
+  // Help toggle
+  document.getElementById('btn-toggle-help').addEventListener('click', function() {
+    var h = document.getElementById('help-content');
+    var hidden = h.style.display === 'none';
+    h.style.display = hidden ? '' : 'none';
+    this.textContent = hidden ? 'Ascunde' : 'Arată';
+  });
+
+  // Analyze
+  document.getElementById('btn-analyze').addEventListener('click', function() {
+    var mode = document.querySelector('.mode-tab.on').dataset.mode;
+    var btn = this;
+    var status = document.getElementById('analyze-status');
+
+    if (mode === 'orar' && !chosenFile) {
+      status.textContent = '⚠ Selectați un fișier de upload.'; return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px"></span>Analizează...';
+    status.textContent = 'Se procesează...';
+
+    if (mode === 'orar' && chosenFile) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var text = e.target.result;
+        var rows = text.split('\n').filter(function(r) { return r.trim() && !r.startsWith('datetime') && !r.startsWith('Data'); });
+        var values = rows.map(function(r) { var parts = r.split(/[,;\t]/); return parseFloat(parts[1] || parts[0]) || 0; }).filter(function(v) { return v >= 0; });
+        if (!values.length) { status.textContent = '⚠ Nu s-au putut parsa date din fișier.'; btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Analizează consum'; return; }
+        parsedData = values;
+        analyzeAndRender(values, rows.length);
+        btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Analizează consum';
+        status.textContent = '✓ Analiză completă';
+      };
+      reader.readAsText(chosenFile);
+    } else if (mode === 'factura') {
+      var kwh = parseFloat(document.getElementById('f-kwh').value) || 0;
+      var kw = parseFloat(document.getElementById('f-kw').value) || 0;
+      var syntheticValues = [];
+      for (var i = 0; i < 96 * 30; i++) {
+        var h = Math.floor((i % 96) / 4);
+        var factor = (h >= 8 && h < 20) ? 1.3 : 0.7;
+        syntheticValues.push((kwh / (30 * 24)) * factor);
+      }
+      parsedData = syntheticValues;
+      analyzeAndRender(syntheticValues, syntheticValues.length);
+      btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Analizează consum';
+      status.textContent = '✓ Profil sintetic generat';
+    }
+  });
+
+  function analyzeAndRender(values, rows) {
+    var total = values.reduce(function(a, b) { return a + b; }, 0);
+    var max = Math.max.apply(null, values);
+    var min = Math.min.apply(null, values.filter(function(v) { return v > 0; }));
+    var avg = total / values.length;
+    var days = Math.ceil(values.length / 96);
+    var pv = parseFloat(document.getElementById('t-pv').value) || 0;
+    var tariff = parseFloat(document.getElementById('t-energy').value) || 0;
+    var cost = tariff > 0 ? total * tariff : null;
+
+    // Save to localStorage for BESS
+    try { localStorage.setItem('servio_consum_total_kwh', total.toFixed(2)); localStorage.setItem('servio_consum_peak_kw', (max * 4).toFixed(2)); localStorage.setItem('servio_consum_days', days); } catch(e) {}
+
+    var tiles = [
+      { label: 'Consum total', val: total.toFixed(0), unit: 'kWh' },
+      { label: 'Putere de vârf', val: (max * 4).toFixed(1), unit: 'kW' },
+      { label: 'Consum mediu orar', val: (avg * 4).toFixed(2), unit: 'kW' },
+      { label: 'Zile analizate', val: days, unit: 'zile' },
+      { label: 'Factor de sarcină', val: (avg / max * 100).toFixed(1), unit: '%' },
+      { label: 'Factură estimată', val: cost !== null ? cost.toFixed(0) : 'N/A', unit: cost !== null ? 'RON' : '' },
+    ];
+    document.getElementById('result-tiles').innerHTML = tiles.map(function(t) {
+      return '<div class="result-tile"><div class="rt-val">' + window.SERVIO.fmt(t.val, 0) + '<span style="font-size:13px;font-weight:400;color:var(--c-text3);margin-left:3px">' + t.unit + '</span></div><div class="rt-label">' + t.label + '</div></div>';
+    }).join('');
+
+    // Preview table (first 24 hours = 96 intervals)
+    var preview = values.slice(0, 96);
+    var html = '<div class="table-wrap"><table class="data-table"><thead><tr><th>PT#</th><th>Oră</th><th>kWh (interval)</th><th>kW echivalent</th></tr></thead><tbody>';
+    preview.forEach(function(v, i) {
+      var h = String(Math.floor(i / 4)).padStart(2, '0');
+      var m = String((i % 4) * 15).padStart(2, '0');
+      html += '<tr><td class="mono">' + (i + 1) + '</td><td class="mono">' + h + ':' + m + '</td><td>' + v.toFixed(4) + '</td><td>' + (v * 4).toFixed(3) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    document.getElementById('preview-body').innerHTML = html;
+    document.getElementById('preview-meta').textContent = '96 intervale prima zi · ' + rows + ' rânduri total';
+    document.getElementById('results-section').style.display = '';
+  }
+
+  document.getElementById('btn-reset').addEventListener('click', function() {
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('analyze-status').textContent = '';
+    document.getElementById('btn-clear-file').click();
+    parsedData = null;
+  });
+
+  document.getElementById('btn-export-csv').addEventListener('click', function() {
+    if (!parsedData) return;
+    var csv = 'interval,kwh,kw_echivalent\n' + parsedData.map(function(v, i) { return (i + 1) + ',' + v.toFixed(4) + ',' + (v * 4).toFixed(3); }).join('\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'servio-curba-sarcina.csv'; a.click();
+    URL.revokeObjectURL(url);
+  });
+})();
+</script>
+</body>
+</html>

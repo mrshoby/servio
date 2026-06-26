@@ -1,0 +1,10 @@
+﻿compatibility_date = "2026-06-26"
+main = "src/worker.js"
+name = "servio"
+
+[assets]
+directory = "./public/"
+binding = "ASSETS"
+not_found_handling = "none"
+run_worker_first = [ "/api/*", "/", "/index.html", "/login", "/login.html", "/module-menu", "/modules", "/incarcare-curba-sarcina.html", "/consum", "/load-curve", "/calculator-baterie.html", "/battery-calculator", "/battery-calculator.html", "/battery-calculator-full", "/dashboard/battery-calculator-full", "/battery-revenue-simulator", "/battery-revenue-simulator.html", "/battery-revenue-simulator-full", "/dashboard/battery-revenue-simulator-full", "/day-ahead", "/day-ahead.html", "/day-ahead-operations", "/day-ahead-full", "/dashboard/day-ahead-operations-full", "/future-scenarios", "/future-scenarios.html", "/future-scenarios-full", "/dashboard/future-scenarios-full", "/relay-sources", "/sources", "/surse-date", "/electricity-map", "/electricity-map.html", "/electricity-map-full", "/dashboard/electricity-map-full", "/electricity-maps", "/grid-map", "/carbon-map", "/servio-tools", "/dashboard/servio-tools.html", "/favicon.ico", "/apple-touch-icon.png" ]
+

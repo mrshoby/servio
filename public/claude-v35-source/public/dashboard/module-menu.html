@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERVIO — Overview</title>
+<link rel="stylesheet" href="/s.css">
+<style>
+.usage-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--c-border); font-size:13px; }
+.usage-item:last-child { border-bottom:none; }
+.usage-label { flex:1; color:var(--c-text3); display:flex; align-items:center; gap:5px; }
+.usage-bar { width:120px; height:4px; background:var(--c-border); border-radius:2px; overflow:hidden; }
+.usage-bar-fill { height:100%; background:#000; border-radius:2px; }
+.usage-val { font-size:12px; color:var(--c-text2); font-variant-numeric:tabular-nums; min-width:80px; text-align:right; }
+</style>
+</head>
+<body>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="ws-header">
+      <div class="ws-logo">S</div>
+      <div class="ws-info">
+        <div class="ws-name">SERVIO</div>
+        <div class="ws-sub">Energy market operations</div>
+      </div>
+      <div class="ws-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+    </div>
+    <div class="sidebar-search">
+      <div class="ss-wrap">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="ss-input" type="text" placeholder="Find module, route, source...">
+        <span class="ss-kbd">F</span>
+      </div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">
+        <a href="/module-menu" class="nav-item" data-route="overview">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar-label">Overview</span>
+        </a>
+        <a href="/incarcare-curba-sarcina" class="nav-item" data-route="consum">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span class="sidebar-label">Consum / Curba de sarcină</span>
+        </a>
+        <a href="/battery-calculator" class="nav-item" data-route="bess">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M22 11v4"/><path d="M7 11v3"/><path d="M11 11v3"/></svg></span>
+          <span class="sidebar-label">Calculator baterie / BESS</span>
+        </a>
+        <a href="/day-ahead-operations" class="nav-item" data-route="day-ahead">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+          <span class="sidebar-label">Day-Ahead / Piață energie</span>
+        </a>
+        <a href="/future-scenarios" class="nav-item" data-route="scenarios">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+          <span class="sidebar-label">Scenarii viitoare</span>
+        </a>
+        <a href="/electricity-map" class="nav-item" data-route="map">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
+          <span class="sidebar-label">Hartă energie</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="relay">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          <span class="sidebar-label">Relay &amp; Surse date</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Operations</div>
+        <a href="/relay-sources" class="nav-item" data-route="live-sources">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg></span>
+          <span class="sidebar-label">Live Sources</span>
+          <span class="nav-badge live" id="nav-live-badge">•</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="ingest">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+          <span class="sidebar-label">Ingest API</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="d1">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+          <span class="sidebar-label">D1 Storage</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="audit">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+          <span class="sidebar-label">Audit Logs</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="github">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <span class="sidebar-label">GitHub Actions</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="windows-relay">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+          <span class="sidebar-label">Windows Relay</span>
+        </a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-label">Settings</div>
+        <a href="/relay-sources" class="nav-item" data-route="environment">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span>
+          <span class="sidebar-label">Environment</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="api-routes">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+          <span class="sidebar-label">API Routes</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="integrations">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+          <span class="sidebar-label">Integrations</span>
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-avatar">A</div>
+        <div class="user-name">local / admin</div>
+        <div class="user-actions">
+          <button class="icon-btn" title="Setări"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          <button class="icon-btn" title="Notificări"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        </div>
+      </div>
+      <button class="collapse-btn" id="collapse-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        <span class="collapse-label">Restrânge</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <div class="main">
+    <header class="topbar">
+      <button class="mobile-menu-btn" id="mobile-menu-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-breadcrumb">
+        <span>SERVIO</span>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-current">Overview</span>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-status">
+          <span class="status-dot loading" id="topbar-status-dot"></span>
+          <span id="topbar-status-text">Checking...</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-refresh">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="content-inner">
+        <div class="page-header">
+          <h1 class="page-title">Overview</h1>
+          <p class="page-subtitle">Status în timp real al operațiunilor de piață energetică SERVIO</p>
+        </div>
+
+        <!-- Action row -->
+        <div class="action-row">
+          <div class="search-wrap">
+            <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input class="search-input" type="text" placeholder="Caută module, surse, rute...">
+          </div>
+          <button class="btn-icon" title="Filtre"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+          <div class="btn-group">
+            <button class="btn-icon on" title="Grid view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+            <button class="btn-icon" title="List view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+          </div>
+          <button class="btn btn-primary" id="btn-sync">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            Sync Date
+          </button>
+        </div>
+
+        <!-- Cards grid -->
+        <div class="cards-grid" style="margin-bottom:16px;">
+
+          <!-- Usage card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Utilizare &amp; Status</span>
+              <span class="card-meta" id="usage-updated">—</span>
+            </div>
+            <div class="card-body" id="usage-body">
+              <div class="usage-item">
+                <span class="usage-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></ellipse></svg>
+                  Records D1
+                </span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="ub-d1" style="width:0%"></div></div>
+                <span class="usage-val" id="uv-d1">—</span>
+              </div>
+              <div class="usage-item">
+                <span class="usage-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Azi (records / 96)
+                </span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="ub-today" style="width:0%"></div></div>
+                <span class="usage-val" id="uv-today">—</span>
+              </div>
+              <div class="usage-item">
+                <span class="usage-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  Mâine (records / 96)
+                </span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="ub-tomorrow" style="width:0%"></div></div>
+                <span class="usage-val" id="uv-tomorrow">—</span>
+              </div>
+              <div class="usage-item">
+                <span class="usage-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                  Surse live active
+                </span>
+                <div class="usage-bar"><div class="usage-bar-fill" id="ub-src" style="width:0%"></div></div>
+                <span class="usage-val" id="uv-src">—</span>
+              </div>
+              <div class="usage-item">
+                <span class="usage-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Last sync
+                </span>
+                <span class="usage-val mono" id="uv-sync">—</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Modules card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Module</span>
+              <a href="/module-menu" class="card-link">
+                Toate
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </a>
+            </div>
+            <div id="modules-list">
+              <a href="/incarcare-curba-sarcina" class="module-item">
+                <div class="module-icon">⚡</div>
+                <div class="module-info">
+                  <div class="module-name">Consum / Curba de sarcină</div>
+                  <div class="module-desc">Upload fișier orar, analiză consum</div>
+                </div>
+                <span class="badge badge-gray">Upload</span>
+              </a>
+              <a href="/battery-calculator" class="module-item">
+                <div class="module-icon">🔋</div>
+                <div class="module-info">
+                  <div class="module-name">Calculator BESS</div>
+                  <div class="module-desc">Simulare venit baterie, ROI P50</div>
+                </div>
+                <span class="badge badge-green" id="mod-bess-badge">Live</span>
+              </a>
+              <a href="/day-ahead-operations" class="module-item">
+                <div class="module-icon">📊</div>
+                <div class="module-info">
+                  <div class="module-name">Day-Ahead / Piață energie</div>
+                  <div class="module-desc" id="mod-da-desc">ENTSO-E + OPCOM PZU</div>
+                </div>
+                <span class="badge badge-gray" id="mod-da-badge">—</span>
+              </a>
+              <a href="/future-scenarios" class="module-item">
+                <div class="module-icon">📈</div>
+                <div class="module-info">
+                  <div class="module-name">Scenarii viitoare</div>
+                  <div class="module-desc">Forecast P10/P50/P90</div>
+                </div>
+                <span class="badge badge-blue">Forecast</span>
+              </a>
+              <a href="/electricity-map" class="module-item">
+                <div class="module-icon">🗺️</div>
+                <div class="module-info">
+                  <div class="module-name">Hartă energie</div>
+                  <div class="module-desc">Grid RO, intensitate carbon</div>
+                </div>
+                <span class="badge badge-gray">Map</span>
+              </a>
+              <a href="/relay-sources" class="module-item">
+                <div class="module-icon">📡</div>
+                <div class="module-info">
+                  <div class="module-name">Relay &amp; Surse date</div>
+                  <div class="module-desc">Worker, D1, ENTSO-E, OPCOM</div>
+                </div>
+                <span class="badge badge-gray" id="mod-relay-badge">—</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards-grid" style="margin-bottom:16px;">
+          <!-- Alerts card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Alerte</span>
+              <span class="card-meta" id="alerts-meta">Verificat acum</span>
+            </div>
+            <div class="card-body" id="alerts-body">
+              <div class="empty-state">
+                <span class="empty-icon">✓</span>
+                <div class="empty-title">Nicio alertă activă</div>
+                <div class="empty-desc">Toate sursele răspund normal</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Sync card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Sync Recent</span>
+              <a href="/relay-sources" class="card-link">
+                Detalii
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </a>
+            </div>
+            <div class="card-body" id="sync-body">
+              <div class="row-item">
+                <span class="row-label">Mod sursă</span>
+                <span class="row-value" id="sync-mode">—</span>
+              </div>
+              <div class="row-item">
+                <span class="row-label">ENTSO-E token</span>
+                <span id="sync-token">—</span>
+              </div>
+              <div class="row-item">
+                <span class="row-label">D1 binding</span>
+                <span id="sync-d1">—</span>
+              </div>
+              <div class="row-item">
+                <span class="row-label">Ingest auth</span>
+                <span id="sync-auth">—</span>
+              </div>
+              <div class="row-item">
+                <span class="row-label">Ultimul run</span>
+                <span class="row-value mono" id="sync-last">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Activity card -->
+        <div class="card col-span-2">
+          <div class="card-header">
+            <span class="card-title">Activitate recentă &amp; Audit</span>
+            <a href="/relay-sources" class="card-link">
+              Audit complet
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </a>
+          </div>
+          <div id="activity-body">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Modul</th>
+                    <th>Status</th>
+                    <th>Completare</th>
+                    <th>Observație</th>
+                  </tr>
+                </thead>
+                <tbody id="activity-tbody">
+                  <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--c-text4);">Se încarcă...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+<script>
+(function() {
+  'use strict';
+  var S = window.SERVIO;
+
+  function pct(val, total) { return total > 0 ? Math.min(100, Math.round(val / total * 100)) : 0; }
+
+  function setBar(id, p) {
+    var el = document.getElementById(id);
+    if (el) { el.style.width = p + '%'; el.className = 'usage-bar-fill ' + (p >= 95 ? 'ok' : p >= 60 ? 'partial' : 'missing'); }
+  }
+
+  // Load health + status
+  fetch('/api/servio/health')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !d.ok) return;
+      document.getElementById('usage-updated').textContent = 'Worker v' + (d.version || '—');
+    }).catch(function() {});
+
+  // Load day-ahead summary
+  fetch('/api/servio/day-ahead/summary')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d) return;
+      var t = d.today || {}; var tm = d.tomorrow || {};
+      var tr = Number(t.records || 0);
+      var tmr = Number(tm.records || 0);
+      var te = Number(t.expectedIntervals || 96);
+      var tme = Number(tm.expectedIntervals || 96);
+
+      setBar('ub-today', pct(tr, te));
+      document.getElementById('uv-today').textContent = tr + ' / ' + te;
+
+      setBar('ub-tomorrow', pct(tmr, tme));
+      document.getElementById('uv-tomorrow').textContent = tmr + ' / ' + tme;
+
+      // Update mod-da-badge
+      var complete = tm.complete || false;
+      var badge = document.getElementById('mod-da-badge');
+      if (badge) {
+        badge.className = 'badge ' + (complete ? 'badge-green' : tmr > 0 ? 'badge-yellow' : 'badge-gray');
+        badge.textContent = complete ? 'Complet' : tmr > 0 ? 'Parțial' : 'Lipsă';
+      }
+      var desc = document.getElementById('mod-da-desc');
+      if (desc && t.primarySource) desc.textContent = t.primarySource;
+    }).catch(function() {});
+
+  // Load DB status
+  fetch('/api/servio/db/status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d) return;
+      var total = Number(d.totalRecords || d.marketPrices || 0);
+      setBar('ub-d1', Math.min(100, Math.round(total / 10000 * 100)));
+      document.getElementById('uv-d1').textContent = total.toLocaleString() + ' rec';
+      document.getElementById('usage-updated').textContent = S.ago(d.updatedAtUtc || null);
+    }).catch(function() {});
+
+  // Load live status
+  fetch('/api/servio/live/status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d) return;
+      var sources = [d.entsoeCache, d.opcomCache, d.transelectricaCache].filter(Boolean);
+      var active = sources.filter(function(s) { return s.mode && !s.mode.includes('bundled'); }).length;
+      setBar('ub-src', Math.round(active / Math.max(sources.length, 1) * 100));
+      document.getElementById('uv-src').textContent = active + ' / ' + sources.length;
+
+      document.getElementById('sync-mode').textContent = d.mode || '—';
+      var tokenEl = document.getElementById('sync-token');
+      if (tokenEl) tokenEl.innerHTML = d.tokenPresent
+        ? '<span class="badge badge-green">Configurat</span>'
+        : '<span class="badge badge-yellow">Lipsă</span>';
+
+      var d1El = document.getElementById('sync-d1');
+      var d1ok = d.d1 && d.d1.ok;
+      if (d1El) d1El.innerHTML = d1ok
+        ? '<span class="badge badge-green">OK</span>'
+        : '<span class="badge badge-gray">N/A</span>';
+
+      var lastSyncEl = document.getElementById('sync-last');
+      if (lastSyncEl) lastSyncEl.textContent = S.ago(d.state && d.state.lastSuccess);
+
+      // update nav badge
+      var navBadge = document.getElementById('nav-live-badge');
+      if (navBadge) navBadge.textContent = active > 0 ? active : '●';
+    }).catch(function() {});
+
+  // Load ingest status for auth
+  fetch('/api/servio/ingest/status')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d) return;
+      var authEl = document.getElementById('sync-auth');
+      if (authEl) authEl.innerHTML = d.authConfigured
+        ? '<span class="badge badge-green">OK</span>'
+        : '<span class="badge badge-yellow">Neconfigurat</span>';
+
+      var relayBadge = document.getElementById('mod-relay-badge');
+      if (relayBadge) {
+        relayBadge.className = 'badge ' + (d.authConfigured ? 'badge-green' : 'badge-yellow');
+        relayBadge.textContent = d.authConfigured ? 'Auth OK' : 'Setup necesar';
+      }
+    }).catch(function() {});
+
+  // Load progress audit for activity table
+  fetch('/api/servio/progress/audit')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d || !Array.isArray(d.modules)) return;
+      var tbody = document.getElementById('activity-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = d.modules.map(function(m) {
+        var cls = m.completionPct >= 95 ? 'badge-green' : m.completionPct >= 80 ? 'badge-yellow' : 'badge-red';
+        var txt = m.completionPct >= 95 ? 'Complet' : m.completionPct >= 80 ? 'Parțial' : 'Incomplet';
+        return '<tr><td style="font-weight:500">' + m.name + '</td>' +
+          '<td><span class="badge ' + cls + '">' + txt + '</span></td>' +
+          '<td>' + (m.completionPct || 0) + '%</td>' +
+          '<td style="color:var(--c-text3);font-size:12px;max-width:280px;white-space:normal">' +
+          (m.status || '—').slice(0, 80) + '</td></tr>';
+      }).join('');
+
+      // Check alerts
+      var alertsBody = document.getElementById('alerts-body');
+      var weak = (d.weakestModules || []).filter(function(m) { return m.completionPct < 90; });
+      if (alertsBody && weak.length) {
+        alertsBody.innerHTML = weak.map(function(m) {
+          return '<div class="row-item"><span class="row-label">' + m.name + '</span>' +
+            '<span class="badge badge-yellow">' + m.completionPct + '%</span></div>';
+        }).join('');
+        document.getElementById('alerts-meta').textContent = weak.length + ' atenționare' + (weak.length > 1 ? 'i' : '');
+      }
+    }).catch(function() {});
+
+  // Refresh button
+  document.getElementById('btn-refresh').addEventListener('click', function() { location.reload(); });
+  document.getElementById('btn-sync').addEventListener('click', function() {
+    var btn = this; btn.disabled = true; btn.textContent = 'Sync...';
+    fetch('/api/servio/live/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) { btn.disabled = false; btn.textContent = d.ok ? '✓ Sync Done' : '⚠ Sync Done'; setTimeout(function() { btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sync Date'; }, 3000); })
+      .catch(function() { btn.disabled = false; btn.textContent = 'Sync Date'; });
+  });
+})();
+</script>
+</body>
+</html>
