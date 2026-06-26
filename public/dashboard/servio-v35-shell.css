@@ -270,3 +270,35 @@ html.sv35-dark .hidden{display:none!important;}
 html.sv35-dark .theme-nav-btn[data-theme-set="dark"]{outline:1px solid #566174;}
 html.theme-light [data-theme-set="light"],html[data-theme="light"] [data-theme-set="light"]{background:#efefef;border-color:#d6d6d6;color:#000;}
 html.sv35-dark [data-theme-set="dark"]{background:#404a59!important;border-color:#566174!important;color:#fff!important;}
+
+
+/* v36.11 dark theme hard purge: no white islands, grey dark not black. */
+html.sv35-dark, html.theme-dark, html[data-theme="dark"]{
+  --bg:#20252d!important;--canvas:#20252d!important;--panel:#2b313b!important;--text:#f3f5f8!important;--muted:#aeb7c5!important;--sub:#8893a3!important;--line:#3d4653!important;--line2:#4a5361!important;--soft:#252b35!important;--soft2:#303744!important;--black:#f3f5f8!important;color-scheme:dark!important;background:#20252d!important;color:#f3f5f8!important;
+}
+html.sv35-dark body,html.sv35-dark .layout,html.sv35-dark .main,html.sv35-dark .content,html.sv35-dark .content-inner,html.sv35-dark .page-header,html.sv35-dark .sv35-shell,html.sv35-dark .sv35-main,html.sv35-dark .sv35-content{background:#20252d!important;color:#f3f5f8!important;}
+html.sv35-dark .sidebar,html.sv35-dark .sv35-sidebar,html.sv35-dark .topbar,html.sv35-dark .sv35-topbar,html.sv35-dark .ws-header,html.sv35-dark .sidebar-search,html.sv35-dark .sidebar-footer,html.sv35-dark .sv35-workspace,html.sv35-dark .sv35-side-search,html.sv35-dark .sv35-account{background:#242932!important;color:#f3f5f8!important;border-color:#3d4653!important;}
+html.sv35-dark :where(.card,.card-body,.card-header,.card-footer,.module-card,.metric-card,.result-tile,.result-row,.callout,.callout-info,.row-item,.file-chosen,.upload-zone,.upload-desc,.upload-title,.form-grid,.form-group,.table-wrap,.data-table,.sv35-card,.sv35-card-body,.sv35-card-head,.sv35-card-pad,.sv35-sidebar-card,.sv35-filter-panel,.sv35-project-card,.sv35-kpi,.sv35-empty,.sv35-note,.sv35-table,.sv35-modal-card,.sv35-modal-body,.sv35-modal-head,.sv35-modal-foot,.sv35-user-menu,.sv35-user-menu-head,.sv36-card,.sv36-card-body,.sv36-card-head,.sv36-upload,.sv36-kpi,.sv36-chart,.sv36-dispatch,.sv36-dispatch-head,.sv36-dispatch-row,.sv36-map,.sv36-map-card,.sv36-empty,.sv36-note,.sv36-help,.sv36-check,.sv36-input-row,.sv36-steps,.sv36-steps li,.sv35-segment,.sv36-actions,.sv36-legend){background:#2b313b!important;color:#f3f5f8!important;border-color:#3d4653!important;box-shadow:none!important;}
+html.sv35-dark :where(.sv36-upload,.upload-zone){background:#252b35!important;border-color:#566174!important;}
+html.sv35-dark :where(input,select,textarea,.form-input,.form-select,.search-input,.ss-input,.sv35-searchbox,.sv35-main-search,.sv36-field input,.sv36-field select,.sv36-field textarea,.sv35-field input,.sv35-field select,.sv35-field textarea){background:#252b35!important;color:#f3f5f8!important;border-color:#4a5361!important;box-shadow:none!important;}
+html.sv35-dark :where(input::placeholder,textarea::placeholder,.search-input::placeholder,.ss-input::placeholder){color:#8893a3!important;}
+html.sv35-dark :where(button,.btn,.btn-secondary,.btn-ghost,.btn-icon,.icon-btn,.collapse-btn,.mobile-menu-btn,.mode-tab,.sv35-btn,.sv35-square,.sv35-collapse,.sv35-segment button,.theme-nav-btn,.sv36-btn,.sv36-tabs button,.sv36-map button){background:#2b313b!important;color:#f3f5f8!important;border-color:#4a5361!important;}
+html.sv35-dark :where(button:hover,.btn:hover,.btn-secondary:hover,.btn-ghost:hover,.btn-icon:hover,.icon-btn:hover,.collapse-btn:hover,.mobile-menu-btn:hover,.mode-tab:hover,.sv35-btn:hover,.sv35-square:hover,.sv35-segment button:hover,.theme-nav-btn:hover,.sv36-btn:hover,.sv36-tabs button:hover,.sv36-map button:hover){background:#343c48!important;color:#fff!important;border-color:#5b6676!important;}
+html.sv35-dark :where(.active,.on,.is-active,.primary,.sv35-segment button.active,.mode-tab.on,.mode-tab.active,.sv36-tabs button.active,.nav-item.active,[data-theme-set].active,[data-theme-set].is-active){background:#404a59!important;color:#fff!important;border-color:#667184!important;}
+html.sv35-dark :where(.btn-primary,.sv35-btn.primary,.sv36-btn.primary){background:#e4e8ef!important;color:#20252d!important;border-color:#e4e8ef!important;}
+html.sv35-dark :where(table,thead,tbody,tr,td,th,.sv36-table-wrap,.sv35-table table,.data-table){background:#2b313b!important;color:#f3f5f8!important;border-color:#3d4653!important;}
+html.sv35-dark :where(th,.data-table th){background:#252b35!important;color:#d8dde5!important;}
+html.sv35-dark :where(td,.data-table td){border-color:#3d4653!important;}
+html.sv35-dark :where(.badge,.badge-gray,.badge-green,.sv35-chip,.sv35-pill-mini,.sv35-kbd,.nav-badge,.sv35-badge,.sv36-mini-label){background:#303744!important;color:#d8dde5!important;border-color:#4a5361!important;}
+html.sv35-dark :where(.muted,.page-subtitle,.card-meta,.row-label,.rt-label,.form-label,.sv35-label,.sv36-field span,.sv36-kpi span,.sv36-kpi small,.sv36-help,.sv36-note,.sv36-steps,.sv36-legend,.sv36-bar-wrap span,small,em){color:#aeb7c5!important;}
+html.sv35-dark :where(.page-title,.card-title,.ws-name,.crumb-current,h1,h2,h3,h4,strong,b,.rt-val,.row-value){color:#f8fafc!important;}
+html.sv35-dark .sv36-map{background:#252b35!important;}
+html.sv35-dark .sv36-cell{background:#303744!important;color:#aeb7c5!important;border-color:#465160!important;}
+html.sv35-dark .sv36-cell.charge,html.sv35-dark .sv36-cell[data-mode="charge"]{background:#164735!important;color:#dffbea!important;border-color:#2c7a58!important;}
+html.sv35-dark .sv36-cell.discharge,html.sv35-dark .sv36-cell[data-mode="discharge"]{background:#5a3215!important;color:#ffe9cf!important;border-color:#9b5f25!important;}
+html.sv35-dark .sv36-bar-wrap i{background:#e4e8ef!important;}
+html.sv35-dark .sv36-range{accent-color:#e4e8ef!important;background:transparent!important;}
+html.sv35-dark a{color:#f3f5f8!important;}
+html.sv35-dark hr{border-color:#3d4653!important;}
+html.sv35-dark [style*="background:#fff"],html.sv35-dark [style*="background: #fff"],html.sv35-dark [style*="background:white"],html.sv35-dark [style*="background: white"],html.sv35-dark [style*="background-color:#fff"],html.sv35-dark [style*="background-color: #fff"],html.sv35-dark [style*="background-color:white"],html.sv35-dark [style*="background-color: white"]{background:#2b313b!important;color:#f3f5f8!important;}
+html.sv35-dark .hidden{display:none!important;}

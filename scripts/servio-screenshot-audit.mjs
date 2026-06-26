@@ -23,7 +23,7 @@ function resolveUrl(p){ if(/^https?:/i.test(p)) return p; return baseUrl + (p.st
 if(routes.length===0){
   const summary={ok:false,version:'v36.9',stage,baseUrl,routes:0,screenshots:0,failed:0,whiteScreens:0,overflow:0,consoleErrors:0,error:'audit-routes.json has no visual routes',generatedAtUtc:new Date().toISOString()};
   await fs.writeFile(path.join(reportDir,'servio-v36-10-screenshot-audit.json'), JSON.stringify({summary,results:[]},null,2),'utf8');
-  await fs.writeFile(path.join(reportDir,'SERVIO_v36_10_SCREENSHOT_AUDIT_REPORT.md'), '# SERVIO v36.10 Screenshot Audit Report\n\nInvalid: routes=0.\n','utf8');
+  await fs.writeFile(path.join(reportDir,'SERVIO_v36_11_SCREENSHOT_AUDIT_REPORT.md'), '# SERVIO v36.11 Screenshot Audit Report\n\nInvalid: routes=0.\n','utf8');
   console.log(JSON.stringify(summary,null,2)); process.exit(2);
 }
 const browser = await chromium.launch({headless:true});
@@ -62,7 +62,7 @@ const summary={ ok:results.every(r=>r.ok && !r.whiteScreen && !r.horizontalOverf
 const jsonReport={summary, results};
 await fs.writeFile(path.join(reportDir,'servio-v36-10-screenshot-audit.json'), JSON.stringify(jsonReport,null,2),'utf8');
 const consoleLines = results.flatMap(r => (r.consoleErrors||[]).map(e => `- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: ${e.text}`));
-const md = ['# SERVIO v36.10 Screenshot Audit Report','',`Stage: **${stage}**`, `Base URL: ${baseUrl}`, `Generated: ${summary.generatedAtUtc}`,'', '## Summary','',`- Routes: ${summary.routes}`,`- Screenshots: ${summary.screenshots}`,`- Failed navigations: ${summary.failed}`,`- White screens: ${summary.whiteScreens}`,`- Horizontal overflow: ${summary.overflow}`,`- Console errors: ${summary.consoleErrors}`,`- Iframes: ${summary.iframes||0}`,`- Forbidden visible text: ${(summary.forbiddenVisible||[]).join(', ') || 'none'}`,'','## Routes'].concat(results.map(r=>`- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: status=${r.status||'n/a'} ok=${!!r.ok} shell=${!!r.hasShell} white=${!!r.whiteScreen} overflow=${!!r.horizontalOverflow}${r.error?' error='+r.error:''}`)).concat(['','## Console error details','']).concat(consoleLines.length?consoleLines:['- none']).join('\n');
-await fs.writeFile(path.join(reportDir,'SERVIO_v36_10_SCREENSHOT_AUDIT_REPORT.md'), md,'utf8');
+const md = ['# SERVIO v36.11 Screenshot Audit Report','',`Stage: **${stage}**`, `Base URL: ${baseUrl}`, `Generated: ${summary.generatedAtUtc}`,'', '## Summary','',`- Routes: ${summary.routes}`,`- Screenshots: ${summary.screenshots}`,`- Failed navigations: ${summary.failed}`,`- White screens: ${summary.whiteScreens}`,`- Horizontal overflow: ${summary.overflow}`,`- Console errors: ${summary.consoleErrors}`,`- Iframes: ${summary.iframes||0}`,`- Forbidden visible text: ${(summary.forbiddenVisible||[]).join(', ') || 'none'}`,'','## Routes'].concat(results.map(r=>`- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: status=${r.status||'n/a'} ok=${!!r.ok} shell=${!!r.hasShell} white=${!!r.whiteScreen} overflow=${!!r.horizontalOverflow}${r.error?' error='+r.error:''}`)).concat(['','## Console error details','']).concat(consoleLines.length?consoleLines:['- none']).join('\n');
+await fs.writeFile(path.join(reportDir,'SERVIO_v36_11_SCREENSHOT_AUDIT_REPORT.md'), md,'utf8');
 console.log(JSON.stringify(summary,null,2));
 process.exit((summary.failed || summary.whiteScreens || summary.overflow || summary.consoleErrors || summary.iframes || (summary.forbiddenVisible||[]).length || summary.screenshots===0) ? 2 : 0);

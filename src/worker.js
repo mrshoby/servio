@@ -1,11 +1,7 @@
 
 import './official-engine-worker.js';
 
-<<<<<<< HEAD
-const VERSION = 'v32.99-hybrid-official-source-relay';
-=======
-const VERSION = 'v36.10-global-dark-theme-state-fix';
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
+const VERSION = 'v36.11-dark-theme-purge-revenue-only-fix';
 const SERVIO_VERSION = VERSION;
 const Engine = globalThis.InowattioOfficialEngine;
 let CACHE = null;
@@ -39,10 +35,6 @@ function assetRequest(request, path){
   // be consumed by request.json(), so ASSETS.fetch() must receive a clean GET.
   return new Request(new URL(path, u).toString(), { method:'GET' });
 }
-<<<<<<< HEAD
-async function assetText(env, request, path){
-  const res = await env.ASSETS.fetch(assetRequest(request, path));
-=======
 
 function getAssetsBinding(env){
   return env?.ASSETS || env?.STATIC_ASSETS || env?.__STATIC_ASSETS || null;
@@ -62,7 +54,6 @@ async function fetchAsset(env, request, path=null){
 
 async function assetText(env, request, path){
   const res = await fetchAsset(env, request, path);
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   if(!res.ok) throw new Error(`Missing asset ${path}: ${res.status}`);
   return await res.text();
 }
@@ -228,8 +219,6 @@ async function d1SyncSummary(env){
   const bySource = await env.DB.prepare(`SELECT source_mode AS sourceMode, COUNT(*) AS records, MAX(imported_at_utc) AS lastImportedAtUtc FROM servio_live_market_prices GROUP BY source_mode ORDER BY records DESC LIMIT 20`).all();
   return { ok:true, d1:true, liveRecords:Number(count?.n || 0), dateMin:count?.dateMin || null, dateMax:count?.dateMax || null, lastSyncRun:last || null, sources:bySource.results || [] };
 }
-<<<<<<< HEAD
-=======
 
 async function d1DayAheadCompactForDate(env, date){
   const d = normalizeReportPeriodDate(date || currentBucharestDate(), 'start', currentBucharestDate());
@@ -252,7 +241,6 @@ async function d1DayAheadCompact(env){
   return { ok:true, today:a, tomorrow:b };
 }
 
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
 async function d1UpsertMarketRecords(env, records, reason='cloudflare-live-sync'){
   if(!d1Available(env)) return { ok:false, d1:false, inserted:0, updated:0, skipped:records?.length || 0, reason:'D1 binding DB is not available' };
   await ensureD1Schema(env);
@@ -1219,8 +1207,6 @@ function forecastP50(store, body={}){ const params=normalizeApiBatteryParams(bod
 
 async function handleApi(request, env){
   const url = new URL(request.url);
-<<<<<<< HEAD
-=======
   if(url.pathname.endsWith('.svg') && url.pathname.startsWith('/api/servio/')){
     return textResponse('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260"><rect width="900" height="260" fill="white"/><path d="M40 200 C190 120 330 150 460 90 S700 130 860 70" fill="none" stroke="#111" stroke-width="3"/><text x="40" y="36" font-family="Arial" font-size="16" fill="#111">SERVIO chart</text></svg>', 200, 'image/svg+xml; charset=utf-8');
   }
@@ -1229,7 +1215,6 @@ async function handleApi(request, env){
   if(url.pathname==='/api/servio/relay/status') return json({ ok:true, version:VERSION, mode:'v32.99-hybrid-relay-status', cloudRelay:'github-actions', localRelay:'windows-task-scheduler', d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), fast:true, recommendation:'Use GitHub Actions for ENTSO-E and Windows local relay for OPCOM.' });
   if(url.pathname==='/api/servio/entsoe/status' || url.pathname==='/api/servio/entsoe/cache' || url.pathname==='/api/servio/opcom/status') return json({ ok:true, version:VERSION, mode:'cloudflare-d1-fast-source-status', tokenPresent:Boolean(env.ENTSOE_API_TOKEN || env.ENTSOE_SECURITY_TOKEN), d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), fast:true });
   if(url.pathname==='/api/servio/db/status-fast' || url.pathname==='/api/servio/db/live-status') { const [d1Sync, dayAheadCompact] = await Promise.all([d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), d1DayAheadCompact(env).catch(e=>({ok:false,error:String(e?.message||e)}))]); return json({ ok:true, version:VERSION, schemaVersion:'SERVIO_MARKET_DB_v29.50', d1:true, fast:true, d1Sync, dayAheadCompact, updatedAtUtc:isoUtcNow(), note:'Fast DB status for UI chips and Day-Ahead cards; full /api/servio/db/status remains available for detailed diagnostics.' }); }
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   if(url.pathname==='/api/servio/period/completeness'){
     try{
       const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries());
@@ -1245,12 +1230,9 @@ async function handleApi(request, env){
     }
   }
   const store = await loadExactStore(env, request);
-<<<<<<< HEAD
-=======
   if(url.pathname.endsWith('.svg') && url.pathname.startsWith('/api/servio/')){
     return textResponse('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260"><rect width="900" height="260" fill="white"/><path d="M40 200 C190 120 330 150 460 90 S700 130 860 70" fill="none" stroke="#111" stroke-width="3"/><text x="40" y="36" font-family="Arial" font-size="16" fill="#111">SERVIO chart</text></svg>', 200, 'image/svg+xml; charset=utf-8');
   }
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   if(url.pathname==='/api/servio/health' || url.pathname==='/api/servio/status') return json({ok:true, app:'SERVIO', version:VERSION, runtime:'cloudflare-workers', exactV3277:true, data:{balancingRecords:store.balancingRecords.length, orionRecords:store.orionRecords.length, marketDbRecords:(store.marketDb.marketPrices||[]).length}});
   if(url.pathname==='/api/servio/data') return json({ ok:true, balancingRecords:store.balancingRecords, marketPrices:store.orionRecords, meta:{ ok:true, version:VERSION, sourceMode:'cloudflare-exact-v32.77-static-assets', balancingRecords:store.balancingRecords.length, marketPrices:store.orionRecords.length, orionMeta:store.orion.meta || null, dateMin:store.orion.dateMin, dateMax:store.orion.dateMax, recordCount:store.orionRecords.length } });
   if(url.pathname==='/api/servio/live/status') return json(await cloudflareLiveStatus(env, store));
@@ -1272,8 +1254,6 @@ async function handleApi(request, env){
   if(url.pathname==='/api/servio/live-validation') return json({ok:true, readinessPct:98, verdict:'exact-v32.77-cloudflare-restore', sources:[{id:'inowattio-orion-day-ahead',status:'bundled-exact',records:store.orionRecords.length},{id:'transelectrica-balancing-csv',status:'bundled-exact',records:store.balancingRecords.length},{id:'market-db',status:'bundled-exact',dbRecords:(store.marketDb.marketPrices||[]).length}], sqlite:{ok:false, marketPrices:(store.marketDb.marketPrices||[]).length}, transelectricaDiagnostics:{counts:{parsed:store.balancingRecords.length,failed:0,ocr_needed:0}}});
   if(url.pathname==='/api/servio/progress/audit') return json(progressAudit());
   if(url.pathname==='/api/servio/historical/coverage-heatmap.svg') return textResponse(coverageSvg(store), 200, 'image/svg+xml; charset=utf-8');
-<<<<<<< HEAD
-=======
   if(url.pathname==='/api/servio/historical/coverage-heatmap') return json({ ok:true, mode:'compat-json-for-embedded-runtime', svg:'/api/servio/historical/coverage-heatmap.svg' });
   if(url.pathname==='/api/servio/forecast/p10-p50-p90/chart'){
     const body=request.method==='POST'?await request.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries());
@@ -1283,7 +1263,6 @@ async function handleApi(request, env){
     const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260"><rect width="900" height="260" fill="#fff"/><g stroke="#e5e7eb" stroke-width="1">'+Array.from({length:6},(_,i)=>'<line x1="40" x2="860" y1="'+(30+i*38)+'" y2="'+(30+i*38)+'"/>').join('')+'</g><path d="M40 190 C160 150 220 170 330 120 S540 80 640 110 790 155 860 90" fill="none" stroke="#111" stroke-width="3"/><path d="M40 210 C160 188 230 198 330 160 S540 135 640 148 790 180 860 132" fill="none" stroke="#999" stroke-width="2" stroke-dasharray="6 6"/><text x="40" y="30" font-family="system-ui,Arial" font-size="14" fill="#111">P10 / P50 / P90 forecast</text><text x="40" y="244" font-family="system-ui,Arial" font-size="12" fill="#666">Generated fallback chart for embedded SERVIO runtime</text></svg>';
     return textResponse(svg, 200, 'image/svg+xml; charset=utf-8');
   }
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   if(url.pathname==='/api/servio/live/source-health'){ const date=url.searchParams.get('date') || addDaysIso(currentBucharestDate(),1); return json(await liveSourceHealthForDate(env, store, date)); }
   if(url.pathname==='/api/servio/ingest/status') return json({ ok:true, version:VERSION, mode:'servio-secure-ingest-api-v3299-hybrid-relay', authConfigured:Boolean(getIngestSecret(env)), d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), routes:['POST /api/servio/ingest/market-records','POST /api/servio/ingest/opcom','POST /api/servio/ingest/entsoe','POST /api/servio/ingest/transelectrica'], relayModes:['github-actions','windows-local-task','future-hosted-relay'], note:'External relay/GitHub Actions/Windows local task should push normalized official source records here with Authorization: Bearer SERVIO_INGEST_SECRET.' });
   if(url.pathname==='/api/servio/relay/status') return json({ ok:true, version:VERSION, mode:'v32.99-hybrid-relay-status', cloudRelay:'github-actions', localRelay:'windows-task-scheduler', d1:await d1SyncSummary(env).catch(e=>({ok:false,error:String(e?.message||e)})), recommendation:'Use GitHub Actions for ENTSO-E and automatic hourly checks. Use Windows local relay for OPCOM when Cloudflare/GitHub runners receive 403.' });
@@ -1305,11 +1284,6 @@ async function handleApi(request, env){
   if(url.pathname==='/api/servio/reports/generate'){ const body=request.method==='POST'?await request.json().catch(()=>({})):{}; const fc=forecastP50(store, body); const p50={roiPct:fc.summary.roiP50Pct,paybackYears:fc.summary.paybackP50Years,annualizedRevenueEur:fc.summary.annualizedP50RevenueEur}; return json({ok:true,id:'servio-v3277-exact-report',decision:{label:p50.roiPct>=20?'GO':'ANALIZĂ DETALIATĂ',level:p50.roiPct>=20?'strong':'medium'},forecast:{mode:'P10/P50/P90',p50Case:p50},files:{files:['servio-cloudflare-exact-v3277-report.json','servio-cloudflare-exact-v3277-report.html']},fileLinks:[{type:'json',url:'/api/servio/reports/file?name=servio-cloudflare-exact-v3277-report.json'},{type:'html',url:'/api/servio/reports/file?name=servio-cloudflare-exact-v3277-report.html'}]}); }
   if(url.pathname==='/api/servio/reports/list') return json({ok:true,reports:[{id:'servio-v3277-exact-report',files:['servio-cloudflare-exact-v3277-report.json','servio-cloudflare-exact-v3277-report.html'],fileLinks:[{type:'json',url:'/api/servio/reports/file?name=servio-cloudflare-exact-v3277-report.json'},{type:'html',url:'/api/servio/reports/file?name=servio-cloudflare-exact-v3277-report.html'}]}]});
   if(url.pathname==='/api/servio/reports/file'){ const name=url.searchParams.get('name') || 'servio-cloudflare-exact-v3277-report.json'; if(name.endsWith('.html')) return textResponse('<!doctype html><html><body><h1>SERVIO exact v32.77 report</h1><p>Cloudflare restore build.</p></body></html>',200,'text/html; charset=utf-8'); return json({ok:true, name, version:VERSION, generatedAtUtc:new Date().toISOString(), data:marketDbSummary(store.marketDb)}); }
-<<<<<<< HEAD
-  // Grid map compatibility from previous cloudflare migration: enough for route UI to load.
-  if(url.pathname.startsWith('/api/servio/grid-map') || url.pathname.startsWith('/api/servio/electricity-map')) return json({ok:true, version:VERSION, mode:'grid-map-compatibility', message:'Battery exact v32.77 restore is active. Grid map remains bundled/static.', signal:{zone:'RO', carbonIntensity:312, renewablePercentage:42, fossilFreePercentage:61, priceEurMwh:91, timestamp:new Date().toISOString()}, uploadedData:{records:store.orionRecords.length}});
-  return json({ok:false,error:'API route not found',path:url.pathname,version:VERSION},404);
-=======
 
   // SERVIO v35.8: embedded legacy-module compatibility routes. These keep restored full modules quiet/functional inside the shell without exposing internal audit/relay UI.
   const embeddedCompatPayload = (path) => ({ ok:true, version:VERSION, path, mode:'embedded-runtime-compatible', generatedAtUtc:isoUtcNow() });
@@ -1332,7 +1306,7 @@ function shellTitleForAssetPath(path){
   const titles = {
     '/dashboard/module-menu.html':'SERVIO · Consum / Curba de sarcină',
     '/dashboard/load-curve.html':'SERVIO · Consum / Curba de sarcină',
-    '/dashboard/battery-calculator.html':'SERVIO · Calculator baterie / BESS',
+    '/dashboard/battery-calculator.html':'SERVIO · Battery Revenue Simulator',
     '/dashboard/battery-revenue-simulator.html':'SERVIO · Battery Revenue Simulator',
     '/dashboard/day-ahead-operations.html':'SERVIO · Day-Ahead',
     '/dashboard/future-scenarios.html':'SERVIO · Scenarii viitoare',
@@ -1345,37 +1319,20 @@ function shellHtmlResponse(assetPath){
   const title = shellTitleForAssetPath(assetPath);
   const html = `<!doctype html><html lang="ro"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>${title}</title><link rel="stylesheet" href="/s.css"/><link rel="stylesheet" href="/dashboard/servio-v35-shell.css"/></head><body><noscript>SERVIO necesită JavaScript activ.</noscript><script src="/dashboard/servio-no-gsap.js"></script><script src="/dashboard/servio-v35-shell.js"></script><script src="/app.js"></script></body></html>`;
   return new Response(html, {status:200, headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
 }
 
 function pathForRoute(pathname){
   const map = {
-<<<<<<< HEAD
-    '/':'/login.html','/login':'/login.html','/module-menu':'/dashboard/module-menu.html','/modules':'/dashboard/module-menu.html',
-    '/battery-calculator':'/dashboard/battery-calculator.html','/battery-revenue-simulator':'/dashboard/battery-revenue-simulator.html',
-    '/day-ahead-operations':'/dashboard/day-ahead-operations.html','/future-scenarios':'/dashboard/future-scenarios.html','/electricity-map':'/dashboard/electricity-map.html','/electricity-maps':'/dashboard/electricity-map.html','/grid-map':'/dashboard/electricity-map.html','/carbon-map':'/dashboard/electricity-map.html'
-=======
     '/':'/dashboard/load-curve.html','/index.html':'/dashboard/load-curve.html','/login':'/dashboard/load-curve.html','/login.html':'/dashboard/load-curve.html','/module-menu':'/dashboard/load-curve.html','/modules':'/dashboard/load-curve.html',
     '/incarcare-curba-sarcina.html':'/dashboard/load-curve.html','/consum':'/dashboard/load-curve.html','/load-curve':'/dashboard/load-curve.html',
-    '/calculator-baterie.html':'/dashboard/battery-calculator.html','/battery-calculator':'/dashboard/battery-calculator.html','/battery-calculator.html':'/dashboard/battery-calculator.html','/battery-calculator-full':'/dashboard/battery-calculator.html','/dashboard/battery-calculator-full':'/dashboard/battery-calculator.html','/battery-revenue-simulator':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator.html':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html',
+    '/calculator-baterie.html':'/dashboard/battery-revenue-simulator.html','/battery-calculator':'/dashboard/battery-revenue-simulator.html','/battery-calculator.html':'/dashboard/battery-revenue-simulator.html','/battery-calculator-full':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-calculator.html':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-calculator-full':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator.html':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html',
     '/day-ahead':'/dashboard/day-ahead-operations.html','/day-ahead.html':'/dashboard/day-ahead-operations.html','/day-ahead-operations':'/dashboard/day-ahead-operations.html','/day-ahead-full':'/dashboard/day-ahead-operations.html','/dashboard/day-ahead-operations-full':'/dashboard/day-ahead-operations.html','/future-scenarios.html':'/dashboard/future-scenarios.html','/future-scenarios':'/dashboard/future-scenarios.html','/future-scenarios-full':'/dashboard/future-scenarios.html','/dashboard/future-scenarios-full':'/dashboard/future-scenarios.html','/relay-sources':'/dashboard/load-curve.html','/sources':'/dashboard/load-curve.html','/surse-date':'/dashboard/load-curve.html','/electricity-map.html':'/dashboard/electricity-map.html','/electricity-map':'/dashboard/electricity-map.html','/electricity-map-full':'/dashboard/electricity-map.html','/dashboard/electricity-map-full':'/dashboard/electricity-map.html','/electricity-maps':'/dashboard/electricity-map.html','/grid-map':'/dashboard/electricity-map.html','/carbon-map':'/dashboard/electricity-map.html'
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   };
   return map[pathname] || null;
 }
 export default {
   async fetch(request, env, ctx){
     const url = new URL(request.url);
-<<<<<<< HEAD
-    if(url.pathname.startsWith('/api/')){
-      try { return await handleApi(request, env); }
-      catch(error){ return json(guardedErrorPayload('api-fetch-global', error, { path:url.pathname }), 500); }
-    }
-    if(url.pathname === '/servio-tools' || url.pathname === '/dashboard/servio-tools.html') return Response.redirect(new URL('/module-menu', url).toString(), 302);
-    const mapped = pathForRoute(url.pathname);
-    if(mapped) return env.ASSETS.fetch(assetRequest(request, mapped));
-    return env.ASSETS.fetch(request);
-=======
     if(url.pathname === '/favicon.ico' || url.pathname === '/apple-touch-icon.png') return new Response('', {status:204});
     if(url.pathname === '/data/servio-grid-map-zones.geojson') return json({type:'FeatureCollection',features:[],generatedBy:'servio-v35.8-worker-compat'});
     if(url.pathname.startsWith('/api/')){
@@ -1383,6 +1340,7 @@ export default {
       catch(error){ return json({...guardedErrorPayload('api-fetch-global', error, { path:url.pathname }), ok:false, quiet:true}, 200); }
     }
     if(url.pathname === '/servio-tools' || url.pathname === '/dashboard/servio-tools.html') return Response.redirect(new URL('/incarcare-curba-sarcina.html', url).toString(), 302);
+    if(['/battery-calculator','/battery-calculator.html','/calculator-baterie.html','/battery-calculator-full','/dashboard/battery-calculator.html','/dashboard/battery-calculator-full'].includes(url.pathname)) return Response.redirect(new URL('/battery-revenue-simulator', url).toString(), 302);
     const mapped = pathForRoute(url.pathname);
     try {
       if(mapped) return shellHtmlResponse(mapped);
@@ -1390,7 +1348,6 @@ export default {
     } catch(error){
       return textResponse('SERVIO Worker asset binding error: '+String(error?.message || error), 500, 'text/plain; charset=utf-8');
     }
->>>>>>> 457dc6e (SERVIO v36.10 global dark theme state fix)
   },
   async scheduled(event, env, ctx){
     ctx.waitUntil(guardedSync('scheduled-cron', () => runCloudflareLiveSync(env, { opcomFrom:addDaysIso(currentBucharestDate(), -2), opcomTo:addDaysIso(currentBucharestDate(), 1), maxDays:4 }, 'scheduled-cron')));
