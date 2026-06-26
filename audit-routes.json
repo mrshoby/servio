@@ -1,10 +1,36 @@
-[
-  "/",
-  "/incarcare-curba-sarcina.html",
-  "/battery-revenue-simulator",
-  "/battery-calculator",
-  "/day-ahead",
-  "/future-scenarios",
-  "/electricity-map",
-  "/relay-sources"
-]
+{
+  "routes": [
+    {
+      "name": "claude-overview",
+      "path": "/dashboard/module-menu.html"
+    },
+    {
+      "name": "claude-load-curve",
+      "path": "/incarcare-curba-sarcina.html"
+    },
+    {
+      "name": "battery-revenue",
+      "path": "/battery-revenue-simulator"
+    },
+    {
+      "name": "claude-battery-revenue-html",
+      "path": "/dashboard/battery-revenue-simulator.html"
+    },
+    {
+      "name": "claude-day-ahead",
+      "path": "/dashboard/day-ahead-operations.html"
+    },
+    {
+      "name": "claude-future-scenarios",
+      "path": "/dashboard/future-scenarios.html"
+    },
+    {
+      "name": "claude-electricity-map",
+      "path": "/dashboard/electricity-map.html"
+    },
+    {
+      "name": "claude-relay-sources",
+      "path": "/dashboard/relay-sources.html"
+    }
+  ]
+}

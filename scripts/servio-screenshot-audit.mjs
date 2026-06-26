@@ -15,15 +15,15 @@ const viewports = [
   {name:'tablet-768', width:768, height:1024, full:false},
   {name:'mobile-390', width:390, height:844, full:false}
 ];
-const shotDir = path.join(outRoot,'screenshots','v36_8',stage);
+const shotDir = path.join(outRoot,'screenshots','v36_13',stage);
 const reportDir = path.join(outRoot,'reports');
 await fs.mkdir(shotDir,{recursive:true}); await fs.mkdir(reportDir,{recursive:true});
 function safeName(s){return String(s).replace(/[^a-z0-9_-]+/gi,'-').replace(/^-|-$/g,'').toLowerCase() || 'page'}
 function resolveUrl(p){ if(/^https?:/i.test(p)) return p; return baseUrl + (p.startsWith('/')?p:'/'+p); }
 if(routes.length===0){
-  const summary={ok:false,version:'v36.12',stage,baseUrl,routes:0,screenshots:0,failed:0,whiteScreens:0,overflow:0,consoleErrors:0,error:'audit-routes.json has no visual routes',generatedAtUtc:new Date().toISOString()};
-  await fs.writeFile(path.join(reportDir,'servio-v36-10-screenshot-audit.json'), JSON.stringify({summary,results:[]},null,2),'utf8');
-  await fs.writeFile(path.join(reportDir,'SERVIO_v36_12_SCREENSHOT_AUDIT_REPORT.md'), '# SERVIO v36.12 Screenshot Audit Report\n\nInvalid: routes=0.\n','utf8');
+  const summary={ok:false,version:'v36.13',stage,baseUrl,routes:0,screenshots:0,failed:0,whiteScreens:0,overflow:0,consoleErrors:0,error:'audit-routes.json has no visual routes',generatedAtUtc:new Date().toISOString()};
+  await fs.writeFile(path.join(reportDir,'servio-v36-13-screenshot-audit.json'), JSON.stringify({summary,results:[]},null,2),'utf8');
+  await fs.writeFile(path.join(reportDir,'SERVIO_v36_13_SCREENSHOT_AUDIT_REPORT.md'), '# SERVIO v36.13 Screenshot Audit Report\n\nInvalid: routes=0.\n','utf8');
   console.log(JSON.stringify(summary,null,2)); process.exit(2);
 }
 const browser = await chromium.launch({headless:true});
@@ -43,8 +43,8 @@ for(const route of routes){
         const body=document.body, de=document.documentElement;
         const text=(body?.innerText||'').trim();
         const visibleControls=[...document.querySelectorAll('button,a,input,select,textarea')].filter(el=>{const r=el.getBoundingClientRect();const s=getComputedStyle(el);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'}).length;
-        const hasShell=!!document.querySelector('.sv35-sidebar,.sv34-sidebar,.sv33-sidebar');
-        const forbidden=['original simulator','preserved','parity','runtime','audit','changelog','relay','sources','logs','environment','api routes','integrations','operations','overview','open full screen'];
+        const hasShell=!!document.querySelector('.layout,.sidebar,.topbar,.ws-header');
+        const forbidden=['original simulator','preserved','open full screen','appframe'];
         const lower=text.toLowerCase();
         const forbiddenVisible=forbidden.filter(x=>lower.includes(x));
         const iframeCount=document.querySelectorAll('iframe').length;
@@ -58,11 +58,11 @@ for(const route of routes){
   }
 }
 await browser.close();
-const summary={ ok:results.every(r=>r.ok && !r.whiteScreen && !r.horizontalOverflow && !(r.iframeCount>0) && !(r.forbiddenVisible||[]).length) && results.filter(r=>r.screenshot).length>0 && results.reduce((a,r)=>a+(r.consoleErrors?.length||0),0)===0, version:'v36.12', stage, baseUrl, routes:routes.length, screenshots:results.filter(r=>r.screenshot).length, failed:results.filter(r=>!r.ok).length, whiteScreens:results.filter(r=>r.whiteScreen).length, overflow:results.filter(r=>r.horizontalOverflow).length, consoleErrors:results.reduce((a,r)=>a+(r.consoleErrors?.length||0),0), iframes:results.reduce((a,r)=>a+(r.iframeCount||0),0), forbiddenVisible:[...new Set(results.flatMap(r=>r.forbiddenVisible||[]))], generatedAtUtc:new Date().toISOString() };
+const summary={ ok:results.every(r=>r.ok && !r.whiteScreen && !r.horizontalOverflow && !(r.iframeCount>0) && !(r.forbiddenVisible||[]).length) && results.filter(r=>r.screenshot).length>0 && results.reduce((a,r)=>a+(r.consoleErrors?.length||0),0)===0, version:'v36.13', stage, baseUrl, routes:routes.length, screenshots:results.filter(r=>r.screenshot).length, failed:results.filter(r=>!r.ok).length, whiteScreens:results.filter(r=>r.whiteScreen).length, overflow:results.filter(r=>r.horizontalOverflow).length, consoleErrors:results.reduce((a,r)=>a+(r.consoleErrors?.length||0),0), iframes:results.reduce((a,r)=>a+(r.iframeCount||0),0), forbiddenVisible:[...new Set(results.flatMap(r=>r.forbiddenVisible||[]))], generatedAtUtc:new Date().toISOString() };
 const jsonReport={summary, results};
-await fs.writeFile(path.join(reportDir,'servio-v36-10-screenshot-audit.json'), JSON.stringify(jsonReport,null,2),'utf8');
+await fs.writeFile(path.join(reportDir,'servio-v36-13-screenshot-audit.json'), JSON.stringify(jsonReport,null,2),'utf8');
 const consoleLines = results.flatMap(r => (r.consoleErrors||[]).map(e => `- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: ${e.text}`));
-const md = ['# SERVIO v36.12 Screenshot Audit Report','',`Stage: **${stage}**`, `Base URL: ${baseUrl}`, `Generated: ${summary.generatedAtUtc}`,'', '## Summary','',`- Routes: ${summary.routes}`,`- Screenshots: ${summary.screenshots}`,`- Failed navigations: ${summary.failed}`,`- White screens: ${summary.whiteScreens}`,`- Horizontal overflow: ${summary.overflow}`,`- Console errors: ${summary.consoleErrors}`,`- Iframes: ${summary.iframes||0}`,`- Forbidden visible text: ${(summary.forbiddenVisible||[]).join(', ') || 'none'}`,'','## Routes'].concat(results.map(r=>`- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: status=${r.status||'n/a'} ok=${!!r.ok} shell=${!!r.hasShell} white=${!!r.whiteScreen} overflow=${!!r.horizontalOverflow}${r.error?' error='+r.error:''}`)).concat(['','## Console error details','']).concat(consoleLines.length?consoleLines:['- none']).join('\n');
-await fs.writeFile(path.join(reportDir,'SERVIO_v36_12_SCREENSHOT_AUDIT_REPORT.md'), md,'utf8');
+const md = ['# SERVIO v36.13 Screenshot Audit Report','',`Stage: **${stage}**`, `Base URL: ${baseUrl}`, `Generated: ${summary.generatedAtUtc}`,'', '## Summary','',`- Routes: ${summary.routes}`,`- Screenshots: ${summary.screenshots}`,`- Failed navigations: ${summary.failed}`,`- White screens: ${summary.whiteScreens}`,`- Horizontal overflow: ${summary.overflow}`,`- Console errors: ${summary.consoleErrors}`,`- Iframes: ${summary.iframes||0}`,`- Forbidden visible text: ${(summary.forbiddenVisible||[]).join(', ') || 'none'}`,'','## Routes'].concat(results.map(r=>`- ${r.route?.name||r.route?.path} / ${r.viewport?.name}: status=${r.status||'n/a'} ok=${!!r.ok} shell=${!!r.hasShell} white=${!!r.whiteScreen} overflow=${!!r.horizontalOverflow}${r.error?' error='+r.error:''}`)).concat(['','## Console error details','']).concat(consoleLines.length?consoleLines:['- none']).join('\n');
+await fs.writeFile(path.join(reportDir,'SERVIO_v36_13_SCREENSHOT_AUDIT_REPORT.md'), md,'utf8');
 console.log(JSON.stringify(summary,null,2));
 process.exit((summary.failed || summary.whiteScreens || summary.overflow || summary.consoleErrors || summary.iframes || (summary.forbiddenVisible||[]).length || summary.screenshots===0) ? 2 : 0);

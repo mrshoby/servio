@@ -1,0 +1,1179 @@
+{
+  "summary": {
+    "ok": true,
+    "version": "v36.13",
+    "stage": "after",
+    "baseUrl": "https://servio.vlad-it-taran.workers.dev",
+    "routes": 8,
+    "screenshots": 40,
+    "failed": 0,
+    "whiteScreens": 0,
+    "overflow": 0,
+    "consoleErrors": 0,
+    "iframes": 0,
+    "forbiddenVisible": [],
+    "generatedAtUtc": "2026-06-26T07:32:17.437Z"
+  },
+  "results": [
+    {
+      "route": {
+        "name": "claude-overview",
+        "path": "/dashboard/module-menu.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/module-menu.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-overview.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Overview",
+      "textLength": 1197,
+      "elementCount": 359,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 35,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-overview",
+        "path": "/dashboard/module-menu.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/module-menu.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-overview.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Overview",
+      "textLength": 1258,
+      "elementCount": 359,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 35,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-overview",
+        "path": "/dashboard/module-menu.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/module-menu.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-overview.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Overview",
+      "textLength": 1258,
+      "elementCount": 359,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 35,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-overview",
+        "path": "/dashboard/module-menu.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/module-menu.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-overview.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Overview",
+      "textLength": 1258,
+      "elementCount": 359,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 36,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-overview",
+        "path": "/dashboard/module-menu.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/module-menu.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-overview.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Overview",
+      "textLength": 1258,
+      "elementCount": 359,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 36,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-load-curve.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Consum / Curba de sarcină",
+      "textLength": 1010,
+      "elementCount": 260,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 28,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-load-curve.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Consum / Curba de sarcină",
+      "textLength": 1010,
+      "elementCount": 260,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 28,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-load-curve.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Consum / Curba de sarcină",
+      "textLength": 1010,
+      "elementCount": 260,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 28,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-load-curve.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Consum / Curba de sarcină",
+      "textLength": 1010,
+      "elementCount": 260,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 29,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-load-curve",
+        "path": "/incarcare-curba-sarcina.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/incarcare-curba-sarcina.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-load-curve.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Consum / Curba de sarcină",
+      "textLength": 1010,
+      "elementCount": 260,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 29,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\battery-revenue.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\battery-revenue.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\battery-revenue.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\battery-revenue.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 31,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "battery-revenue",
+        "path": "/battery-revenue-simulator"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/battery-revenue-simulator",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\battery-revenue.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 31,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-battery-revenue-html",
+        "path": "/dashboard/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/battery-revenue-simulator.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-battery-revenue-html.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-battery-revenue-html",
+        "path": "/dashboard/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/battery-revenue-simulator.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-battery-revenue-html.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-battery-revenue-html",
+        "path": "/dashboard/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/battery-revenue-simulator.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-battery-revenue-html.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 30,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-battery-revenue-html",
+        "path": "/dashboard/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/battery-revenue-simulator.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-battery-revenue-html.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 31,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-battery-revenue-html",
+        "path": "/dashboard/battery-revenue-simulator.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/battery-revenue-simulator.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-battery-revenue-html.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Battery Revenue Simulator",
+      "textLength": 1274,
+      "elementCount": 235,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 31,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-day-ahead",
+        "path": "/dashboard/day-ahead-operations.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/day-ahead-operations.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-day-ahead.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Day-Ahead / Piață energie",
+      "textLength": 927,
+      "elementCount": 247,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-day-ahead",
+        "path": "/dashboard/day-ahead-operations.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/day-ahead-operations.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-day-ahead.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Day-Ahead / Piață energie",
+      "textLength": 927,
+      "elementCount": 247,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-day-ahead",
+        "path": "/dashboard/day-ahead-operations.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/day-ahead-operations.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-day-ahead.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Day-Ahead / Piață energie",
+      "textLength": 927,
+      "elementCount": 247,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-day-ahead",
+        "path": "/dashboard/day-ahead-operations.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/day-ahead-operations.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-day-ahead.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Day-Ahead / Piață energie",
+      "textLength": 927,
+      "elementCount": 247,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 25,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-day-ahead",
+        "path": "/dashboard/day-ahead-operations.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/day-ahead-operations.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-day-ahead.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Day-Ahead / Piață energie",
+      "textLength": 927,
+      "elementCount": 247,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 25,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-future-scenarios",
+        "path": "/dashboard/future-scenarios.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/future-scenarios.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-future-scenarios.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Scenarii viitoare",
+      "textLength": 911,
+      "elementCount": 180,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 21,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-future-scenarios",
+        "path": "/dashboard/future-scenarios.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/future-scenarios.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-future-scenarios.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Scenarii viitoare",
+      "textLength": 911,
+      "elementCount": 180,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 21,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-future-scenarios",
+        "path": "/dashboard/future-scenarios.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/future-scenarios.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-future-scenarios.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Scenarii viitoare",
+      "textLength": 911,
+      "elementCount": 180,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 21,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-future-scenarios",
+        "path": "/dashboard/future-scenarios.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/future-scenarios.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-future-scenarios.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Scenarii viitoare",
+      "textLength": 911,
+      "elementCount": 180,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 22,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-future-scenarios",
+        "path": "/dashboard/future-scenarios.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/future-scenarios.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-future-scenarios.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Scenarii viitoare",
+      "textLength": 911,
+      "elementCount": 180,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 22,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-electricity-map",
+        "path": "/dashboard/electricity-map.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/electricity-map.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-electricity-map.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Hartă energie",
+      "textLength": 948,
+      "elementCount": 211,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 16,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-electricity-map",
+        "path": "/dashboard/electricity-map.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/electricity-map.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-electricity-map.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Hartă energie",
+      "textLength": 948,
+      "elementCount": 211,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 16,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-electricity-map",
+        "path": "/dashboard/electricity-map.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/electricity-map.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-electricity-map.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Hartă energie",
+      "textLength": 948,
+      "elementCount": 211,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 16,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-electricity-map",
+        "path": "/dashboard/electricity-map.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/electricity-map.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-electricity-map.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Hartă energie",
+      "textLength": 948,
+      "elementCount": 211,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 17,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-electricity-map",
+        "path": "/dashboard/electricity-map.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/electricity-map.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-electricity-map.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Hartă energie",
+      "textLength": 948,
+      "elementCount": 211,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 17,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-relay-sources",
+        "path": "/dashboard/relay-sources.html"
+      },
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/relay-sources.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-1440\\claude-relay-sources.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Relay & Surse date",
+      "textLength": 1228,
+      "elementCount": 364,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-relay-sources",
+        "path": "/dashboard/relay-sources.html"
+      },
+      "viewport": {
+        "name": "desktop-full",
+        "width": 1440,
+        "height": 1000,
+        "full": true
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/relay-sources.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\desktop-full\\claude-relay-sources.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Relay & Surse date",
+      "textLength": 1228,
+      "elementCount": 364,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1440,
+      "clientWidth": 1440,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-relay-sources",
+        "path": "/dashboard/relay-sources.html"
+      },
+      "viewport": {
+        "name": "laptop-1366",
+        "width": 1366,
+        "height": 768,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/relay-sources.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\laptop-1366\\claude-relay-sources.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Relay & Surse date",
+      "textLength": 1228,
+      "elementCount": 364,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 1366,
+      "clientWidth": 1366,
+      "visibleControls": 24,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-relay-sources",
+        "path": "/dashboard/relay-sources.html"
+      },
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/relay-sources.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\tablet-768\\claude-relay-sources.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Relay & Surse date",
+      "textLength": 1228,
+      "elementCount": 364,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 768,
+      "clientWidth": 768,
+      "visibleControls": 25,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    },
+    {
+      "route": {
+        "name": "claude-relay-sources",
+        "path": "/dashboard/relay-sources.html"
+      },
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844,
+        "full": false
+      },
+      "url": "https://servio.vlad-it-taran.workers.dev/dashboard/relay-sources.html",
+      "ok": true,
+      "status": 200,
+      "screenshot": "audit\\screenshots\\v36_13\\after\\mobile-390\\claude-relay-sources.png",
+      "consoleErrors": [],
+      "pageErrors": [],
+      "title": "SERVIO — Relay & Surse date",
+      "textLength": 1228,
+      "elementCount": 364,
+      "hasShell": true,
+      "whiteScreen": false,
+      "horizontalOverflow": false,
+      "scrollWidth": 390,
+      "clientWidth": 390,
+      "visibleControls": 25,
+      "iframeCount": 0,
+      "forbiddenVisible": []
+    }
+  ]
+}
