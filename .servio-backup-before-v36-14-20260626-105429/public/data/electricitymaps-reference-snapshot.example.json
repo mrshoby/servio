@@ -1,0 +1,28 @@
+{
+  "source": "electricity-maps-reference-snapshot-template",
+  "note": "If you legally export/capture permitted reference values, place them here. SERVIO can then match those values exactly for listed zones/timestamps.",
+  "mode": "manual_reference",
+  "updatedAt": "2026-06-15T00:00:00.000Z",
+  "resolution": "5m",
+  "zones": {
+    "ROU": {
+      "zoneName": "Romania",
+      "carbonIntensity": 312,
+      "renewablePercentage": 42,
+      "fossilFreePercentage": 61,
+      "priceEurMwh": 91,
+      "totalLoadMW": 7400,
+      "netFlowMW": 420,
+      "powerBreakdown": {
+        "solar": 900,
+        "wind": 1100,
+        "hydro": 1900,
+        "nuclear": 1400,
+        "gas": 1350,
+        "coal": 820,
+        "biomass": 0,
+        "unknown": 0
+      }
+    }
+  }
+}

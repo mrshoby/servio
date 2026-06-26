@@ -1,10 +1,22 @@
-﻿compatibility_date = "2026-06-26"
+﻿name = "servio"
 main = "src/worker.js"
-name = "servio"
+compatibility_date = "2026-06-26"
+compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = "./public/"
-binding = "ASSETS"
-not_found_handling = "none"
-run_worker_first = [ "/api/*", "/", "/index.html", "/login", "/login.html", "/module-menu", "/modules", "/overview", "/incarcare-curba-sarcina", "/consum", "/load-curve", "/battery-calculator", "/battery-calculator.html", "/calculator-baterie.html", "/battery-revenue-simulator", "/battery-revenue-simulator.html", "/battery-revenue", "/day-ahead", "/day-ahead.html", "/day-ahead-operations", "/day-ahead-operations.html", "/future-scenarios", "/future-scenarios.html", "/electricity-map", "/electricity-map.html", "/electricity-maps", "/grid-map", "/carbon-map", "/relay-sources", "/sources", "/surse-date", "/live-sources", "/ingest-api", "/d1-storage", "/audit-logs", "/github-actions", "/windows-relay", "/environment", "/api-routes", "/integrations", "/servio-tools", "/dashboard/servio-tools.html", "/favicon.ico", "/apple-touch-icon.png" ]
+directory = "./public"
+run_worker_first = [
+  "/",
+  "/module-menu",
+  "/overview",
+  "/incarcare-curba-sarcina",
+  "/battery-revenue-simulator",
+  "/battery-calculator",
+  "/day-ahead",
+  "/day-ahead-operations",
+  "/future-scenarios",
+  "/electricity-map",
+  "/relay-sources",
+  "/api/*"
+]
 

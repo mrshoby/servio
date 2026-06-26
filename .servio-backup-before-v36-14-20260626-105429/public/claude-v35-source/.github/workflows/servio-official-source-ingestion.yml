@@ -1,0 +1,88 @@
+name: SERVIO Official Source Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "Start date YYYY-MM-DD. Empty = today Bucharest."
+        required: false
+        default: ""
+      to:
+        description: "End date YYYY-MM-DD. Empty = tomorrow Bucharest."
+        required: false
+        default: ""
+      source:
+        description: "all, entsoe, opcom, transelectrica"
+        required: false
+        default: "all"
+      dry_run:
+        description: "Do not push records into SERVIO API"
+        type: boolean
+        required: false
+        default: false
+  schedule:
+    - cron: "8,38 * * * *"
+    - cron: "15,45 8-16 * * *"
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ingest:
+    name: Fetch official sources and push to SERVIO API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SERVIO_URL: ${{ secrets.SERVIO_URL || vars.SERVIO_URL || 'https://servio.vlad-it-taran.workers.dev' }}
+      SERVIO_INGEST_SECRET: ${{ secrets.SERVIO_INGEST_SECRET }}
+      ENTSOE_API_TOKEN: ${{ secrets.ENTSOE_API_TOKEN }}
+      SERVIO_EUR_RON: ${{ vars.SERVIO_EUR_RON }}
+      TRANSELECTRICA_BALANCING_URLS: ${{ vars.TRANSELECTRICA_BALANCING_URLS }}
+      SERVIO_SYNC_SOURCE: ${{ github.event.inputs.source || 'all' }}
+      SERVIO_DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+      SERVIO_RELAY_MODE: github-actions
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Resolve default Bucharest dates
+        id: dates
+        shell: bash
+        run: |
+          FROM_INPUT="${{ github.event.inputs.from }}"
+          TO_INPUT="${{ github.event.inputs.to }}"
+          if [ -z "$FROM_INPUT" ]; then FROM_INPUT=$(TZ=Europe/Bucharest date +%F); fi
+          if [ -z "$TO_INPUT" ]; then TO_INPUT=$(TZ=Europe/Bucharest date -d "tomorrow" +%F); fi
+          echo "from=$FROM_INPUT" >> "$GITHUB_OUTPUT"
+          echo "to=$TO_INPUT" >> "$GITHUB_OUTPUT"
+          echo "SERVIO_SYNC_FROM=$FROM_INPUT" >> "$GITHUB_ENV"
+          echo "SERVIO_SYNC_TO=$TO_INPUT" >> "$GITHUB_ENV"
+
+      - name: Check required secrets
+        shell: bash
+        run: |
+          test -n "$SERVIO_INGEST_SECRET" || (echo "Missing GitHub secret SERVIO_INGEST_SECRET" && exit 2)
+          test -n "$ENTSOE_API_TOKEN" || echo "WARNING: Missing ENTSOE_API_TOKEN. ENTSO-E will be skipped."
+
+      - name: Run official source ingestion
+        shell: bash
+        run: |
+          node scripts/servio-official-source-ingestion-v3299.mjs \
+            --url "$SERVIO_URL" \
+            --from "${{ steps.dates.outputs.from }}" \
+            --to "${{ steps.dates.outputs.to }}" \
+            --source "${SERVIO_SYNC_SOURCE:-all}"
+
+      - name: Upload ingestion audit results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: servio-v3299-hybrid-official-source-relay-audit
+          path: audit-results/servio-v3299-official-ingestion-*
+          if-no-files-found: warn

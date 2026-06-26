@@ -6,70 +6,147 @@
 <title>SERVIO — Battery Revenue Simulator</title>
 <link rel="stylesheet" href="/s.css">
 <style>
-.result-card { background:var(--c-bg-sub); border:1px solid var(--c-border); border-radius:var(--r-lg); padding:20px; text-align:center; }
-.result-label { font-size:11px; color:var(--c-text4); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
-.result-val { font-size:26px; font-weight:700; color:var(--c-text); font-variant-numeric:tabular-nums; line-height:1.1; }
-.result-sub { font-size:11px; color:var(--c-text3); margin-top:4px; }
-.results-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-@media(max-width:800px){ .results-grid { grid-template-columns:repeat(2,1fr); } }
-@media(max-width:500px){ .results-grid { grid-template-columns:1fr 1fr; } }
-.roi-bar-wrap { margin:12px 0; }
-.roi-bar { height:8px; background:var(--c-border); border-radius:4px; overflow:hidden; }
-.roi-fill { height:100%; background:#000; border-radius:4px; transition:width .8s ease; }
-.preset-btn { padding:5px 10px; border:1px solid var(--c-border); border-radius:var(--r-md); font-size:12px; cursor:pointer; background:var(--c-bg); color:var(--c-text3); transition:all .1s; }
-.preset-btn:hover, .preset-btn.on { background:var(--c-text); color:#fff; border-color:var(--c-text); }
-.spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--c-border); border-top-color:#000; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
-@keyframes spin { to { transform:rotate(360deg); } }
-.scenario-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--c-border); }
-.scenario-row:last-child { border-bottom:none; }
-.scenario-label { flex:1; font-size:13px; color:var(--c-text2); }
-.scenario-val { font-weight:600; font-variant-numeric:tabular-nums; }
+.usage-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--c-border); font-size:13px; }
+.usage-item:last-child { border-bottom:none; }
+.usage-label { flex:1; color:var(--c-text3); display:flex; align-items:center; gap:5px; }
+.usage-bar { width:120px; height:4px; background:var(--c-border); border-radius:2px; overflow:hidden; }
+.usage-bar-fill { height:100%; background:#000; border-radius:2px; }
+.usage-val { font-size:12px; color:var(--c-text2); font-variant-numeric:tabular-nums; min-width:80px; text-align:right; }
 </style>
 </head>
 <body>
+
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div class="layout">
+
+  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div class="ws-header"><div class="ws-logo">S</div><div class="ws-info"><div class="ws-name">SERVIO</div><div class="ws-sub">Energy market operations</div></div><div class="ws-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div></div>
-    <div class="sidebar-search"><div class="ss-wrap"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><input class="ss-input" type="text" placeholder="Find module, route, source..."><span class="ss-kbd">F</span></div></div>
+    <div class="ws-header">
+      <div class="ws-logo">S</div>
+      <div class="ws-info">
+        <div class="ws-name">SERVIO</div>
+        <div class="ws-sub">Energy market operations</div>
+      </div>
+      <div class="ws-chevron"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+    </div>
+    <div class="sidebar-search">
+      <div class="ss-wrap">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="ss-input" type="text" placeholder="Find module, route, source...">
+        <span class="ss-kbd">F</span>
+      </div>
+    </div>
     <nav class="nav">
       <div class="nav-section">
-        <a href="/module-menu" class="nav-item" data-route="overview"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span><span class="sidebar-label">Overview</span></a>
-        <a href="/incarcare-curba-sarcina" class="nav-item" data-route="consum"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span><span class="sidebar-label">Consum / Curba de sarcină</span></a>
-        <a href="/battery-revenue-simulator" class="nav-item active" data-route="bess"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M22 11v4"/></svg></span><span class="sidebar-label">Battery Revenue Simulator</span></a>
-        <a href="/day-ahead-operations" class="nav-item" data-route="day-ahead"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span><span class="sidebar-label">Day-Ahead / Piață energie</span></a>
-        <a href="/future-scenarios" class="nav-item" data-route="scenarios"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span class="sidebar-label">Scenarii viitoare</span></a>
-        <a href="/electricity-map" class="nav-item" data-route="map"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/></svg></span><span class="sidebar-label">Hartă energie</span></a>
-        <a href="/relay-sources" class="nav-item" data-route="relay"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span><span class="sidebar-label">Relay &amp; Surse date</span></a>
+        <a href="/module-menu" class="nav-item" data-route="overview">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></span>
+          <span class="sidebar-label">Overview</span>
+        </a>
+        <a href="/incarcare-curba-sarcina" class="nav-item" data-route="consum">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
+          <span class="sidebar-label">Consum / Curba de sarcină</span>
+        </a>
+        <a href="/battery-revenue-simulator" class="nav-item active" data-route="bess">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="16" height="11" rx="2"/><path d="M22 11v4"/><path d="M7 11v3"/><path d="M11 11v3"/></svg></span>
+          <span class="sidebar-label">Battery Revenue Simulator</span>
+        </a>
+        <a href="/day-ahead-operations" class="nav-item" data-route="day-ahead">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+          <span class="sidebar-label">Day-Ahead / Piață energie</span>
+        </a>
+        <a href="/future-scenarios" class="nav-item" data-route="scenarios">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+          <span class="sidebar-label">Scenarii viitoare</span>
+        </a>
+        <a href="/electricity-map" class="nav-item" data-route="map">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg></span>
+          <span class="sidebar-label">Hartă energie</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="relay">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg></span>
+          <span class="sidebar-label">Relay &amp; Surse date</span>
+        </a>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Operations</div>
-        <a href="/relay-sources" class="nav-item" data-route="live-sources"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/></svg></span><span class="sidebar-label">Live Sources</span></a>
-        <a href="/relay-sources" class="nav-item" data-route="d1"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span><span class="sidebar-label">D1 Storage</span></a>
-        <a href="/relay-sources" class="nav-item" data-route="audit"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span><span class="sidebar-label">Audit Logs</span></a>
-        <a href="/relay-sources" class="nav-item" data-route="github"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span><span class="sidebar-label">GitHub Actions</span></a>
-        <a href="/relay-sources" class="nav-item" data-route="windows-relay"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><span class="sidebar-label">Windows Relay</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="live-sources">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/></svg></span>
+          <span class="sidebar-label">Live Sources</span>
+          <span class="nav-badge live" id="nav-live-badge">•</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="ingest">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></span>
+          <span class="sidebar-label">Ingest API</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="d1">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+          <span class="sidebar-label">D1 Storage</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="audit">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+          <span class="sidebar-label">Audit Logs</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="github">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg></span>
+          <span class="sidebar-label">GitHub Actions</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="windows-relay">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+          <span class="sidebar-label">Windows Relay</span>
+        </a>
       </div>
       <div class="nav-section">
         <div class="nav-section-label">Settings</div>
-        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span><span class="sidebar-label">Environment</span></a>
-        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span><span class="sidebar-label">API Routes</span></a>
-        <a href="/relay-sources" class="nav-item"><span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span><span class="sidebar-label">Integrations</span></a>
+        <a href="/relay-sources" class="nav-item" data-route="environment">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></span>
+          <span class="sidebar-label">Environment</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="api-routes">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span>
+          <span class="sidebar-label">API Routes</span>
+        </a>
+        <a href="/relay-sources" class="nav-item" data-route="integrations">
+          <span class="ni"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+          <span class="sidebar-label">Integrations</span>
+        </a>
       </div>
     </nav>
     <div class="sidebar-footer">
-      <div class="user-row"><div class="user-avatar">A</div><div class="user-name">local / admin</div></div>
-      <button class="collapse-btn" id="collapse-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span class="collapse-label">Restrânge</span></button>
+      <div class="user-row">
+        <div class="user-avatar">A</div>
+        <div class="user-name">local / admin</div>
+        <div class="user-actions">
+          <button class="icon-btn" title="Setări"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
+          <button class="icon-btn" title="Notificări"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+        </div>
+      </div>
+      <button class="collapse-btn" id="collapse-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        <span class="collapse-label">Restrânge</span>
+      </button>
     </div>
   </aside>
 
+  <!-- Main area -->
   <div class="main">
     <header class="topbar">
-      <button class="mobile-menu-btn" id="mobile-menu-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
-      <div class="topbar-breadcrumb"><span>SERVIO</span><span class="crumb-sep">/</span><span class="crumb-current">Battery Revenue Simulator</span></div>
+      <button class="mobile-menu-btn" id="mobile-menu-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-breadcrumb">
+        <span>SERVIO</span>
+        <span class="crumb-sep">/</span>
+        <span class="crumb-current">Battery Revenue Simulator</span>
+      </div>
       <div class="topbar-right">
-        <div class="topbar-status"><span class="status-dot loading" id="topbar-status-dot"></span><span id="topbar-status-text">Checking...</span></div>
-        <a href="/future-scenarios" class="btn btn-secondary btn-sm">Scenarii &rarr;</a>
+        <div class="topbar-status">
+          <span class="status-dot loading" id="topbar-status-dot"></span>
+          <span id="topbar-status-text">Checking...</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btn-refresh">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
       </div>
     </header>
 
@@ -77,108 +154,79 @@
       <div class="content-inner">
         <div class="page-header">
           <h1 class="page-title">Battery Revenue Simulator</h1>
-          <p class="page-subtitle">Simulare venituri BESS pe date istorice Day-Ahead, balansare Transelectrica, OPCOM și ENTSO-E</p>
+          <p class="page-subtitle">Simulatorul funcționează cu datele vechi/originale SERVIO: balancing prices + ORION day-ahead + calibrare Inowattio. Shell-ul este cel din buildul Claude.</p>
         </div>
 
-
-          <div class="card" style="margin-bottom:16px;">
-            <div class="card-header"><span class="card-title">Surse oficiale active</span><span class="card-meta">old data + live source status</span></div>
-            <div class="card-body">
-              <div class="scenario-row"><span class="scenario-label">Date vechi/originale</span><span class="scenario-val">balancing_prices_all.js · Orion day-ahead · calibration v29</span></div>
-              <div class="scenario-row"><span class="scenario-label">ENTSO-E API</span><span class="scenario-val" id="src-entsoe-status">se verifică...</span></div>
-              <div class="scenario-row"><span class="scenario-label">OPCOM PZU</span><span class="scenario-val" id="src-opcom-status">se verifică...</span></div>
-            </div>
+        <div class="action-row">
+          <div class="search-wrap" style="max-width:260px;">
+            <svg class="search-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <select class="search-input" id="preset" style="appearance:auto;padding-left:32px;">
+              <option value="night">Night arbitrage</option>
+              <option value="day">Day spread</option>
+              <option value="peak">Peak shaving</option>
+              <option value="balanced">Balanced</option>
+            </select>
           </div>
+          <button class="btn btn-primary" id="run-sim">Rulează simularea</button>
+          <button class="btn btn-secondary" id="check-sources">Verifică ENTSO-E / OPCOM</button>
+          <span class="badge badge-gray" id="data-badge">loading static data</span>
+        </div>
 
-        <div class="two-col" style="gap:16px; margin-bottom:16px;">
-          <!-- Params card -->
+        <div class="cards-grid cards-grid-3" style="margin-bottom:16px;">
+          <div class="card"><div class="card-body"><div class="metric"><div class="metric-value" id="kpi-revenue">—</div><div class="metric-label">Revenue total EUR</div></div></div></div>
+          <div class="card"><div class="card-body"><div class="metric"><div class="metric-value" id="kpi-daily">—</div><div class="metric-label">Medie zilnică EUR</div></div></div></div>
+          <div class="card"><div class="card-body"><div class="metric"><div class="metric-value" id="kpi-cycles">—</div><div class="metric-label">Cicluri totale</div></div></div></div>
+        </div>
+
+        <div class="cards-grid" style="margin-bottom:16px;">
           <div class="card">
-            <div class="card-header">
-              <span class="card-title">Parametri baterie</span>
-              <div style="display:flex;gap:6px;">
-                <button class="preset-btn on" id="pre-1mwh" data-preset="1mwh">1 MWh</button>
-                <button class="preset-btn" id="pre-2mwh" data-preset="2mwh">2 MWh</button>
-                <button class="preset-btn" id="pre-5mwh" data-preset="5mwh">5 MWh</button>
-              </div>
-            </div>
+            <div class="card-header"><span class="card-title">Parametri baterie</span><span class="card-meta">old engine</span></div>
             <div class="card-body">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label class="form-label">Capacitate (MWh)</label>
-                  <input class="form-input" type="number" id="p-capacity" value="1" min="0.1" max="100" step="0.1">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Cost instalare (EUR/kWh)</label>
-                  <input class="form-input" type="number" id="p-cost" value="250" min="50" max="1000">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Eficiență roundtrip (%)</label>
-                  <input class="form-input" type="number" id="p-efficiency" value="90" min="60" max="99" step="1">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Cicluri max/zi</label>
-                  <input class="form-input" type="number" id="p-cycles" value="1" min="0.5" max="3" step="0.5">
-                </div>
+              <div class="form-grid-3">
+                <div class="form-group"><label class="form-label">Capacitate MWh</label><input id="capacityMWh" class="form-input" type="number" step="0.1" value="2"></div>
+                <div class="form-group"><label class="form-label">Charge MW</label><input id="maxChargeMW" class="form-input" type="number" step="0.1" value="1"></div>
+                <div class="form-group"><label class="form-label">Discharge MW</label><input id="maxDischargeMW" class="form-input" type="number" step="0.1" value="1"></div>
+                <div class="form-group"><label class="form-label">Eficiență</label><input id="efficiency" class="form-input" type="number" step="0.01" value="0.9"></div>
+                <div class="form-group"><label class="form-label">Cicluri/zi</label><input id="maxCyclesPerDay" class="form-input" type="number" step="0.5" value="2"></div>
+                <div class="form-group"><label class="form-label">EUR/RON</label><input id="eurToLei" class="form-input" type="number" step="0.01" value="4.97"></div>
               </div>
-              <div class="form-grid" style="margin-top:4px;">
-                <div class="form-group">
-                  <label class="form-label">Perioadă — De la</label>
-                  <input class="form-input" type="date" id="p-from">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Perioadă — Până la</label>
-                  <input class="form-input" type="date" id="p-to">
-                </div>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Strategie programare</label>
-                <select class="form-select" id="p-preset">
-                  <option value="">Auto (optimizat)</option>
-                  <option value="night-charge-day-discharge">Încărcare noapte / Descărcare zi</option>
-                  <option value="peak-shaving">Peak shaving</option>
-                  <option value="arbitrage">Arbitraj preț</option>
-                </select>
-              </div>
-              <button class="btn btn-primary" style="width:100%" id="btn-calculate">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                Calculează
-              </button>
+              <p class="form-hint">Calculul folosește <span class="mono">window.InowattioOfficialEngine</span> și dataseturile originale din <span class="mono">/data</span>.</p>
             </div>
           </div>
 
-          <!-- Results card -->
           <div class="card">
-            <div class="card-header"><span class="card-title">Rezultate simulare</span><span id="res-badge" class="badge badge-gray">Nerulatat</span></div>
-            <div class="card-body" id="results-body">
-              <div class="empty-state">
-                <span class="empty-icon">🔋</span>
-                <div class="empty-title">Configurați parametrii și apăsați Calculează</div>
-                <div class="empty-desc">Simularea rulează pe datele istorice Day-Ahead din D1</div>
-              </div>
+            <div class="card-header"><span class="card-title">Surse validate</span><span class="card-meta" id="source-updated">—</span></div>
+            <div class="card-body">
+              <div class="row-item"><span class="row-label">Transelectrica balancing vechi</span><span class="row-value" id="balancing-count">—</span></div>
+              <div class="row-item"><span class="row-label">ORION day-ahead vechi</span><span class="row-value" id="orion-count">—</span></div>
+              <div class="row-item"><span class="row-label">Calibrare Inowattio</span><span class="row-value" id="calibration-state">—</span></div>
+              <div class="row-item"><span class="row-label">ENTSO-E API</span><span class="row-value" id="entsoe-state">—</span></div>
+              <div class="row-item"><span class="row-label">OPCOM API</span><span class="row-value" id="opcom-state">—</span></div>
             </div>
           </div>
         </div>
 
-        <!-- Forecast P10/P50/P90 -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header">
-            <span class="card-title">Forecast P10 / P50 / P90</span>
-            <button class="btn btn-secondary btn-sm" id="btn-forecast">Rulează forecast</button>
-          </div>
-          <div class="card-body" id="forecast-body">
-            <div class="empty-state">
-              <span class="empty-icon">📈</span>
-              <div class="empty-title">Forecast scenarii indisponibil</div>
-              <div class="empty-desc">Rulați mai întâi calculatorul de bază, apoi apăsați Rulează forecast</div>
+        <div class="cards-grid" style="margin-bottom:16px;">
+          <div class="card col-span-2">
+            <div class="card-header"><span class="card-title">Rezultate lunare</span><span class="card-meta" id="range-meta">—</span></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Lună</th><th>Revenue RON</th><th>Cumulat RON</th></tr></thead>
+                <tbody id="monthly-tbody"><tr><td colspan="3">Se încarcă...</td></tr></tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        <!-- Simulation periods card -->
-        <div class="card">
-          <div class="card-header"><span class="card-title">Detalii perioade simulate</span><span class="card-meta" id="sim-meta">—</span></div>
-          <div id="sim-detail-body">
-            <div class="empty-state"><span class="empty-icon">📋</span><div class="empty-title">Nicio simulare rulată</div></div>
+        <div class="cards-grid">
+          <div class="card col-span-2">
+            <div class="card-header"><span class="card-title">Dispatch sample</span><span class="card-meta">primele 36 intervale active</span></div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead><tr><th>Data</th><th>Interval</th><th>Acțiune</th><th>Preț</th><th>Energie</th><th>Revenue</th><th>SOC</th></tr></thead>
+                <tbody id="dispatch-tbody"><tr><td colspan="7">Se încarcă...</td></tr></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -186,168 +234,98 @@
     </main>
   </div>
 </div>
+
+
+<script src="/data/balancing_prices_all.js"></script>
+<script src="/data/inowattio_orion_day_ahead_prices.js"></script>
+<script src="/data/inowattio_real_site_calibration_v29_full.js"></script>
+<script src="/src/official-engine.js"></script>
 <script src="/app.js"></script>
 <script>
-(function() {
+(function(){
   'use strict';
-  var S = window.SERVIO;
+  var fmt = function(n,d){ if(n===null||n===undefined||!isFinite(n)) return '—'; return Number(n).toLocaleString('ro-RO',{maximumFractionDigits:d||0,minimumFractionDigits:d||0}); };
+  var el = function(id){ return document.getElementById(id); };
+  var set = function(id,v){ var x=el(id); if(x) x.textContent = v; };
+  var engine = window.InowattioOfficialEngine;
+  var staticStore = null;
 
-
-  // Official source validation badges for Battery Revenue Simulator
-  Promise.allSettled([
-    fetch('/api/servio/entsoe/status').then(function(r){return r.json();}),
-    fetch('/api/servio/opcom/day-ahead/records?limit=96&autoSync=0').then(function(r){return r.json();})
-  ]).then(function(res){
-    var e=document.getElementById('src-entsoe-status');
-    var o=document.getElementById('src-opcom-status');
-    var ed=res[0] && res[0].status==='fulfilled' ? res[0].value : null;
-    var od=res[1] && res[1].status==='fulfilled' ? res[1].value : null;
-    if(e) e.textContent = ed && ed.ok ? ('valid · token ' + (ed.tokenPresent ? 'present' : 'missing') + ' · D1 ' + ((ed.d1&&ed.d1.liveRecords)||0)) : 'eroare';
-    if(o) o.textContent = od && od.ok ? ('valid · records ' + (od.totalMatched || od.returned || 0)) : 'eroare';
-  }).catch(function(){});
-
-  // Default date range: last 30 days
-  function isoDate(offset) {
-    var d = new Date();
-    d.setDate(d.getDate() + offset);
-    return d.toISOString().slice(0, 10);
-  }
-  document.getElementById('p-from').value = isoDate(-30);
-  document.getElementById('p-to').value = isoDate(0);
-
-  // Presets
-  var presets = {
-    '1mwh': { capacity: 1, cost: 250, efficiency: 90, cycles: 1 },
-    '2mwh': { capacity: 2, cost: 230, efficiency: 92, cycles: 1 },
-    '5mwh': { capacity: 5, cost: 210, efficiency: 92, cycles: 1.5 }
-  };
-  document.querySelectorAll('.preset-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('on'); });
-      btn.classList.add('on');
-      var p = presets[btn.dataset.preset];
-      if (p) {
-        document.getElementById('p-capacity').value = p.capacity;
-        document.getElementById('p-cost').value = p.cost;
-        document.getElementById('p-efficiency').value = p.efficiency;
-        document.getElementById('p-cycles').value = p.cycles;
-      }
-    });
-  });
-
-  function getParams() {
+  function params(){
     return {
-      capacityMWh: parseFloat(document.getElementById('p-capacity').value) || 1,
-      costPerKwh: parseFloat(document.getElementById('p-cost').value) || 250,
-      efficiencyPct: parseFloat(document.getElementById('p-efficiency').value) || 90,
-      maxCyclesPerDay: parseFloat(document.getElementById('p-cycles').value) || 1
+      capacityMWh: Number(el('capacityMWh').value || 2),
+      maxChargeMW: Number(el('maxChargeMW').value || 1),
+      maxDischargeMW: Number(el('maxDischargeMW').value || 1),
+      efficiency: Number(el('efficiency').value || 0.9),
+      maxCyclesPerDay: Number(el('maxCyclesPerDay').value || 2),
+      eurToLei: Number(el('eurToLei').value || 4.97),
+      minSocPct: 10,
+      maxSocPct: 90,
+      costPerKwh: 200,
+      maxLifecycleCycles: 6000
     };
   }
 
-  var lastResult = null;
+  function loadStatic(){
+    if(!engine) throw new Error('official-engine.js nu este încărcat');
+    staticStore = engine.loadFromBrowserGlobals();
+    set('balancing-count', fmt(staticStore.balancingRecords.length) + ' intervale');
+    set('orion-count', fmt(staticStore.orionRecords.length) + ' records');
+    var cal = window.SERVIO_REAL_SITE_CALIBRATION_V29_FULL;
+    var calCount = cal && cal.records ? Object.keys(cal.records).length : 0;
+    set('calibration-state', calCount ? fmt(calCount) + ' profiluri' : '—');
+    var badge = el('data-badge');
+    if(badge){ badge.className='badge badge-green'; badge.textContent='static old data loaded'; }
+    set('source-updated', new Date().toLocaleString('ro-RO'));
+    return staticStore;
+  }
 
-  function renderResults(d) {
-    if (!d) return;
-    lastResult = d;
-    var body = document.getElementById('results-body');
-    var days = Number(d.totalDays || 0);
-    var rev = Number(d.totalRevenueEur || 0);
-    var cycles = Number(d.totalCycles || 0);
-    var avgDay = Number(d.avgDailyRevenueEur || 0);
-    var inv = parseFloat(document.getElementById('p-capacity').value) * parseFloat(document.getElementById('p-cost').value) * 1000;
-    var roiPct = inv > 0 ? Math.round(rev / inv * 100) : 0;
-    var paybackYears = avgDay > 0 ? (inv / (avgDay * 365)).toFixed(1) : '—';
-
-    document.getElementById('res-badge').className = 'badge ' + (rev > 0 ? 'badge-green' : 'badge-yellow');
-    document.getElementById('res-badge').textContent = rev > 0 ? 'Simulare OK' : 'Date insuficiente';
-
-    body.innerHTML = '<div class="results-grid">' +
-      '<div class="result-card"><div class="result-label">Venit total</div><div class="result-val">' + S.fmt(rev, 2) + '</div><div class="result-sub">EUR</div></div>' +
-      '<div class="result-card"><div class="result-label">Venit mediu/zi</div><div class="result-val">' + S.fmt(avgDay, 2) + '</div><div class="result-sub">EUR/zi</div></div>' +
-      '<div class="result-card"><div class="result-label">Zile simulate</div><div class="result-val">' + days + '</div><div class="result-sub">zile</div></div>' +
-      '<div class="result-card"><div class="result-label">Cicluri totale</div><div class="result-val">' + S.fmt(cycles, 0) + '</div><div class="result-sub">nr. cicluri</div></div>' +
-      '</div>' +
-      '<div class="roi-bar-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--c-text3);margin-bottom:6px"><span>ROI față de investiție</span><span id="roi-pct-label">' + roiPct + '%</span></div><div class="roi-bar"><div class="roi-fill" style="width:' + Math.min(100, roiPct) + '%"></div></div></div>' +
-      '<div class="row-item"><span class="row-label">Investiție totală estimată</span><span class="row-value">' + S.fmt(inv, 0) + ' EUR</span></div>' +
-      '<div class="row-item"><span class="row-label">Payback estimat</span><span class="row-value">' + paybackYears + ' ani</span></div>' +
-      '<div class="row-item"><span class="row-label">Venit anualizat (extrapolare)</span><span class="row-value">' + S.fmt(avgDay * 365, 0) + ' EUR/an</span></div>' +
-      (d.note ? '<div class="callout callout-warning" style="margin-top:12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' + d.note + '</div>' : '');
-
-    // Sim detail
-    if (d.periods && d.periods.length) {
-      var html = '<div class="table-wrap"><table class="data-table"><thead><tr><th>Perioadă</th><th>Zile</th><th>Cicluri</th><th>Venit EUR</th><th>EUR/zi</th></tr></thead><tbody>';
-      d.periods.forEach(function(p) {
-        html += '<tr><td class="mono">' + (p.from || '') + ' → ' + (p.to || '') + '</td><td>' + (p.days || '') + '</td><td>' + S.fmt(p.cycles, 0) + '</td><td>' + S.fmt(p.revenueEur, 2) + '</td><td>' + S.fmt(p.avgDailyEur, 2) + '</td></tr>';
-      });
-      html += '</tbody></table></div>';
-      document.getElementById('sim-detail-body').innerHTML = html;
-      document.getElementById('sim-meta').textContent = d.periods.length + ' perioade';
+  function run(){
+    try{
+      var store = staticStore || loadStatic();
+      var p = params();
+      var preset = el('preset').value || 'night';
+      var schedule = engine.presetWindowSchedule(preset, p);
+      var result = engine.simulate(store.balancingRecords, p, store.orionRecords, schedule);
+      set('kpi-revenue', fmt(result.totalRevenueEur) + ' €');
+      set('kpi-daily', fmt(result.avgDailyRevenueEur) + ' €');
+      set('kpi-cycles', fmt(result.totalCycles));
+      var diag = result.diagnostic || {};
+      set('range-meta', (diag.dateMin || '—') + ' → ' + (diag.dateMax || '—') + ' · ' + fmt(diag.balancingRecords) + ' intervals');
+      var monthly = (result.monthlyData || []).slice(-18).map(function(r){
+        return '<tr><td>'+r.month+'</td><td>'+fmt(r.revenue)+'</td><td>'+fmt(r.cumulative)+'</td></tr>';
+      }).join('');
+      el('monthly-tbody').innerHTML = monthly || '<tr><td colspan="3">Nu există rezultate lunare.</td></tr>';
+      var rows = (result.intervalResults || []).filter(function(r){return r.action && r.action !== 'idle';}).slice(0,36).map(function(r){
+        return '<tr><td>'+r.date+'</td><td>'+r.interval+'</td><td><span class="badge badge-gray">'+r.action+'</span></td><td>'+fmt(r.price,2)+'</td><td>'+fmt(r.energy,3)+'</td><td>'+fmt(r.revenue,2)+'</td><td>'+fmt(r.soc,3)+'</td></tr>';
+      }).join('');
+      el('dispatch-tbody').innerHTML = rows || '<tr><td colspan="7">Nu există dispatch activ.</td></tr>';
+    }catch(err){
+      console.error(err);
+      var badge = el('data-badge');
+      if(badge){ badge.className='badge badge-red'; badge.textContent=String(err.message || err); }
     }
   }
 
-  document.getElementById('btn-calculate').addEventListener('click', function() {
-    var btn = this;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner"></span>Se calculează...';
-    var params = getParams();
-    var from = document.getElementById('p-from').value;
-    var to = document.getElementById('p-to').value;
-    var preset = document.getElementById('p-preset').value;
+  function checkSources(){
+    set('entsoe-state','checking...'); set('opcom-state','checking...');
+    fetch('/api/servio/entsoe/status').then(function(r){return r.json();}).then(function(d){
+      set('entsoe-state', d && d.ok ? 'valid · token ' + (d.tokenPresent ? 'present' : 'missing') : 'error');
+    }).catch(function(){ set('entsoe-state','offline'); });
+    var day = new Date().toISOString().slice(0,10);
+    fetch('/api/servio/opcom/day-ahead/records?date='+day+'&limit=96&autoSync=0').then(function(r){return r.json();}).then(function(d){
+      var n = d && (d.records ? d.records.length : d.totalMatched || 0);
+      set('opcom-state', d && d.ok ? 'valid · '+fmt(n)+' records' : 'valid endpoint · no records');
+    }).catch(function(){ set('opcom-state','offline'); });
+  }
 
-    fetch('/api/servio/simulate-market-period', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: params, from: from, to: to, preset: preset })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      btn.disabled = false;
-      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Calculează';
-      if (d && (d.totalRevenueEur !== undefined || d.revenue !== undefined)) {
-        if (d.revenue !== undefined && d.totalRevenueEur === undefined) d.totalRevenueEur = d.revenue;
-        if (d.avgDailyRevenue !== undefined && d.avgDailyRevenueEur === undefined) d.avgDailyRevenueEur = d.avgDailyRevenue;
-        renderResults(d);
-      } else if (d && d.error) {
-        document.getElementById('results-body').innerHTML = '<div class="callout callout-error"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>' + d.error + '</div>';
-      }
-    })
-    .catch(function(e) {
-      btn.disabled = false;
-      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Calculează';
-      document.getElementById('results-body').innerHTML = '<div class="callout callout-error">Eroare: ' + e.message + '</div>';
-    });
-  });
-
-  document.getElementById('btn-forecast').addEventListener('click', function() {
-    var btn = this;
-    btn.disabled = true; btn.textContent = 'Se calculează...';
-    var params = getParams();
-    var today = new Date();
-    var startMonth = today.toISOString().slice(0, 7);
-
-    fetch('/api/servio/forecast/p10-p50-p90', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ params: params, startMonth: startMonth, horizonMonths: 12 })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
-      btn.disabled = false; btn.textContent = 'Rulează forecast';
-      if (!d) return;
-      var body = document.getElementById('forecast-body');
-      var scenarios = d.scenarios || {};
-      body.innerHTML = '<div class="cards-grid-3" style="grid-template-columns:repeat(3,1fr);gap:12px;">' +
-        ['p10', 'p50', 'p90'].map(function(k) {
-          var sc = scenarios[k] || {};
-          return '<div class="result-card"><div class="result-label">' + k.toUpperCase() + ' ' + (k === 'p10' ? '(pesimist)' : k === 'p90' ? '(optimist)' : '(median)') + '</div>' +
-            '<div class="result-val">' + S.fmt(sc.annualRevenueEur, 0) + '</div><div class="result-sub">EUR/an</div>' +
-            '<div style="margin-top:8px"><div class="result-label" style="margin-bottom:2px">Payback</div><div style="font-size:16px;font-weight:600">' + (sc.paybackYears ? sc.paybackYears.toFixed(1) + ' ani' : '—') + '</div></div>' +
-            '</div>';
-        }).join('') + '</div>';
-    })
-    .catch(function() { btn.disabled = false; btn.textContent = 'Rulează forecast'; });
+  document.addEventListener('DOMContentLoaded', function(){
+    if(el('run-sim')) el('run-sim').addEventListener('click', run);
+    if(el('check-sources')) el('check-sources').addEventListener('click', checkSources);
+    ['capacityMWh','maxChargeMW','maxDischargeMW','efficiency','maxCyclesPerDay','eurToLei','preset'].forEach(function(id){ var x=el(id); if(x) x.addEventListener('change', run); });
+    loadStatic(); run(); checkSources();
   });
 })();
 </script>
+
 </body>
 </html>
