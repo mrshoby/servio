@@ -1,36 +1,10 @@
-{
-  "routes": [
-    {
-      "name": "load-curve-root",
-      "path": "/"
-    },
-    {
-      "name": "load-curve",
-      "path": "/incarcare-curba-sarcina.html"
-    },
-    {
-      "name": "battery-revenue",
-      "path": "/battery-revenue-simulator"
-    },
-    {
-      "name": "battery-revenue-html",
-      "path": "/battery-revenue-simulator.html"
-    },
-    {
-      "name": "day-ahead",
-      "path": "/day-ahead"
-    },
-    {
-      "name": "day-ahead-html",
-      "path": "/day-ahead.html"
-    },
-    {
-      "name": "future-scenarios",
-      "path": "/future-scenarios"
-    },
-    {
-      "name": "electricity-map",
-      "path": "/electricity-map"
-    }
-  ]
-}
+[
+  "/",
+  "/incarcare-curba-sarcina.html",
+  "/battery-revenue-simulator",
+  "/battery-calculator",
+  "/day-ahead",
+  "/future-scenarios",
+  "/electricity-map",
+  "/relay-sources"
+]

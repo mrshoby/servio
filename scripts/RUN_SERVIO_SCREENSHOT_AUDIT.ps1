@@ -7,7 +7,7 @@ param(
   [switch]$AllowFailures
 )
 $ErrorActionPreference = "Stop"
-Write-Host "SERVIO screenshot audit v36.7"
+Write-Host "SERVIO screenshot audit v36.12"
 Write-Host "Url=$Url Stage=$Stage AllowFailures=$AllowFailures"
 if (!(Get-Command node -ErrorAction SilentlyContinue)) { throw "Node.js nu este instalat sau nu este in PATH." }
 if (!(Test-Path $RoutesFile)) { throw "Nu gasesc $RoutesFile" }
@@ -22,4 +22,4 @@ if ($exitCode -ne 0) {
   if ($AllowFailures) { Write-Warning "Screenshot audit a raportat probleme si exit code $exitCode, dar continui pentru ca -AllowFailures este activ. Verifica raportul din $OutputRoot\reports." }
   else { throw "Screenshot audit failed cu exit code $exitCode. Pentru audit diagnostic foloseste -AllowFailures." }
 }
-Write-Host "Screenshot audit completed: $OutputRoot\screenshots\v36_7\$Stage"
+Write-Host "Screenshot audit completed: $OutputRoot\screenshots\v36_12\$Stage"

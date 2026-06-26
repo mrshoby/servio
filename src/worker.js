@@ -1,7 +1,7 @@
 
 import './official-engine-worker.js';
 
-const VERSION = 'v36.11-dark-theme-purge-revenue-only-fix';
+const VERSION = 'v36.12-servio-jsx-shell-revenue-official-sources';
 const SERVIO_VERSION = VERSION;
 const Engine = globalThis.InowattioOfficialEngine;
 let CACHE = null;
@@ -1311,7 +1311,7 @@ function shellTitleForAssetPath(path){
     '/dashboard/day-ahead-operations.html':'SERVIO · Day-Ahead',
     '/dashboard/future-scenarios.html':'SERVIO · Scenarii viitoare',
     '/dashboard/electricity-map.html':'SERVIO · Hartă energie',
-    '/dashboard/relay-sources.html':'SERVIO · Relay & Surse date'
+    '/dashboard/relay-sources.html':'SERVIO · Surse OPCOM / ENTSO-E'
   };
   return titles[path] || 'SERVIO · Consum / Curba de sarcină';
 }
@@ -1326,7 +1326,7 @@ function pathForRoute(pathname){
     '/':'/dashboard/load-curve.html','/index.html':'/dashboard/load-curve.html','/login':'/dashboard/load-curve.html','/login.html':'/dashboard/load-curve.html','/module-menu':'/dashboard/load-curve.html','/modules':'/dashboard/load-curve.html',
     '/incarcare-curba-sarcina.html':'/dashboard/load-curve.html','/consum':'/dashboard/load-curve.html','/load-curve':'/dashboard/load-curve.html',
     '/calculator-baterie.html':'/dashboard/battery-revenue-simulator.html','/battery-calculator':'/dashboard/battery-revenue-simulator.html','/battery-calculator.html':'/dashboard/battery-revenue-simulator.html','/battery-calculator-full':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-calculator.html':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-calculator-full':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator.html':'/dashboard/battery-revenue-simulator.html','/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html','/dashboard/battery-revenue-simulator-full':'/dashboard/battery-revenue-simulator.html',
-    '/day-ahead':'/dashboard/day-ahead-operations.html','/day-ahead.html':'/dashboard/day-ahead-operations.html','/day-ahead-operations':'/dashboard/day-ahead-operations.html','/day-ahead-full':'/dashboard/day-ahead-operations.html','/dashboard/day-ahead-operations-full':'/dashboard/day-ahead-operations.html','/future-scenarios.html':'/dashboard/future-scenarios.html','/future-scenarios':'/dashboard/future-scenarios.html','/future-scenarios-full':'/dashboard/future-scenarios.html','/dashboard/future-scenarios-full':'/dashboard/future-scenarios.html','/relay-sources':'/dashboard/load-curve.html','/sources':'/dashboard/load-curve.html','/surse-date':'/dashboard/load-curve.html','/electricity-map.html':'/dashboard/electricity-map.html','/electricity-map':'/dashboard/electricity-map.html','/electricity-map-full':'/dashboard/electricity-map.html','/dashboard/electricity-map-full':'/dashboard/electricity-map.html','/electricity-maps':'/dashboard/electricity-map.html','/grid-map':'/dashboard/electricity-map.html','/carbon-map':'/dashboard/electricity-map.html'
+    '/day-ahead':'/dashboard/day-ahead-operations.html','/day-ahead.html':'/dashboard/day-ahead-operations.html','/day-ahead-operations':'/dashboard/day-ahead-operations.html','/day-ahead-full':'/dashboard/day-ahead-operations.html','/dashboard/day-ahead-operations-full':'/dashboard/day-ahead-operations.html','/future-scenarios.html':'/dashboard/future-scenarios.html','/future-scenarios':'/dashboard/future-scenarios.html','/future-scenarios-full':'/dashboard/future-scenarios.html','/dashboard/future-scenarios-full':'/dashboard/future-scenarios.html','/relay-sources':'/dashboard/relay-sources.html','/sources':'/dashboard/relay-sources.html','/surse-date':'/dashboard/relay-sources.html','/electricity-map.html':'/dashboard/electricity-map.html','/electricity-map':'/dashboard/electricity-map.html','/electricity-map-full':'/dashboard/electricity-map.html','/dashboard/electricity-map-full':'/dashboard/electricity-map.html','/electricity-maps':'/dashboard/electricity-map.html','/grid-map':'/dashboard/electricity-map.html','/carbon-map':'/dashboard/electricity-map.html'
   };
   return map[pathname] || null;
 }
