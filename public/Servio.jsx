@@ -821,22 +821,13 @@ function Palette({ open, setOpen, go }) {
 }
 
 /* ============================ App shell ============================ */
-export default function App() {
-  const [view, setView] = useState(() => {
-    const p = (globalThis.location && globalThis.location.pathname ? globalThis.location.pathname : "/").toLowerCase();
-    if (p.includes("battery") || p.includes("bess")) return "battery";
-    if (p.includes("day-ahead") || p.includes("dayahead") || p.includes("pzu")) return "dayahead";
-    if (p.includes("forecast") || p.includes("prognoza")) return "forecast";
-    if (p.includes("map") || p.includes("harta")) return "map";
-    if (p.includes("sources") || p.includes("relay") || p.includes("surse")) return "sources";
-    if (p.includes("settings") || p.includes("setari")) return "settings";
-    return "overview";
-  });
+function App() {
+  const [view, setView] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState("dark");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [navQuery, setNavQuery] = useState("");
-  const [apiBase, setApiBase] = useState(() => (globalThis.location && globalThis.location.origin) || "");
+  const [apiBase, setApiBase] = useState("");
   const [apiToken, setApiToken] = useState("");
   const md = useMarketData(apiBase, apiToken);
   const market = useMarketNow();
@@ -1232,5 +1223,4 @@ const CSS = `
 `;
 
 
-const __servioRoot = document.getElementById("root");
-if (__servioRoot) createRoot(__servioRoot).render(<App />);
+createRoot(document.getElementById("root")).render(<App />);

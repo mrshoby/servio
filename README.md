@@ -1,5 +1,3 @@
-# SERVIO Claude JSX exact + OPCOM/ENTSO-E API fix
+# SERVIO Claude JSX exact ReactDOM importmap final fix
 
-Bază UI: fișierul încărcat `Servio (2).jsx`.
-
-Nu reconstruiește shell-ul. Worker-ul servește exact preview-ul React/JSX Claude și expune endpointurile `/api/servio/*` pentru OPCOM/ENTSO-E/Transelectrica.
+Foloseste direct `Servio (2).jsx` ca UI si adauga importmap corect pentru `react-dom`. Nu foloseste assets, D1 sau shell custom.

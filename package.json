@@ -1,9 +1,12 @@
 {
   "name": "servio-claude-jsx-exact",
   "version": "1.0.0",
-  "private": true,
+  "type": "module",
   "scripts": {
     "check": "node --check src/worker.js",
     "deploy": "wrangler deploy --config wrangler.toml"
+  },
+  "devDependencies": {
+    "wrangler": "^4.105.0"
   }
 }
