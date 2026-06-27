@@ -370,20 +370,71 @@ function DayAhead({ md }) {
 
 /* ============================ Battery (BESS) ============================ */
 /* ============================ Battery Revenue Simulator (full) ============================ */
+
+const INOWATTIO_OLD_BESS_DEFAULTS = Object.freeze({
+  capacityMWh: 2,
+  maxChargePowerMW: 1,
+  maxDischargePowerMW: 1,
+  efficiencyPct: 90,
+  maxCyclesDay: 2,
+  minSocPct: 10,
+  maxSocPct: 90,
+  batteryCostEurKwh: 200,
+  eurRon: 4.97,
+  lifecycleCycles: 6000,
+  fixedOmEurYear: 0,
+  discountPct: 8,
+  projectYears: 10,
+});
+function inowattioBatteryProfile(sp) {
+  const capacityMWh = Math.max(0.001, Number(sp.capacityMWh ?? INOWATTIO_OLD_BESS_DEFAULTS.capacityMWh));
+  const powerCap = Math.max(0.001, capacityMWh / 2);
+  let minSocPct = Math.max(0, Math.min(99, Number(sp.minSocPct ?? 10)));
+  let maxSocPct = Math.max(1, Math.min(100, Number(sp.maxSocPct ?? 90)));
+  if (maxSocPct <= minSocPct) maxSocPct = Math.min(100, minSocPct + 1);
+  const maxChargeMW = Math.min(powerCap, Math.max(0.001, Number(sp.maxChargePowerMW ?? 1)));
+  const maxDischargeMW = Math.min(powerCap, Math.max(0.001, Number(sp.maxDischargePowerMW ?? 1)));
+  const efficiency = Math.max(0.01, Math.min(1, Number(sp.efficiencyPct ?? 90) / 100));
+  const usableCapacity = capacityMWh * (maxSocPct - minSocPct) / 100;
+  const usableDischarge = usableCapacity * efficiency;
+  const chargePerInterval = 0.25 * maxChargeMW;
+  const dischargePerInterval = 0.25 * maxDischargeMW;
+  const perCharge = Math.ceil(usableCapacity / Math.max(0.000001, chargePerInterval));
+  const perDischarge = Math.ceil(usableDischarge / Math.max(0.000001, dischargePerInterval));
+  const maxFullCyclesByDay = Math.max(1, Math.floor(96 / Math.max(1, perCharge + perDischarge)));
+  const maxCyclesDay = Math.min(Math.max(0, Number(sp.maxCyclesDay ?? 2)), maxFullCyclesByDay);
+  return { capacityMWh, maxChargeMW, maxDischargeMW, efficiency, minSocPct, maxSocPct, usableCapacity, usableDischarge, chargePerInterval, dischargePerInterval, maxCyclesDay };
+}
+function inowattioThresholds(sp) {
+  const profile = inowattioBatteryProfile(sp);
+  const costPerKwh = Math.max(0, Number(sp.batteryCostEurKwh ?? 200));
+  const eurToLei = Math.max(0.000001, Number(sp.eurRon ?? 4.97));
+  const lifecycleCycles = Math.max(1, Number(sp.lifecycleCycles ?? 6000));
+  const totalInvestmentEur = costPerKwh * profile.capacityMWh * 1000;
+  const totalInvestmentLei = totalInvestmentEur * eurToLei;
+  const degradationLeiPerCycle = totalInvestmentLei / lifecycleCycles;
+  const degradationCostRonMwh = profile.usableCapacity > 0 ? degradationLeiPerCycle / profile.usableCapacity : 0;
+  const minDischargePriceRonMwh = profile.usableCapacity > 0 ? degradationCostRonMwh / profile.efficiency : 0;
+  const maxChargePriceRonMwh = -degradationCostRonMwh;
+  const maxIdChargePriceRonMwh = minDischargePriceRonMwh * profile.efficiency - degradationCostRonMwh;
+  return { ...profile, totalInvestmentEur, totalInvestmentLei, degradationLeiPerCycle, degradationCostRonMwh, maxChargePriceRonMwh, minDischargePriceRonMwh, maxIdChargePriceRonMwh };
+}
+
 const SHAPE24 = (() => { const s = Array.from({ length: 24 }, (_, h) => 430 + 520 * gauss(h, 8, 2) - 150 * gauss(h, 13, 2.6) + 660 * gauss(h, 19.5, 2.1) - 120 * gauss(h, 3, 3.2)); const m = s.reduce((a, b) => a + b, 0) / 24; const c = s.map((x) => x - m); const sc = Math.max(...c.map((x) => Math.abs(x))); return c.map((x) => x / sc); })();
 const DISP_PRESETS = {
-  conservative: { label: "Conservative", charge: [2, 3, 4], discharge: [19, 20] },
-  balanced: { label: "Balanced", charge: [2, 3, 4, 5], discharge: [18, 19, 20, 21] },
-  aggressive: { label: "Aggressive", charge: [0, 1, 2, 3, 4, 13, 14], discharge: [7, 8, 18, 19, 20, 21] },
-  peak: { label: "Peak shaving", charge: [12, 13, 14], discharge: [18, 19, 20] },
+  night: { label: "Night", charge: [0, 1, 2, 3, 4, 5], discharge: [17, 18, 19, 20, 21] },
+  offpeak: { label: "Off-Peak → Peak", charge: [0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15], discharge: [6, 7, 8, 9, 17, 18, 19, 20, 21] },
+  pv: { label: "PV midday", charge: [10, 11, 12, 13, 14, 15], discharge: [17, 18, 19, 20, 21] },
+  clear: { label: "Clear", charge: [], discharge: [] },
 };
 function presetGrid(name) { const p = DISP_PRESETS[name] || DISP_PRESETS.balanced; return Array.from({ length: 24 }, (_, h) => p.charge.includes(h) ? "charge" : p.discharge.includes(h) ? "discharge" : "idle"); }
 function download(name, text, type = "text/plain") { const b = new Blob([text], { type }); const u = URL.createObjectURL(b); const a = document.createElement("a"); a.href = u; a.download = name; a.click(); URL.revokeObjectURL(u); }
 const daysBetween = (a, b) => Math.max(1, Math.round((new Date(b) - new Date(a)) / 86400000) + 1);
 
 function runRevenue(sp, grid, fromD, toD) {
-  const eur = sp.eurRon || 4.97, eff = (sp.efficiencyPct || 88) / 100;
-  const usable = sp.capacityMWh * Math.max(0, (sp.maxSocPct - sp.minSocPct)) / 100;
+  const th = inowattioThresholds(sp);
+  const eur = sp.eurRon || 4.97, eff = th.efficiency;
+  const usable = th.usableCapacity;
   const r = rng(99);
   const out = []; const cur = new Date(fromD); const end = new Date(toD); let guard = 0;
   while (cur <= end && guard < 1200) {
@@ -393,12 +444,12 @@ function runRevenue(sp, grid, fromD, toD) {
     else { const doy = Math.floor((cur - new Date(cur.getFullYear(), 0, 0)) / 86400000); const winter = 0.5 + 0.5 * Math.cos((doy - 15) / 365 * 2 * Math.PI); avgLei = 560 + 180 * winter; spreadLei = (430 + 360 * winter) * (0.85 + 0.3 * r()); shapeArr = SHAPE24; }
     const price = shapeArr.map((n) => avgLei + n * spreadLei * 0.5);
     const cH = []; const dH = [];
-    for (let h = 0; h < 24; h++) { if (grid[h] === "charge" && price[h] <= sp.maxChargePriceRonMwh) cH.push(h); if (grid[h] === "discharge" && price[h] >= sp.minDischargePriceRonMwh) dH.push(h); }
-    const chargeE = Math.min(usable, sp.maxChargePowerMW * cH.length);
-    const dischargeE = Math.min(chargeE * eff, sp.maxDischargePowerMW * dH.length, usable);
+    for (let h = 0; h < 24; h++) { if (grid[h] === "charge" && price[h] <= th.maxChargePriceRonMwh) cH.push(h); if (grid[h] === "discharge" && price[h] >= th.minDischargePriceRonMwh) dH.push(h); }
+    const chargeE = Math.min(usable, th.maxChargeMW * cH.length);
+    const dischargeE = Math.min(chargeE * eff, th.maxDischargeMW * dH.length, usable);
     const avgC = cH.length ? cH.reduce((a, h) => a + price[h], 0) / cH.length / eur : 0;
     const avgD = dH.length ? dH.reduce((a, h) => a + price[h], 0) / dH.length / eur : 0;
-    const degr = (sp.degradationCostRonMwh / eur) * dischargeE;
+    const degr = (th.degradationCostRonMwh / eur) * dischargeE;
     const rev = dischargeE * avgD - (chargeE * avgC) / eff - degr;
     out.push({ date: new Date(cur), m: cur.getMonth(), y: cur.getFullYear(), rev, cycles: sp.capacityMWh ? dischargeE / sp.capacityMWh : 0, charge: cH.length, discharge: dH.length });
     cur.setDate(cur.getDate() + 1); guard++;
@@ -411,11 +462,16 @@ function runRevenue(sp, grid, fromD, toD) {
   out.forEach((d) => { const k = d.y + "-" + String(d.m + 1).padStart(2, "0"); (mmap[k] = mmap[k] || { month: k, revenueEur: 0, cycles: 0, charge: 0, discharge: 0, idCharge: 0 }); mmap[k].revenueEur += d.rev; mmap[k].cycles += d.cycles; mmap[k].charge += d.charge; mmap[k].discharge += d.discharge; });
   const months = Object.values(mmap).sort((a, b) => a.month.localeCompare(b.month));
   let cum = 0; months.forEach((m) => { cum += m.revenueEur; m.cumulativeEur = cum; });
-  const investment = sp.capacityMWh * 1000 * sp.batteryCostEurKwh;
+  const investment = th.totalInvestmentEur;
   const annual = avgDaily * 365 - (sp.fixedOmEurYear || 0);
   const roi = investment ? (annual / investment) * 100 : 0;
   const payback = annual > 0 ? investment / annual : null;
   return { months, totalRevenue, avgMonthly: totalRevenue / (months.length || 1), avgDaily, totalCycles, avgCyclesPerDay: totalCycles / days, days, totalMonths: months.length, investment, annual, roi, payback };
+}
+
+
+function MiniMetric({ label, value, sub }) {
+  return <div className="kpi compact"><div className="klabel">{label}</div><div className="kval">{value}</div><div className="ksub">{sub}</div></div>;
 }
 
 function In({ label, value, set, unit, step = 1, type = "number" }) {
@@ -428,20 +484,17 @@ function In({ label, value, set, unit, step = 1, type = "number" }) {
 }
 
 function Battery() {
-  const [sp, setSp] = useState({
-    capacityMWh: 2, maxChargePowerMW: 1, maxDischargePowerMW: 1, efficiencyPct: 88, maxCyclesDay: 2, minSocPct: 10, maxSocPct: 95,
-    batteryCostEurKwh: 200, eurRon: 4.97, lifecycleCycles: 6000, fixedOmEurYear: 4000, discountPct: 8, projectYears: 10,
-    degradationCostRonMwh: 120, maxChargePriceRonMwh: 700, minDischargePriceRonMwh: 450, maxIdChargePriceRonMwh: 400,
-  });
+  const [sp, setSp] = useState({ ...INOWATTIO_OLD_BESS_DEFAULTS });
   const set = (k) => (v) => setSp((s) => ({ ...s, [k]: v }));
-  const [grid, setGrid] = useState(() => presetGrid("balanced"));
+  const [grid, setGrid] = useState(() => presetGrid("night"));
   const [brush, setBrush] = useState("charge");
-  const [activePreset, setActivePreset] = useState("balanced");
+  const [activePreset, setActivePreset] = useState("night");
   const [custom, setCustom] = useState(false);
   const [from, setFrom] = useState("2023-10-01");
   const [to, setTo] = useState("2025-12-31");
   const fromEff = custom ? from : REAL.start;
   const toEff = custom ? to : REAL.stats.end;
+  const th = useMemo(() => inowattioThresholds(sp), [sp]);
 
   const res = useMemo(() => runRevenue(sp, grid, fromEff, toEff), [sp, grid, fromEff, toEff]);
   const scenarios = useMemo(() => Object.keys(DISP_PRESETS).map((k) => { const rr = runRevenue(sp, presetGrid(k), fromEff, toEff); return { key: k, label: DISP_PRESETS[k].label, investment: rr.investment, annual: rr.annual, payback: rr.payback }; }), [sp, fromEff, toEff]);
@@ -494,13 +547,14 @@ function Battery() {
 
       <div className="grid2">
         {/* Price Thresholds */}
-        <Card title="Price Thresholds">
-          <div className="ingrid">
-            <In label="Degradation cost" value={sp.degradationCostRonMwh} set={set("degradationCostRonMwh")} unit="lei/MWh" step={10} />
-            <In label="Max charge price" value={sp.maxChargePriceRonMwh} set={set("maxChargePriceRonMwh")} unit="lei/MWh" step={10} />
-            <In label="Min discharge price" value={sp.minDischargePriceRonMwh} set={set("minDischargePriceRonMwh")} unit="lei/MWh" step={10} />
-            <In label="Max ID charge price" value={sp.maxIdChargePriceRonMwh} set={set("maxIdChargePriceRonMwh")} unit="lei/MWh" step={10} />
+        <Card title="Price Thresholds · Inowattio old engine">
+          <div className="kpirow mini">
+            <MiniMetric label="Degradation Cost" value={fmt(th.degradationCostRonMwh) + " lei/MWh"} sub={fmt(th.degradationLeiPerCycle) + " lei/cycle"} />
+            <MiniMetric label="Max Charge Price" value={fmt(th.maxChargePriceRonMwh) + " lei/MWh"} sub="Charge only below this" />
+            <MiniMetric label="Min Discharge Price" value={fmt(th.minDischargePriceRonMwh) + " lei/MWh"} sub="Discharge above this" />
+            <MiniMetric label="Max ID Charge Price" value={fmt(th.maxIdChargePriceRonMwh) + " lei/MWh"} sub="Inowattio parity" />
           </div>
+          <div className="hint" style={{ marginTop: 12 }}><Sparkles size={13} /> Valorile sunt calculate automat ca în vechiul engine Inowattio: investiție / cicluri de viață / capacitate utilizabilă. Nu mai sunt praguri manuale.</div>
         </Card>
 
         {/* Custom Simulation Period */}
@@ -515,9 +569,10 @@ function Battery() {
           </div>
           <div className="apiactions">
             <button className="btn ghost" onClick={() => { setCustom(false); }}><Database size={14} /> Use full dataset</button>
+            <button className="btn ghost" onClick={() => { setSp({ ...INOWATTIO_OLD_BESS_DEFAULTS }); setGrid(presetGrid("night")); setActivePreset("night"); }}><RefreshCw size={14} /> Reset Inowattio values</button>
             <span className="dim small">{daysBetween(fromEff, toEff)} zile · {res.totalMonths} luni</span>
           </div>
-          <div className="hint" style={{ marginTop: 12 }}><Database size={13} /> Date reale OPCOM/ENTSO-E: <b>{REAL.stats.days} zile</b> · {REAL.start} → {REAL.stats.end} · medie {fmt(REAL.stats.avg)} Lei/MWh · <b>{REAL.stats.neg}%</b> intervale negative.</div>
+          <div className="hint" style={{ marginTop: 12 }}><Database size={13} /> Date vechi Inowattio/OPCOM/ENTSO-E: <b>{REAL.stats.days} zile</b> · {REAL.start} → {REAL.stats.end} · medie {fmt(REAL.stats.avg)} Lei/MWh · <b>{REAL.stats.neg}%</b> intervale negative.</div>
         </Card>
       </div>
 
