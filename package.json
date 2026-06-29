@@ -1,6 +1,6 @@
 {
-  "name": "servio-claude-jsx-good-bess-db-entsoe-ro-time-fix",
-  "version": "1.0.6",
+  "name": "servio-claude-jsx-good-bess-db-grid-map",
+  "version": "1.0.7",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
