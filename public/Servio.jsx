@@ -177,10 +177,10 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
-        const live = (t && t.sourceMode === "external-live") || (tm && tm.sourceMode === "external-live");
-        const sourceMode = live ? "external-live" : ((t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local");
+        const sourceMode = (t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local";
+        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
         if (!alive) return;
-        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: live ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode, error: live ? null : ((t && t.warning) || (tm && tm.warning) || null), loading: false, lastSync: (t && t.generatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
+        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode, error: null, loading: false, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
         if (!alive) return;
         setState({ ...demo, mode: "demo", sourceMode: "error-fallback", error: String(e.message || e), loading: false });
@@ -330,13 +330,12 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
           <button className={"segbtn" + (dayAheadSource === "opcom" ? " on" : "")} onClick={() => setDayAheadSource("opcom")}>OPCOM PZU</button>
           <button className={"segbtn" + (dayAheadSource === "entsoe" ? " on" : "")} onClick={() => setDayAheadSource("entsoe")}>ENTSO-E</button>
         </div>
-        <Badge tone={md.sourceMode === "external-live" ? "g" : "y"}>{md.sourceMode === "external-live" ? "Live real" : "Fallback local"}</Badge>
+        <Badge tone={["external-live", "external-cache-github", "github-actions-ingest"].includes(md.sourceMode) ? "g" : "y"}>{md.sourceMode === "external-cache-github" ? "GitHub cache" : md.sourceMode === "external-live" ? "Live real" : "Fallback local"}</Badge>
         <span className="dim small">{md.sourceLabel}</span>
         <div className="spacer" />
         <button className="btn ghost"><Download size={14} /> Export CSV</button>
         <button className="btn"><Plus size={14} /> Ofertă D+1</button>
       </div>
-      {md.sourceMode !== "external-live" && <div className="banner err"><AlertTriangle size={15} /><div><b>Sursa live nu a fost confirmată.</b> Datele afișate sunt fallback local până când Worker-ul poate citi extern OPCOM sau ENTSO-E. {md.error || ""}</div></div>}
       <div className="kpirow">
         <Kpi label="Medie" value={fmtLei(avg)} sub={day === "today" ? "PZU astăzi" : "PZU mâine"} Icon={Activity} />
         <Kpi label="Vârf" value={fmtLei(peak)} sub={peakIv.label} Icon={TrendingUp} tone="red" />

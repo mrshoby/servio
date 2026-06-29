@@ -1,6 +1,6 @@
 {
-  "name": "servio-claude-jsx-good-bess-db-pzu-source-selector-no-relay",
-  "version": "1.0.3",
+  "name": "servio-claude-jsx-good-bess-db-opcom-github-cache-no-ui-warning",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
