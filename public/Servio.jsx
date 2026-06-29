@@ -140,8 +140,8 @@ const ENDPOINTS = {
   load: "/api/servio/entsoe/load",
 };
 const DAY_AHEAD_SOURCES = {
-  opcom: { label: "OPCOM PZU", short: "OPCOM", endpoint: ENDPOINTS.dayAheadOpcom, unit: "Lei/MWh" },
-  entsoe: { label: "ENTSO-E Transparency", short: "ENTSO-E", endpoint: ENDPOINTS.dayAheadEntsoe, unit: "Lei/MWh" },
+  opcom: { label: "OPCOM", short: "OPCOM", endpoint: ENDPOINTS.dayAheadOpcom, unit: "Lei/MWh" },
+  entsoe: { label: "ENTSO-E", short: "ENTSO-E", endpoint: ENDPOINTS.dayAheadEntsoe, unit: "Lei/MWh" },
 };
 async function apiGet(base, path, token) {
   const r = await fetch(base.replace(/\/$/, "") + path, { headers: token ? { Authorization: "Bearer " + token } : {} });
@@ -298,7 +298,7 @@ function Overview({ go, md }) {
 
         <Card title="Necesită atenție" right={<Badge tone="y">3</Badge>}>
           <div className="alerts">
-            <button className="alert" onClick={() => go("dayahead")}><span className="aicn a"><Activity size={14} /></span><div><div className="atitle">Alege sursa PZU live</div><div className="asub">OPCOM PZU sau ENTSO-E direct în pagina Day-Ahead</div></div><ChevronRight size={15} className="achev" /></button>
+            <button className="alert" onClick={() => go("dayahead")}><span className="aicn a"><Activity size={14} /></span><div><div className="atitle">Alege sursa PZU</div><div className="asub">OPCOM sau ENTSO-E în pagina Day-Ahead</div></div><ChevronRight size={15} className="achev" /></button>
             <button className="alert" onClick={() => go("dayahead")}><span className="aicn a"><TrendingUp size={14} /></span><div><div className="atitle">Vârf de preț la 19:30</div><div className="asub">1.080 Lei/MWh · descărcare recomandată</div></div><ChevronRight size={15} className="achev" /></button>
             <button className="alert" onClick={() => go("forecast")}><span className="aicn b"><Wind size={14} /></span><div><div className="atitle">Prognoză PV revizuită</div><div className="asub">−8% mâine · nebulozitate ridicată</div></div><ChevronRight size={15} className="achev" /></button>
           </div>
@@ -327,11 +327,9 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
           <button className={"segbtn" + (day === "tomorrow" ? " on" : "")} onClick={() => setDay("tomorrow")}>Mâine</button>
         </div>
         <div className="seg">
-          <button className={"segbtn" + (dayAheadSource === "opcom" ? " on" : "")} onClick={() => setDayAheadSource("opcom")}>OPCOM PZU</button>
+          <button className={"segbtn" + (dayAheadSource === "opcom" ? " on" : "")} onClick={() => setDayAheadSource("opcom")}>OPCOM</button>
           <button className={"segbtn" + (dayAheadSource === "entsoe" ? " on" : "")} onClick={() => setDayAheadSource("entsoe")}>ENTSO-E</button>
         </div>
-        <Badge tone={["external-live", "external-cache-github", "github-actions-ingest"].includes(md.sourceMode) ? "g" : "y"}>{md.sourceMode === "external-cache-github" ? "GitHub cache" : md.sourceMode === "external-live" ? "Live real" : "Fallback local"}</Badge>
-        <span className="dim small">{md.sourceLabel}</span>
         <div className="spacer" />
         <button className="btn ghost"><Download size={14} /> Export CSV</button>
         <button className="btn"><Plus size={14} /> Ofertă D+1</button>
@@ -342,7 +340,7 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
         <Kpi label="Minim" value={fmtLei(trough)} sub={lowIv.label} Icon={TrendingDown} tone="green" />
         <Kpi label="Spread" value={fmtLei(spread)} sub="oportunitate arbitraj" Icon={Layers} tone="accent" />
       </div>
-      <Card title={"Preț la 15 minute · " + (day === "today" ? "astăzi" : "mâine") + " · " + md.sourceLabel} pad={false}>
+      <Card title={"Preț la 15 minute · " + (day === "today" ? "astăzi" : "mâine")} pad={false}>
         <div className="hero">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={curve} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}>
@@ -999,7 +997,6 @@ function App() {
         <header className="topbar">
           <div className="crumbs"><span className="crumb dim">Servio</span><ChevronRight size={13} className="crsep" /><span className="crumb">{TITLES[view]}</span></div>
           <div className="topspace" />
-          <div className={"datamode " + md.mode} title={md.mode === "live" ? "Date live reale din " + md.sourceLabel : "Fallback local / sursa live indisponibilă"}><span className={"mdot " + md.mode} />{md.mode === "live" ? "Live" : "Istoric"}</div>
           <div className="marketclock"><Dot status="live" /><span className="mclabel">Piață</span><span className="mctime">{market.clock}</span><span className="mcsep">·</span><span className="mcprice">{fmtLei(md.today[market.idx].price)}</span></div>
           <button className="cmdk" onClick={() => setPaletteOpen(true)}><Search size={13} /> <span className="cmdklabel">Caută</span> <kbd className="kbd2"><Command size={10} />K</kbd></button>
           <button className="ticon" title="Notificări"><Bell size={16} /><span className="tdot" /></button>
