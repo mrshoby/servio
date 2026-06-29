@@ -1,0 +1,7 @@
+{
+  "ok": false,
+  "source": "OPCOM PZU / ROPEX_DAM_15min",
+  "sourceMode": "github-actions-ingest",
+  "status": "not-run-yet",
+  "note": "Run GitHub Action 'OPCOM PZU GitHub Cache' to populate latest.json."
+}
