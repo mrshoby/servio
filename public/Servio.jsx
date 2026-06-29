@@ -822,6 +822,8 @@ const electricityMapsAdapter = {
       forecast: payload.forecast || [],
       mixSeries: payload.mixSeries || [],
       externalUrl: payload.externalUrl || "https://app.electricitymaps.com/map/live/fifteen_minutes",
+      pzuPrice: payload.pzuPrice || null,
+      apiCoverage: payload.apiCoverage || {},
     };
   }
 };
@@ -883,7 +885,7 @@ function GridStatusBanner({ data, error, loading }) {
   if (data.status === "rate-limit") return <div className="banner err"><AlertTriangle size={15} /><div><b>Rate limit Electricity Maps</b> — se afișează cache/demo până la următoarea fereastră permisă.</div></div>;
   if (data.status === "no-api-key" || data.sourceMode === "demo-fallback") return <div className="banner"><AlertTriangle size={15} /><div><b>Date demo</b> — configurează <span className="mono">ELECTRICITY_MAPS_API_KEY</span> pentru date live. Structura este pregătită pentru API oficial, fără scraping.</div></div>;
   if (data.stale) return <div className="banner err"><AlertTriangle size={15} /><div><b>Date învechite</b> — ultima actualizare este peste pragul normal; vezi endpoint-ul de status.</div></div>;
-  return <div className="banner ok"><Check size={15} /><div><b>Semnale active</b> — date preluate prin proxy securizat backend, cheia API nu este expusă în browser.</div></div>;
+  return <div className="banner ok"><Check size={15} /><div><b>Semnale active</b> — hartă alimentată server-side; PZU România este aliniat cu OPCOM GitHub cache, iar cheia API nu este expusă în browser.</div></div>;
 }
 function GridKpiCards({ zone, data }) {
   return <div className="kpirow gridkpis">
@@ -891,7 +893,7 @@ function GridKpiCards({ zone, data }) {
     <Kpi label="Renewable" value={fmt(zone.renewablePct) + "%"} sub="hidro · eolian · solar · biomasă" Icon={Sparkles} tone="green" />
     <Kpi label="Carbon-free" value={fmt(zone.carbonFreePct) + "%"} sub="renewable + nuclear" Icon={Check} tone="green" />
     <Kpi label="Import / Export net" value={(zone.netFlowMw > 0 ? "+" : "") + fmt(zone.netFlowMw) + " MW"} sub={zone.netFlowMw >= 0 ? "import net" : "export net"} Icon={Plug} />
-    <Kpi label="Preț PZU" value={zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei" : "—"} sub="dacă este disponibil/licențiat" Icon={DollarSign} />
+    <Kpi label="Preț PZU" value={zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei/MWh" : "—"} sub={zone.code === "RO" ? "interval curent RO" : "indisponibil pentru zonă"} Icon={DollarSign} />
     <Kpi label="Load" value={zone.loadMw ? fmt(zone.loadMw) + " MW" : "—"} sub="total load / net load" Icon={Gauge} />
     <Kpi label="Ultima actualizare" value={new Date(data.updatedAtUtc).toLocaleTimeString("ro-RO", { hour:"2-digit", minute:"2-digit" })} sub={data.sourceMode === "external-live" ? "live API" : "demo/cache"} Icon={Clock} />
   </div>;
@@ -903,12 +905,14 @@ function GridMapLegend() {
 }
 function GridNetworkMap({ data, selectedZone, setSelectedZone, mode }) {
   const zones = data.zones || [];
+  const knownZones = new Set(GRID_ZONES.map((z) => z.code));
+  const visibleFlows = (data.flows || []).filter((f) => knownZones.has(f.from) && knownZones.has(f.to) && f.from !== f.to && Number.isFinite(Number(f.mw)) && Math.abs(Number(f.mw)) > 0);
   const getZone = (code) => zones.find((z) => z.code === code) || { code, name: code, carbonIntensity:0, renewablePct:0, carbonFreePct:0, netFlowMw:0, status:"unavailable", mix:{} };
   return <div className="gridmapcard">
     <div className="gridmaptoolbar"><div><div className="cardtitle">Hartă interactivă rețea</div><div className="dim small">România + zone interconectate · mod {GRID_VIEW_MODES.find((m) => m.id === mode)?.label}</div></div><a className="btn ghost" href="https://app.electricitymaps.com/map/live/fifteen_minutes" target="_blank" rel="noreferrer"><Globe2 size={14} /> Deschide Electricity Maps</a></div>
     <div className="gridmapcanvas">
       <div className="mapgridbg" />
-      {(data.flows || []).map((f, i) => {
+      {visibleFlows.map((f, i) => {
         const a = gridZoneMeta(f.from); const b = gridZoneMeta(f.to); const dx = b.x - a.x; const dy = b.y - a.y; const len = Math.sqrt(dx*dx + dy*dy); const ang = Math.atan2(dy, dx) * 180 / Math.PI;
         return <button key={i} className="gridflow" style={{ left:a.x+"%", top:a.y+"%", width:len+"%", transform:`rotate(${ang}deg)`, ['--w']: Math.max(2, Math.min(9, Math.abs(f.mw)/90)) + "px" }} title={`${f.from} → ${f.to}: ${fmt(Math.abs(f.mw))} MW`}><span /></button>;
       })}
@@ -927,7 +931,7 @@ function GridZoneDetailsPanel({ zone, data }) {
       <div><span>Renewable</span><b>{fmt(zone.renewablePct)}%</b></div><div><span>Carbon-free</span><b>{fmt(zone.carbonFreePct)}%</b></div><div><span>Fossil</span><b>{fmt(zone.fossilPct)}%</b></div><div><span>Import/export net</span><b>{(zone.netFlowMw > 0 ? "+" : "") + fmt(zone.netFlowMw)} MW</b></div><div><span>Load</span><b>{zone.loadMw ? fmt(zone.loadMw) + " MW" : "—"}</b></div><div><span>Preț PZU</span><b>{zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei/MWh" : "—"}</b></div>
     </div>
     <div className="mixlist">{mixRows.map((m) => <div key={m.key} className="mixrow"><div><span>{m.label}</span><b>{fmt(m.val)}%</b></div><i style={{ width: Math.min(100, m.val) + "%" }} /></div>)}</div>
-    <div className="hint"><Clock size={13} /> Actualizat: {new Date(zone.updatedAtUtc || data.updatedAtUtc).toLocaleString("ro-RO")} · status date: {zone.status || data.status}</div>
+    <div className="hint"><Clock size={13} /> Actualizat: {new Date(zone.updatedAtUtc || data.updatedAtUtc).toLocaleString("ro-RO")} · calitate date: {zone.quality || zone.status || data.status}</div>
   </Card>;
 }
 function GridSignalsCharts({ data, mode }) {
