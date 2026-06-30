@@ -1570,12 +1570,14 @@ function gridCountryCenter(code) {
   const meta = gridZoneMeta(code);
   return { x: meta.x * 10, y: meta.y * 6.2 };
 }
+/* v4.23: mouse wheel zoom inside Harta Retea canvas */
 function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline, timeIndex }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [drag, setDrag] = useState(null);
   const [hover, setHover] = useState(null);
   const [flowHover, setFlowHover] = useState(null);
+  const clampMapZoom = (value) => Math.max(.65, Math.min(3.2, value));
   const point = pointForTimeline(data, timeline, timeIndex);
   const zones = (data.zones || []).map((z) => z.code === selectedZone && point ? { ...z, carbonIntensity: point.carbon, renewablePct: point.renewable, carbonFreePct: point.carbonFree, fossilPct: point.fossil ?? Math.max(0, 100 - point.carbonFree), loadMw: point.load, productionMw: point.production, netFlowMw: point.netFlow, priceLeiMwh: point.price ?? z.priceLeiMwh } : z);
   const knownZones = new Set(GRID_ZONES.map((z) => z.code));
@@ -1593,6 +1595,25 @@ function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline
     setPan({ x: drag.pan.x + (e.clientX - drag.x), y: drag.pan.y + (e.clientY - drag.y) });
   };
   const stopDrag = () => setDrag(null);
+  const handleMapWheel = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const anchorX = e.clientX - rect.left;
+    const anchorY = e.clientY - rect.top;
+    const delta = Number.isFinite(e.deltaY) ? e.deltaY : 0;
+    const wheelScale = Math.exp(-delta * 0.0014);
+    setZoom((currentZoom) => {
+      const nextZoom = clampMapZoom(currentZoom * wheelScale);
+      const ratio = nextZoom / currentZoom;
+      if (!Number.isFinite(ratio) || ratio === 1) return currentZoom;
+      setPan((currentPan) => ({
+        x: anchorX - (anchorX - currentPan.x) * ratio,
+        y: anchorY - (anchorY - currentPan.y) * ratio
+      }));
+      return nextZoom;
+    });
+  };
   const inspectCountryFromPointer = (e) => {
     const target = e.target instanceof Element ? e.target.closest(".gridcountry") : null;
     const code = target?.getAttribute?.("data-grid-zone");
@@ -1604,12 +1625,12 @@ function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline
     <div className="gridmaptoolbar">
       <div><div className="cardtitle">Hartă live rețea</div><div className="dim small">România + Europa ENTSO-E · {timeline} · {GRID_LAYER_MODES_V2.find((m) => m.id === layer)?.label}</div></div>
       <div className="mapzoom">
-        <button className="ticon" title="Zoom out" onClick={() => setZoom((z) => Math.max(.75, z - .15))}><Minus size={14} /></button>
+        <button className="ticon" title="Zoom out" onClick={() => setZoom((z) => clampMapZoom(z - .15))}><Minus size={14} /></button>
         <button className="ticon" title="Reset view" onClick={() => { setZoom(1); setPan({ x:0, y:0 }); }}>{fmt(zoom, 1)}x</button>
-        <button className="ticon" title="Zoom in" onClick={() => setZoom((z) => Math.min(1.75, z + .15))}><Plus size={14} /></button>
+        <button className="ticon" title="Zoom in" onClick={() => setZoom((z) => clampMapZoom(z + .15))}><Plus size={14} /></button>
       </div>
     </div>
-    <div className={"gridmapcanvas" + (drag ? " dragging" : "")} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+    <div className={"gridmapcanvas" + (drag ? " dragging" : "")} onWheel={handleMapWheel} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="mapgridbg" />
       <div className="gridmapviewport" style={{ transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})` }}>
         <svg className="gridgeosvg" viewBox={`0 0 ${GRID_MAP_VIEWBOX.width} ${GRID_MAP_VIEWBOX.height}`} aria-label="Hartă geografică ENTSO-E cu granițe de țări" onMouseMove={inspectCountryFromPointer} onPointerMove={inspectCountryFromPointer} onMouseLeave={() => setHover(null)} onPointerLeave={() => setHover(null)}>
@@ -2324,7 +2345,7 @@ const CSS = `
 .gridmaplayout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.55fr);gap:14px;align-items:stretch}
 .gridmapcard{border:1px solid var(--border);background:var(--card);border-radius:12px;overflow:hidden;min-height:540px;display:flex;flex-direction:column}
 .gridmaptoolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border)}
-.gridmapcanvas{position:relative;min-height:460px;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 48%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 24%),linear-gradient(135deg,color-mix(in srgb,var(--blue) 9%,transparent),transparent 44%),var(--bg)}
+.gridmapcanvas{position:relative;min-height:460px;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 48%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 24%),linear-gradient(135deg,color-mix(in srgb,var(--blue) 9%,transparent),transparent 44%),var(--bg);cursor:grab;overscroll-behavior:contain;touch-action:none}
 .gridmapcanvas.dragging{cursor:grabbing}.gridmapviewport{position:absolute;inset:0;transform-origin:50% 50%;transition:transform .08s ease}.mapzoom{display:flex;align-items:center;gap:6px;flex:none}.mapzoom .ticon{width:auto;min-width:32px;padding:0 8px}
 .mapgridbg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:44px 44px;opacity:.22;mask-image:radial-gradient(circle at center,#000 58%,transparent 100%)}
 .gridgeosvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.gridcountries{filter:drop-shadow(0 14px 24px rgba(0,0,0,.22))}.gridcountry{stroke:color-mix(in srgb,var(--border-strong) 84%,transparent);stroke-width:1.45;vector-effect:non-scaling-stroke;cursor:pointer;outline:none;transition:fill .14s ease,stroke .14s ease,opacity .14s ease,filter .14s ease}.gridcountry.low{fill:color-mix(in srgb,var(--green) 62%,var(--card))}.gridcountry.mid{fill:color-mix(in srgb,var(--yellow) 58%,var(--card))}.gridcountry.high{fill:color-mix(in srgb,var(--red) 52%,var(--card))}.gridcountry.very{fill:color-mix(in srgb,var(--red) 68%,var(--card))}.gridcountry.off{fill:color-mix(in srgb,var(--text-faint) 25%,var(--bg));opacity:.5}.gridcountry:hover,.gridcountry:focus,.gridcountry.on{stroke:var(--accent);stroke-width:2.6;filter:brightness(1.08) saturate(1.08)}.gridcountry.on{filter:brightness(1.12) saturate(1.12) drop-shadow(0 0 12px color-mix(in srgb,var(--accent) 34%,transparent))}
