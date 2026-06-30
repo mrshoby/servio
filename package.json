@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v419-full-europe-live-single-signal",
-  "version": "4.19.0",
+  "name": "servio-cloudflare-grid-map-v420-electricitymaps-mix-payload-parser-fix",
+  "version": "4.20.0",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
