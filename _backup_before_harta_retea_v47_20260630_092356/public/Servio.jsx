@@ -132,9 +132,8 @@ function simulate({ capMWh, costEur, eff, maxCycles, days, strategy }) {
 // that API. If no base URL is configured, the app falls back to demo data for preview.
 const ENDPOINTS = {
   health: "/api/servio/health",
-  dayAheadUnified: "/api/servio/day-ahead/pzu",       // Unified PZU router: OPCOM fresh cache or ENTSO-E A44
-  dayAheadOpcom: "/api/servio/day-ahead/pzu?source=opcom",
-  dayAheadEntsoe: "/api/servio/day-ahead/pzu?source=entsoe"
+  dayAheadOpcom: "/api/servio/opcom/day-ahead",      // OPCOM PZU / ROPEX_DAM_15min
+  dayAheadEntsoe: "/api/servio/entsoe/day-ahead",   // ENTSO-E Transparency A44 / Romania
   intraday: "/api/servio/opcom/intraday",
   imbalance: "/api/servio/transelectrica/imbalance",
   flows: "/api/servio/entsoe/flows",
@@ -172,15 +171,14 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
     (async () => {
       try {
         const endpoint = sourceCfg.endpoint;
-        const appendQuery = (path, query) => path + (path.includes("?") ? "&" : "?") + query;
         const [t, tm] = await Promise.all([
-          apiGet(base, appendQuery(endpoint, "day=today"), token),
-          apiGet(base, appendQuery(endpoint, "day=tomorrow"), token),
+          apiGet(base, endpoint + "?day=today", token),
+          apiGet(base, endpoint + "?day=tomorrow", token),
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
         const sourceMode = (t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local";
-        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest", "external-live-entsoe-fallback"].includes(sourceMode) || String(sourceMode || "").startsWith("external-live");
+        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
         if (!alive) return;
         setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode, error: null, loading: false, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
