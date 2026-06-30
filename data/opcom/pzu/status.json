@@ -1,11 +1,7 @@
 {
-  "ok": true,
+  "ok": false,
   "source": "OPCOM PZU / ROPEX_DAM_15min",
   "sourceMode": "github-actions-ingest",
-  "deliveryDay": "2026-06-29",
-  "sourceUrl": "https://www.opcom.ro/rapoarte-pzu-raportPIP-export-csv/29/6/2026/ro",
-  "generatedAtUtc": "2026-06-29T21:52:26.094Z",
-  "httpStatus": 200,
-  "intervals": 96,
-  "latestFile": "data/opcom/pzu/latest.json"
+  "status": "not-run-yet",
+  "note": "Run GitHub Action 'OPCOM PZU GitHub Cache' to populate latest.json."
 }

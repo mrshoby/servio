@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v45-entsoe-hover-inspector",
-  "version": "4.5.0",
+  "name": "servio-cloudflare-grid-map-v41-data-normalization",
+  "version": "4.1.0",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",

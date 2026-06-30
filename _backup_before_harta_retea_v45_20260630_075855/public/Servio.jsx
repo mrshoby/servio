@@ -783,31 +783,12 @@ function Forecast({ md }) {
 
 /* ============================ Harta Rețea — adapter + service + components ============================ */
 const GRID_ZONES = [
-  { code: "RO", name: "România", x: 54, y: 54, main: true },
-  { code: "HU", name: "Ungaria", x: 43, y: 46 },
-  { code: "BG", name: "Bulgaria", x: 55, y: 68 },
-  { code: "RS", name: "Serbia", x: 43, y: 62 },
-  { code: "UA", name: "Ucraina", x: 72, y: 38 },
-  { code: "MD", name: "Moldova", x: 68, y: 51 },
-  { code: "AT", name: "Austria", x: 33, y: 45 },
-  { code: "CZ", name: "Cehia", x: 35, y: 35 },
-  { code: "SK", name: "Slovacia", x: 44, y: 38 },
-  { code: "PL", name: "Polonia", x: 46, y: 25 },
-  { code: "DE", name: "Germania/LU", x: 25, y: 34 },
-  { code: "FR", name: "Franța", x: 12, y: 47 },
-  { code: "NL", name: "Olanda", x: 21, y: 25 },
-  { code: "BE", name: "Belgia", x: 17, y: 34 },
-  { code: "CH", name: "Elveția", x: 25, y: 53 },
-  { code: "IT", name: "Italia", x: 31, y: 70 },
-  { code: "SI", name: "Slovenia", x: 36, y: 55 },
-  { code: "HR", name: "Croația", x: 40, y: 59 },
-  { code: "BA", name: "Bosnia", x: 42, y: 67 },
-  { code: "ME", name: "Muntenegru", x: 44, y: 75 },
-  { code: "GR", name: "Grecia", x: 56, y: 84 },
-  { code: "MK", name: "Macedonia N.", x: 50, y: 77 },
-  { code: "AL", name: "Albania", x: 45, y: 82 },
-  { code: "ES", name: "Spania", x: 7, y: 75 },
-  { code: "PT", name: "Portugalia", x: 1, y: 77 },
+  { code: "RO", name: "România", x: 50, y: 50, main: true },
+  { code: "HU", name: "Ungaria", x: 24, y: 34 },
+  { code: "UA", name: "Ucraina", x: 76, y: 22 },
+  { code: "MD", name: "Moldova", x: 78, y: 47 },
+  { code: "BG", name: "Bulgaria", x: 54, y: 78 },
+  { code: "RS", name: "Serbia", x: 27, y: 68 },
 ];
 const GRID_VIEW_MODES = [
   { id: "live", label: "Live" },
@@ -832,7 +813,7 @@ const electricityMapsAdapter = {
       source: payload.source || "Electricity Maps adapter",
       sourceMode: payload.sourceMode || "demo-fallback",
       status: payload.status || (payload.sourceMode === "external-live" ? "live" : "demo"),
-      message: payload.message || "Date demo — configurează ENTSO-E sau Electricity Maps API key pentru date live.",
+      message: payload.message || "Date demo — configurează Electricity Maps API key pentru date live.",
       updatedAtUtc: payload.updatedAtUtc || new Date().toISOString(),
       stale: Boolean(payload.stale),
       zones: payload.zones,
@@ -882,69 +863,17 @@ function buildGridDemoData(reason = "no-api-key") {
     { code:"RS", name:"Serbia", carbonIntensity:410, renewablePct:22, carbonFreePct:25, fossilPct:75, loadMw:4650, netFlowMw:90, priceLeiMwh:646, status:"demo", quality:"partial", updatedAtUtc:iso, mix:{ hydro:21, nuclear:0, wind:4, solar:1, gas:9, coal:62, oil:1, biomass:1, unknown:1 } },
     { code:"UA", name:"Ucraina", carbonIntensity:260, renewablePct:17, carbonFreePct:61, fossilPct:39, loadMw:12100, netFlowMw:-120, priceLeiMwh:0, status:"demo", quality:"partial", updatedAtUtc:iso, mix:{ hydro:8, nuclear:50, wind:5, solar:4, gas:12, coal:18, oil:1, biomass:1, unknown:1 } },
     { code:"MD", name:"Moldova", carbonIntensity:330, renewablePct:11, carbonFreePct:14, fossilPct:86, loadMw:930, netFlowMw:150, priceLeiMwh:0, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:3, nuclear:0, wind:6, solar:5, gas:78, coal:5, oil:1, biomass:1, unknown:1 } },
-    { code:"AT", name:"Austria", carbonIntensity:118, renewablePct:73, carbonFreePct:73, fossilPct:27, loadMw:7240, netFlowMw:260, priceLeiMwh:604, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:55, nuclear:0, wind:10, solar:6, gas:18, coal:3, oil:1, biomass:2, unknown:5 } },
-    { code:"CZ", name:"Cehia", carbonIntensity:405, renewablePct:15, carbonFreePct:47, fossilPct:53, loadMw:8120, netFlowMw:-180, priceLeiMwh:612, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:3, nuclear:32, wind:2, solar:7, gas:9, coal:43, oil:1, biomass:3, unknown:0 } },
-    { code:"SK", name:"Slovacia", carbonIntensity:125, renewablePct:23, carbonFreePct:82, fossilPct:18, loadMw:3320, netFlowMw:210, priceLeiMwh:606, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:16, nuclear:59, wind:1, solar:5, gas:12, coal:4, oil:0, biomass:1, unknown:2 } },
-    { code:"PL", name:"Polonia", carbonIntensity:640, renewablePct:23, carbonFreePct:23, fossilPct:77, loadMw:23200, netFlowMw:-420, priceLeiMwh:620, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:2, nuclear:0, wind:14, solar:7, gas:9, coal:63, oil:1, biomass:3, unknown:1 } },
-    { code:"DE", name:"Germania/Luxemburg", carbonIntensity:356, renewablePct:57, carbonFreePct:57, fossilPct:43, loadMw:57300, netFlowMw:-760, priceLeiMwh:598, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:4, nuclear:0, wind:32, solar:18, gas:18, coal:21, oil:1, biomass:3, unknown:3 } },
-    { code:"FR", name:"Franța", carbonIntensity:68, renewablePct:22, carbonFreePct:86, fossilPct:14, loadMw:46100, netFlowMw:-980, priceLeiMwh:589, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:12, nuclear:64, wind:7, solar:3, gas:9, coal:1, oil:1, biomass:2, unknown:1 } },
-    { code:"NL", name:"Olanda", carbonIntensity:420, renewablePct:42, carbonFreePct:43, fossilPct:57, loadMw:14300, netFlowMw:310, priceLeiMwh:601, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:0, nuclear:1, wind:26, solar:14, gas:43, coal:12, oil:1, biomass:2, unknown:1 } },
-    { code:"BE", name:"Belgia", carbonIntensity:156, renewablePct:27, carbonFreePct:68, fossilPct:32, loadMw:9320, netFlowMw:180, priceLeiMwh:595, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:1, nuclear:41, wind:16, solar:7, gas:28, coal:1, oil:1, biomass:3, unknown:2 } },
-    { code:"CH", name:"Elveția", carbonIntensity:38, renewablePct:61, carbonFreePct:95, fossilPct:5, loadMw:6760, netFlowMw:-260, priceLeiMwh:600, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:59, nuclear:34, wind:0, solar:2, gas:2, coal:0, oil:0, biomass:1, unknown:2 } },
-    { code:"IT", name:"Italia", carbonIntensity:330, renewablePct:44, carbonFreePct:44, fossilPct:56, loadMw:35300, netFlowMw:820, priceLeiMwh:638, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:14, nuclear:0, wind:9, solar:18, gas:47, coal:5, oil:2, biomass:3, unknown:2 } },
-    { code:"SI", name:"Slovenia", carbonIntensity:205, renewablePct:32, carbonFreePct:70, fossilPct:30, loadMw:1890, netFlowMw:-60, priceLeiMwh:615, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:25, nuclear:38, wind:1, solar:5, gas:13, coal:14, oil:1, biomass:2, unknown:1 } },
-    { code:"HR", name:"Croația", carbonIntensity:178, renewablePct:62, carbonFreePct:62, fossilPct:38, loadMw:2940, netFlowMw:90, priceLeiMwh:617, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:47, nuclear:0, wind:10, solar:3, gas:24, coal:8, oil:2, biomass:3, unknown:3 } },
-    { code:"BA", name:"Bosnia și Herțegovina", carbonIntensity:520, renewablePct:34, carbonFreePct:34, fossilPct:66, loadMw:1840, netFlowMw:-130, priceLeiMwh:632, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:33, nuclear:0, wind:1, solar:0, gas:2, coal:62, oil:1, biomass:0, unknown:1 } },
-    { code:"ME", name:"Muntenegru", carbonIntensity:290, renewablePct:52, carbonFreePct:52, fossilPct:48, loadMw:520, netFlowMw:70, priceLeiMwh:635, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:49, nuclear:0, wind:2, solar:1, gas:0, coal:45, oil:1, biomass:0, unknown:2 } },
-    { code:"GR", name:"Grecia", carbonIntensity:370, renewablePct:42, carbonFreePct:42, fossilPct:58, loadMw:6820, netFlowMw:240, priceLeiMwh:650, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:7, nuclear:0, wind:18, solar:15, gas:39, coal:12, oil:4, biomass:2, unknown:3 } },
-    { code:"MK", name:"Macedonia de Nord", carbonIntensity:480, renewablePct:24, carbonFreePct:24, fossilPct:76, loadMw:980, netFlowMw:40, priceLeiMwh:642, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:18, nuclear:0, wind:3, solar:2, gas:9, coal:64, oil:2, biomass:1, unknown:1 } },
-    { code:"AL", name:"Albania", carbonIntensity:55, renewablePct:92, carbonFreePct:92, fossilPct:8, loadMw:780, netFlowMw:110, priceLeiMwh:640, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:90, nuclear:0, wind:1, solar:1, gas:4, coal:1, oil:1, biomass:0, unknown:2 } },
-    { code:"ES", name:"Spania", carbonIntensity:164, renewablePct:62, carbonFreePct:82, fossilPct:18, loadMw:28900, netFlowMw:-520, priceLeiMwh:575, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:13, nuclear:20, wind:26, solar:21, gas:13, coal:2, oil:1, biomass:2, unknown:2 } },
-    { code:"PT", name:"Portugalia", carbonIntensity:142, renewablePct:74, carbonFreePct:74, fossilPct:26, loadMw:5420, netFlowMw:160, priceLeiMwh:576, status:"demo", quality:"estimated", updatedAtUtc:iso, mix:{ hydro:28, nuclear:0, wind:31, solar:12, gas:20, coal:1, oil:2, biomass:3, unknown:3 } },
   ];
   const flows = [
-    { from:"RO", to:"HU", mw:280 }, { from:"BG", to:"RO", mw:220 }, { from:"RO", to:"RS", mw:90 }, { from:"UA", to:"RO", mw:120 }, { from:"MD", to:"RO", mw:150 },
-    { from:"HU", to:"AT", mw:340 }, { from:"SK", to:"HU", mw:210 }, { from:"RS", to:"HU", mw:160 }, { from:"HR", to:"HU", mw:120 }, { from:"BG", to:"GR", mw:260 },
-    { from:"RS", to:"BA", mw:130 }, { from:"RS", to:"ME", mw:70 }, { from:"HR", to:"SI", mw:110 }, { from:"SI", to:"AT", mw:180 }, { from:"AT", to:"CZ", mw:240 },
-    { from:"CZ", to:"PL", mw:320 }, { from:"DE", to:"CZ", mw:410 }, { from:"FR", to:"DE", mw:680 }, { from:"NL", to:"DE", mw:310 }, { from:"BE", to:"FR", mw:260 },
-    { from:"CH", to:"IT", mw:430 }, { from:"FR", to:"CH", mw:220 }, { from:"ES", to:"FR", mw:360 }, { from:"PT", to:"ES", mw:190 }
+    { from:"RO", to:"HU", mw:280 }, { from:"BG", to:"RO", mw:220 }, { from:"RO", to:"RS", mw:90 }, { from:"UA", to:"RO", mw:120 }, { from:"MD", to:"RO", mw:150 }
   ];
-  const history = Array.from({ length: 96 }, (_, i) => {
-    const h = i / 4;
-    const solar = Math.max(0, Math.sin((h - 6) / 12 * Math.PI));
-    const evening = Math.exp(-Math.pow(h - 19, 2) / 8);
-    const morning = Math.exp(-Math.pow(h - 8, 2) / 7);
-    return {
-      label: String(Math.floor(h)).padStart(2,"0") + ":" + String((i % 4) * 15).padStart(2,"0"),
-      datetimeUtc: new Date(now.getTime() - (95 - i) * 15 * 60 * 1000).toISOString(),
-      carbon: Math.round(215 + 38*Math.sin((h-4)/24*Math.PI*2) + 12*Math.cos(h*.9) - 28 * solar + 18 * evening),
-      renewable: Math.round(47 + 12 * solar - 4 * evening + 3 * Math.sin(h / 3)),
-      carbonFree: Math.round(67 + 7 * solar - 3 * evening),
-      fossil: Math.round(33 - 7 * solar + 3 * evening),
-      load: Math.round(6350 + 460 * morning + 760 * evening - 240 * solar),
-      production: Math.round(6500 + 380 * morning + 610 * evening - 120 * solar),
-      netFlow: Math.round(-180 + 110 * Math.sin(i / 10) - 65 * solar),
-      price: Math.round(580 + 320 * evening + 130 * morning - 85 * solar),
-      status: reason === "forecast" ? "forecast" : "demo",
-    };
+  const history = Array.from({ length: 24 }, (_, i) => {
+    const h = i;
+    return { label:String(h).padStart(2,"0")+":00", carbon: Math.round(215 + 38*Math.sin((h-4)/24*Math.PI*2) + 12*Math.cos(h*.9)), renewable: Math.round(47 + 10*Math.sin((h-9)/24*Math.PI*2)), carbonFree: Math.round(67 + 7*Math.sin((h-8)/24*Math.PI*2)), price: Math.round(580 + 320*Math.exp(-Math.pow(h-19,2)/8) + 130*Math.exp(-Math.pow(h-8,2)/6)) };
   });
-  const forecast = Array.from({ length: 32 }, (_, i) => {
-    const h = i / 4;
-    return {
-      label: "+" + Math.floor(h) + "h" + (i % 4 ? " " + ((i % 4) * 15) + "m" : ""),
-      datetimeUtc: new Date(now.getTime() + i * 15 * 60 * 1000).toISOString(),
-      carbon: Math.round(205 + 45*Math.sin((i+4)/32*Math.PI*2)),
-      renewable: Math.round(46 + 12*Math.sin((i+2)/32*Math.PI*2)),
-      carbonFree: Math.round(67 + 8*Math.sin((i+1)/32*Math.PI*2)),
-      load: Math.round(6300 + 850*Math.sin((i+14)/32*Math.PI*2)),
-      production: Math.round(6480 + 720*Math.sin((i+13)/32*Math.PI*2)),
-      netFlow: Math.round(-160 + 95 * Math.sin(i / 5)),
-      price: Math.round(590 + 180 * Math.sin((i+10)/32*Math.PI*2)),
-      status: "forecast",
-    };
-  });
+  const forecast = Array.from({ length: 24 }, (_, i) => ({ label:"+"+i+"h", carbon: Math.round(205 + 45*Math.sin((i+4)/24*Math.PI*2)), renewable: Math.round(46 + 12*Math.sin((i+2)/24*Math.PI*2)), load: Math.round(6300 + 850*Math.sin((i+14)/24*Math.PI*2)) }));
   const mixSeries = GRID_MIX_KEYS.map((k) => ({ source: GRID_SOURCE_LABELS[k], value: zones[0].mix[k] || 0 }));
-  return { ok:true, source:"SERVIO Grid Demo", sourceMode:"demo-fallback", status: reason === "rate-limit" ? "rate-limit" : "demo", message:"Date demo — configurează ENTSO-E sau Electricity Maps API key pentru date live.", reason, updatedAtUtc:iso, stale:false, zones, flows, history, forecast, mixSeries, externalUrl:"https://app.electricitymaps.com/map/live/fifteen_minutes" };
+  return { ok:true, source:"SERVIO Grid Demo", sourceMode:"demo-fallback", status: reason === "rate-limit" ? "rate-limit" : "demo", message:"Date demo — configurează Electricity Maps API key pentru date live.", reason, updatedAtUtc:iso, stale:false, zones, flows, history, forecast, mixSeries, externalUrl:"https://app.electricitymaps.com/map/live/fifteen_minutes" };
 }
 function gridTone(carbon) { return carbon < 180 ? "low" : carbon < 300 ? "mid" : carbon < 420 ? "high" : "very"; }
 function gridToneLabel(carbon) { return carbon < 180 ? "emisii reduse" : carbon < 300 ? "mediu" : carbon < 420 ? "ridicat" : "foarte ridicat"; }
@@ -954,7 +883,7 @@ function GridStatusBanner({ data, error, loading }) {
   if (loading) return <div className="banner"><RefreshCw size={15} className="spin" /><div><b>Se încarcă Harta Rețea</b> — sincronizare semnale grid, mix energetic și fluxuri.</div></div>;
   if (error) return <div className="banner err"><AlertTriangle size={15} /><div><b>API indisponibil</b> — pagina rulează pe date demo. {error}</div></div>;
   if (data.status === "rate-limit") return <div className="banner err"><AlertTriangle size={15} /><div><b>Rate limit Electricity Maps</b> — se afișează cache/demo până la următoarea fereastră permisă.</div></div>;
-  if (data.status === "no-api-key" || data.sourceMode === "demo-fallback") return <div className="banner"><AlertTriangle size={15} /><div><b>Date demo</b> — configurează <span className="mono">ENTSOE_API_TOKEN</span> sau <span className="mono">ELECTRICITY_MAPS_API_KEY</span> pentru date live. Structura este pregătită pentru API oficial, fără scraping.</div></div>;
+  if (data.status === "no-api-key" || data.sourceMode === "demo-fallback") return <div className="banner"><AlertTriangle size={15} /><div><b>Date demo</b> — configurează <span className="mono">ELECTRICITY_MAPS_API_KEY</span> pentru date live. Structura este pregătită pentru API oficial, fără scraping.</div></div>;
   if (data.stale) return <div className="banner err"><AlertTriangle size={15} /><div><b>Date învechite</b> — ultima actualizare este peste pragul normal; vezi endpoint-ul de status.</div></div>;
   return <div className="banner ok"><Check size={15} /><div><b>Semnale active</b> — hartă alimentată server-side; PZU România este aliniat cu OPCOM GitHub cache, iar cheia API nu este expusă în browser.</div></div>;
 }
@@ -1046,583 +975,6 @@ function MapView({ apiBase, apiToken }) {
     <GridZonesTable data={data} setSelectedZone={gm.setSelectedZone} selectedZone={gm.selectedZone} />
   </div>;
 }
-
-/* ============================ Harta Rețea — parity extension ============================ */
-const gridMapTypes = {
-  timelineModes: ["live", "history", "forecast"],
-  layers: ["carbon", "mix", "renewable", "carbonfree", "flows", "load", "production", "price", "forecast"],
-  dataStatuses: ["live", "forecast", "unavailable", "demo", "partial", "stale", "rate-limit", "offline", "no-api-key"],
-};
-function firstNumber(...vals) { for (const v of vals) { const n = Number(v); if (Number.isFinite(n)) return n; } return 0; }
-function firstFinite(...vals) { for (const v of vals) { const n = Number(v); if (Number.isFinite(n)) return n; } return null; }
-function normalizeZoneCode(v) {
-  const s = String(v || "").trim().toUpperCase();
-  if (GRID_ZONES.some((z) => z.code === s)) return s;
-  const found = GRID_ZONES.find((z) => s.includes(z.code));
-  return found ? found.code : "";
-}
-const GRID_TIMELINE_MODES_V2 = [
-  { id: "live", label: "Live", sub: "ultimul interval" },
-  { id: "history", label: "Ultimele 24h", sub: "96 x 15 min" },
-  { id: "forecast", label: "Forecast", sub: "următoarele ore" },
-];
-const GRID_LAYER_MODES_V2 = [
-  { id: "carbon", label: "Carbon intensity", Icon: Wind },
-  { id: "mix", label: "Electricity mix", Icon: Layers },
-  { id: "renewable", label: "Renewable %", Icon: Sparkles },
-  { id: "carbonfree", label: "Carbon-free %", Icon: Check },
-  { id: "flows", label: "Import/export flows", Icon: Plug },
-  { id: "load", label: "Consumption/load", Icon: Gauge },
-  { id: "production", label: "Production", Icon: Zap },
-  { id: "price", label: "PZU / Day-Ahead", Icon: DollarSign },
-  { id: "forecast", label: "Forecast", Icon: LineIcon },
-];
-const GRID_SOURCE_CLASS = {
-  hydro: "renewable",
-  wind: "renewable",
-  solar: "renewable",
-  biomass: "renewable",
-  nuclear: "carbon-free",
-  gas: "fossil",
-  coal: "fossil",
-  oil: "fossil",
-  unknown: "unknown",
-};
-const GRID_SOURCE_COLORS = {
-  hydro: "var(--blue)",
-  nuclear: "var(--yellow)",
-  wind: "var(--green)",
-  solar: "var(--accent)",
-  gas: "var(--accent-2)",
-  coal: "var(--red)",
-  oil: "var(--text-dim)",
-  biomass: "color-mix(in srgb,var(--green) 70%,var(--accent))",
-  unknown: "var(--border-strong)",
-};
-function gridMaxSource(mix = {}) {
-  return GRID_MIX_KEYS.map((key) => ({ key, label: GRID_SOURCE_LABELS[key], value: Number(mix[key] || 0) }))
-    .sort((a, b) => b.value - a.value)[0] || { key: "unknown", label: "Necunoscut", value: 0 };
-}
-function enrichGridZone(zone, index = 0) {
-  const loadMw = Number(zone.loadMw || zone.consumptionMw || 0);
-  const netFlowMw = Number(zone.netFlowMw || 0);
-  const productionMw = Math.max(0, Number(zone.productionMw ?? (loadMw - Math.max(0, netFlowMw) + Math.max(0, -netFlowMw))));
-  const powerBreakdownMw = zone.powerBreakdownMw || Object.fromEntries(GRID_MIX_KEYS.map((key) => [key, Math.round(productionMw * Number((zone.mix || {})[key] || 0) / 100)]));
-  const dominant = gridMaxSource(zone.mix || {});
-  const updatedAtUtc = zone.updatedAtUtc || new Date(Date.now() - index * 3 * 60 * 1000).toISOString();
-  const ageMin = Math.max(0, Math.round((Date.now() - new Date(updatedAtUtc).getTime()) / 60000));
-  const stale = Boolean(zone.stale) || ageMin > 90;
-  return {
-    ...zone,
-    loadMw,
-    consumptionMw: Number(zone.consumptionMw || loadMw),
-    productionMw,
-    netFlowMw,
-    powerBreakdownMw,
-    dominantSource: zone.dominantSource || dominant.label,
-    dominantSourceKey: zone.dominantSourceKey || dominant.key,
-    status: stale ? "stale" : (zone.status || "demo"),
-    quality: zone.quality || (zone.status === "live" ? "measured" : "estimated"),
-    source: zone.source || (zone.status === "live" ? "API intern" : "SERVIO demo"),
-    dataAgeMinutes: ageMin,
-    updatedAtUtc,
-    warnings: zone.warnings || (stale ? ["Date posibil învechite"] : zone.status === "unavailable" ? ["Zonă indisponibilă"] : []),
-  };
-}
-function quarterLabel(index) {
-  const h = Math.floor(index / 4) % 24;
-  const m = (index % 4) * 15;
-  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
-}
-function buildGridSeriesForZone(zone, reason = "demo") {
-  const baseCarbon = Number(zone.carbonIntensity || 250);
-  const baseRen = Number(zone.renewablePct || 35);
-  const baseCf = Number(zone.carbonFreePct || baseRen);
-  const baseLoad = Number(zone.loadMw || 5000);
-  const baseProd = Number(zone.productionMw || baseLoad);
-  const baseFlow = Number(zone.netFlowMw || 0);
-  const basePrice = Number(zone.priceLeiMwh || 0);
-  const history = Array.from({ length: 96 }, (_, i) => {
-    const wave = Math.sin((i - 20) / 96 * Math.PI * 2);
-    const solar = Math.max(0, Math.sin((i - 24) / 48 * Math.PI));
-    const evening = Math.exp(-Math.pow(i - 76, 2) / 130);
-    const morning = Math.exp(-Math.pow(i - 34, 2) / 100);
-    return {
-      index: i,
-      label: quarterLabel(i),
-      datetimeUtc: new Date(Date.now() - (95 - i) * 15 * 60 * 1000).toISOString(),
-      carbon: Math.max(30, Math.round(baseCarbon + 42 * wave - 30 * solar + 18 * evening)),
-      renewable: Math.max(0, Math.min(100, Math.round(baseRen + 12 * solar - 5 * evening))),
-      carbonFree: Math.max(0, Math.min(100, Math.round(baseCf + 7 * solar - 4 * evening))),
-      fossil: Math.max(0, Math.min(100, Math.round(100 - baseCf - 7 * solar + 4 * evening))),
-      load: Math.max(100, Math.round(baseLoad + 420 * morning + 760 * evening - 280 * solar)),
-      production: Math.max(100, Math.round(baseProd + 300 * morning + 620 * evening - 160 * solar)),
-      netFlow: Math.round(baseFlow + 120 * Math.sin(i / 10) - 75 * solar),
-      price: basePrice ? Math.max(0, Math.round(basePrice + 130 * morning + 210 * evening - 90 * solar)) : null,
-      status: reason.includes("forecast") ? "forecast" : zone.status || "demo",
-    };
-  });
-  const forecast = Array.from({ length: 32 }, (_, i) => {
-    const wave = Math.sin((i + 8) / 32 * Math.PI * 2);
-    return {
-      index: i,
-      label: "+" + Math.floor(i / 4) + "h" + (i % 4 ? " " + ((i % 4) * 15) + "m" : ""),
-      datetimeUtc: new Date(Date.now() + i * 15 * 60 * 1000).toISOString(),
-      carbon: Math.max(30, Math.round(baseCarbon + 38 * wave)),
-      renewable: Math.max(0, Math.min(100, Math.round(baseRen + 11 * Math.sin(i / 8)))),
-      carbonFree: Math.max(0, Math.min(100, Math.round(baseCf + 7 * Math.sin(i / 9)))),
-      load: Math.max(100, Math.round(baseLoad + 650 * Math.sin((i + 16) / 32 * Math.PI * 2))),
-      production: Math.max(100, Math.round(baseProd + 520 * Math.sin((i + 14) / 32 * Math.PI * 2))),
-      netFlow: Math.round(baseFlow + 90 * Math.sin(i / 6)),
-      price: basePrice ? Math.max(0, Math.round(basePrice + 160 * Math.sin((i + 12) / 32 * Math.PI * 2))) : null,
-      status: "forecast",
-    };
-  });
-  return { history, forecast };
-}
-function buildGridAdvancedDemoData(reason = "no-api-key") {
-  const base = buildGridDemoData(reason);
-  const zones = (base.zones || []).map(enrichGridZone);
-  const ro = zones.find((z) => z.code === "RO") || zones[0] || {};
-  const series = buildGridSeriesForZone(ro, reason);
-  return normalizeGridPayloadAdvanced({
-    ...base,
-    status: reason === "rate-limit" ? "rate-limit" : reason === "offline" ? "offline" : "no-api-key",
-    sourceMode: "demo-fallback",
-    message: reason === "offline" ? "Offline — se afișează date demo/cache." : base.message,
-    zones,
-    history: series.history,
-    forecast: series.forecast,
-  }, "RO");
-}
-function normalizeGridPayloadAdvanced(payload, selectedZone = "RO") {
-  const fallback = buildGridDemoData(payload?.reason || "no-api-key");
-  const source = payload && payload.zones ? payload : fallback;
-  const zones = (source.zones || fallback.zones || []).map(enrichGridZone);
-  const selected = zones.find((z) => z.code === selectedZone) || zones.find((z) => z.code === "RO") || zones[0] || {};
-  const generated = buildGridSeriesForZone(selected, source.reason || source.status || "demo");
-  const history = Array.isArray(source.history) && source.history.length >= 24
-    ? source.history.map((r, i) => ({
-        index: i,
-        label: r.label || quarterLabel(i % 96),
-        datetimeUtc: r.datetimeUtc || r.datetime || r.updatedAt || new Date(Date.now() - (source.history.length - 1 - i) * 15 * 60 * 1000).toISOString(),
-        carbon: Math.round(firstNumber(r.carbon, r.carbonIntensity, selected.carbonIntensity)),
-        renewable: Math.round(firstNumber(r.renewable, r.renewablePct, selected.renewablePct)),
-        carbonFree: Math.round(firstNumber(r.carbonFree, r.carbonFreePct, selected.carbonFreePct)),
-        fossil: Math.round(firstNumber(r.fossil, selected.fossilPct, 100 - selected.carbonFreePct)),
-        load: Math.round(firstNumber(r.load, r.loadMw, selected.loadMw)),
-        production: Math.round(firstNumber(r.production, r.productionMw, selected.productionMw)),
-        netFlow: Math.round(firstNumber(r.netFlow, r.netFlowMw, selected.netFlowMw)),
-        price: firstFinite(r.price, r.priceLeiMwh, selected.priceLeiMwh),
-        status: r.status || source.status || "demo",
-      }))
-    : generated.history;
-  const forecast = Array.isArray(source.forecast) && source.forecast.length
-    ? source.forecast.map((r, i) => ({
-        index: i,
-        label: r.label || "+" + i + "h",
-        datetimeUtc: r.datetimeUtc || r.datetime || new Date(Date.now() + i * 15 * 60 * 1000).toISOString(),
-        carbon: Math.round(firstNumber(r.carbon, r.carbonIntensity, selected.carbonIntensity)),
-        renewable: Math.round(firstNumber(r.renewable, r.renewablePct, selected.renewablePct)),
-        carbonFree: Math.round(firstNumber(r.carbonFree, r.carbonFreePct, selected.carbonFreePct)),
-        load: Math.round(firstNumber(r.load, r.loadMw, selected.loadMw)),
-        production: Math.round(firstNumber(r.production, r.productionMw, selected.productionMw)),
-        netFlow: Math.round(firstNumber(r.netFlow, r.netFlowMw, selected.netFlowMw)),
-        price: firstFinite(r.price, r.priceLeiMwh, selected.priceLeiMwh),
-        status: "forecast",
-      }))
-    : generated.forecast;
-  const flows = (source.flows || fallback.flows || []).map((f, i) => ({
-    id: f.id || `${f.from}-${f.to}-${i}`,
-    from: normalizeZoneCode(f.from || f.source || "RO") || f.from,
-    to: normalizeZoneCode(f.to || f.target || "RO") || f.to,
-    mw: Math.round(Math.abs(Number(f.mw || f.value || f.flow || 0))),
-    status: f.status || source.status || "demo",
-    updatedAtUtc: f.updatedAtUtc || source.updatedAtUtc || new Date().toISOString(),
-  })).filter((f) => f.from && f.to && f.from !== f.to && f.mw > 0);
-  const pzu = source.pzuPrice || { ok: Boolean(selected.priceLeiMwh), priceLeiMwh: selected.priceLeiMwh || null, source: "OPCOM PZU / demo" };
-  return {
-    ok: source.ok !== false,
-    source: source.source || "SERVIO Grid Adapter",
-    sourceMode: source.sourceMode || "demo-fallback",
-    status: source.status || "demo",
-    message: source.message || "Date demo / cache local.",
-    reason: source.reason || null,
-    updatedAtUtc: source.updatedAtUtc || new Date().toISOString(),
-    stale: Boolean(source.stale) || zones.some((z) => z.status === "stale"),
-    zones,
-    flows,
-    history,
-    forecast,
-    mixSeries: GRID_MIX_KEYS.map((key) => ({ source: GRID_SOURCE_LABELS[key], key, value: Number(selected.mix?.[key] || 0) })),
-    pzuPrice: pzu,
-    apiCoverage: source.apiCoverage || {},
-    externalUrl: source.externalUrl || "https://app.electricitymaps.com/map/live/fifteen_minutes",
-  };
-}
-function gridLayerMetric(zone, layer) {
-  const z = zone || {};
-  if (layer === "renewable") return { value: z.renewablePct, label: "REN", unit: "%", tone: z.renewablePct >= 45 ? "low" : z.renewablePct >= 25 ? "mid" : "high" };
-  if (layer === "carbonfree") return { value: z.carbonFreePct, label: "C-free", unit: "%", tone: z.carbonFreePct >= 65 ? "low" : z.carbonFreePct >= 40 ? "mid" : "high" };
-  if (layer === "flows") return { value: z.netFlowMw, label: z.netFlowMw >= 0 ? "Import" : "Export", unit: "MW", tone: Math.abs(z.netFlowMw) < 150 ? "low" : Math.abs(z.netFlowMw) < 450 ? "mid" : "high" };
-  if (layer === "load") return { value: z.loadMw, label: "Load", unit: "MW", tone: z.loadMw < 3500 ? "low" : z.loadMw < 7500 ? "mid" : "high" };
-  if (layer === "production") return { value: z.productionMw, label: "Prod.", unit: "MW", tone: z.productionMw < 3500 ? "low" : z.productionMw < 7500 ? "mid" : "high" };
-  if (layer === "price") return { value: z.priceLeiMwh, label: "PZU", unit: "Lei", tone: !z.priceLeiMwh ? "off" : z.priceLeiMwh < 450 ? "low" : z.priceLeiMwh < 800 ? "mid" : "high" };
-  if (layer === "mix") return { value: gridMaxSource(z.mix).value, label: gridMaxSource(z.mix).label, unit: "%", tone: gridTone(z.carbonIntensity) };
-  if (layer === "forecast") return { value: z.carbonIntensity, label: "Forecast", unit: "g", tone: gridTone(z.carbonIntensity) };
-  return { value: z.carbonIntensity, label: "CO₂", unit: "g", tone: gridTone(z.carbonIntensity) };
-}
-function pointForTimeline(data, timeline, timeIndex) {
-  const rows = timeline === "forecast" ? data.forecast : data.history;
-  if (!Array.isArray(rows) || !rows.length) return null;
-  if (timeline === "live") return rows[rows.length - 1];
-  return rows[Math.max(0, Math.min(rows.length - 1, Number(timeIndex || 0)))] || rows[rows.length - 1];
-}
-function useGridMapController(apiBase, apiToken) {
-  const [timeline, setTimeline] = useState("live");
-  const [layer, setLayer] = useState("carbon");
-  const [selectedZone, setSelectedZone] = useState("RO");
-  const [timeIndex, setTimeIndex] = useState(95);
-  const [data, setData] = useState(() => buildGridAdvancedDemoData("no-api-key"));
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastRefresh, setLastRefresh] = useState(null);
-  const refresh = () => {
-    let alive = true;
-    setLoading(true);
-    setError(null);
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      setData(buildGridAdvancedDemoData("offline"));
-      setError("offline");
-      setLoading(false);
-      setLastRefresh(new Date());
-      return () => { alive = false; };
-    }
-    gridMapService.load({ base: apiBase, token: apiToken, mode: timeline, zone: selectedZone })
-      .then((next) => { if (alive) setData(normalizeGridPayloadAdvanced(next, selectedZone)); })
-      .catch((e) => { if (alive) { setError(String(e.message || e)); setData(buildGridAdvancedDemoData("error-fallback")); } })
-      .finally(() => { if (alive) { setLoading(false); setLastRefresh(new Date()); } });
-    return () => { alive = false; };
-  };
-  useEffect(refresh, [apiBase, apiToken, timeline, selectedZone]);
-  useEffect(() => {
-    if (timeline !== "live") return undefined;
-    const id = setInterval(() => refresh(), 60000);
-    return () => clearInterval(id);
-  }, [apiBase, apiToken, timeline, selectedZone]);
-  return { data, loading, error, timeline, setTimeline, layer, setLayer, selectedZone, setSelectedZone, timeIndex, setTimeIndex, refresh, lastRefresh };
-}
-function GridLayerSwitcher({ layer, setLayer }) {
-  return <div className="gridcontrolcard">
-    <div className="gridcontrolhead"><Layers size={14} /><b>Layer</b></div>
-    <div className="gridlayerbar">{GRID_LAYER_MODES_V2.map(({ id, label, Icon }) => <button key={id} data-grid-layer={id} className={"chip" + (layer === id ? " on" : "")} onClick={() => setLayer(id)} title={label}><Icon size={13} /> {label}</button>)}</div>
-  </div>;
-}
-function GridTimelineControls({ timeline, setTimeline, timeIndex, setTimeIndex, data, loading, refresh, lastRefresh }) {
-  const rows = timeline === "forecast" ? data.forecast : data.history;
-  const activeIndex = timeline === "live" ? Math.max(0, (rows || []).length - 1) : Math.max(0, Math.min((rows || []).length - 1, Number(timeIndex || 0)));
-  const active = (rows || [])[activeIndex];
-  return <div className="gridcontrolcard">
-    <div className="gridcontrolhead"><Clock size={14} /><b>Timeline</b><span className="dim">15 min</span></div>
-    <div className="gridtimelinechips">{GRID_TIMELINE_MODES_V2.map((m) => <button key={m.id} data-grid-timeline={m.id} className={"chip" + (timeline === m.id ? " on" : "")} onClick={() => setTimeline(m.id)}><span>{m.label}</span><small>{m.sub}</small></button>)}</div>
-    <div className="gridsliderrow">
-      <input className="gridslider" type="range" min="0" max={Math.max(0, (rows || []).length - 1)} value={activeIndex} disabled={timeline === "live" || !(rows || []).length} onChange={(e) => setTimeIndex(Number(e.target.value))} />
-      <div className="gridsliderlabel"><b>{active?.label || "live"}</b><span>{timeline === "live" ? "auto-refresh 60s" : timeline}</span></div>
-      <button className="btn ghost" onClick={refresh}>{loading ? <RefreshCw size={14} className="spin" /> : <RefreshCw size={14} />} Refresh</button>
-    </div>
-    <div className="hint"><Clock size={13} /> Actualizat local: {lastRefresh ? lastRefresh.toLocaleTimeString("ro-RO", { hour:"2-digit", minute:"2-digit" }) : "—"} · sursă: {data.sourceMode || data.status}</div>
-  </div>;
-}
-function GridStatusBannerV2({ data, error, loading }) {
-  if (loading) return <div className="banner"><RefreshCw size={15} className="spin" /><div><b>Se încarcă Harta Rețea</b> — sincronizare semnale, mix, fluxuri și PZU.</div></div>;
-  if (error === "offline" || data.status === "offline") return <div className="banner err"><AlertTriangle size={15} /><div><b>Offline</b> — se afișează date demo/cache. Pagina nu se blochează fără conexiune.</div></div>;
-  if (error) return <div className="banner err"><AlertTriangle size={15} /><div><b>API indisponibil</b> — fallback demo activ. {error}</div></div>;
-  if (data.status === "rate-limit") return <div className="banner err"><AlertTriangle size={15} /><div><b>Rate limit</b> — se afișează cache/demo până la următoarea fereastră permisă.</div></div>;
-  if (data.status === "no-api-key" || data.sourceMode === "demo-fallback") return <div className="banner"><AlertTriangle size={15} /><div><b>Date demo</b> — integrarea este pregătită pentru endpoint intern/API oficial; cheia rămâne în backend/env.</div></div>;
-  if (data.stale) return <div className="banner err"><AlertTriangle size={15} /><div><b>Date stale</b> — ultima actualizare depășește pragul normal; valorile sunt afișate cu avertizare.</div></div>;
-  if (data.status === "partial") return <div className="banner"><AlertTriangle size={15} /><div><b>Date parțiale</b> — unele semnale lipsesc și sunt estimate/fallback.</div></div>;
-  return <div className="banner ok"><Check size={15} /><div><b>Live</b> — date livrate prin backend intern; fără scraping și fără chei expuse în client.</div></div>;
-}
-function GridKpiCardsV2({ zone, data }) {
-  const point = pointForTimeline(data, "live", 0) || {};
-  return <div className="kpirow gridkpis">
-    <Kpi label="Carbon intensity România" value={fmt(zone.carbonIntensity) + " g/kWh"} sub={gridToneLabel(zone.carbonIntensity)} Icon={Wind} tone={zone.carbonIntensity < 220 ? "green" : zone.carbonIntensity > 360 ? "red" : "accent"} />
-    <Kpi label="Renewable %" value={fmt(zone.renewablePct) + "%"} sub="hidro · eolian · solar · biomasă" Icon={Sparkles} tone="green" />
-    <Kpi label="Carbon-free %" value={fmt(zone.carbonFreePct) + "%"} sub="renewable + nuclear" Icon={Check} tone="green" />
-    <Kpi label="Net import/export" value={(zone.netFlowMw > 0 ? "+" : "") + fmt(zone.netFlowMw) + " MW"} sub={zone.netFlowMw >= 0 ? "import net" : "export net"} Icon={Plug} />
-    <Kpi label="Production total" value={fmt(zone.productionMw) + " MW"} sub="producție estimată/raportată" Icon={Zap} />
-    <Kpi label="Consumption/load" value={fmt(zone.loadMw) + " MW"} sub={"acum · " + fmt(point.load || zone.loadMw) + " MW"} Icon={Gauge} />
-    <Kpi label="Dominant source" value={zone.dominantSource || "—"} sub={fmt((zone.mix || {})[zone.dominantSourceKey] || 0) + "% din mix"} Icon={Layers} />
-    <Kpi label="PZU / Day-Ahead" value={zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei/MWh" : "—"} sub={zone.priceSource || data.pzuPrice?.source || "disponibil dacă există date"} Icon={DollarSign} />
-    <Kpi label="Ultima actualizare" value={new Date(data.updatedAtUtc).toLocaleTimeString("ro-RO", { hour:"2-digit", minute:"2-digit" })} sub={data.status + " · " + (data.sourceMode || "cache")} Icon={Clock} />
-  </div>;
-}
-function GridMapLegendV2({ layer }) {
-  const active = GRID_LAYER_MODES_V2.find((m) => m.id === layer);
-  return <div className="gridlegend">
-    <span><Layers size={12} /> {active?.label || "Layer"}</span>
-    <span><i className="legdot low" /> low / favorabil</span>
-    <span><i className="legdot mid" /> medium</span>
-    <span><i className="legdot high" /> high</span>
-    <span><i className="legdot off" /> unknown</span>
-    <span><i className="flowline" /> flux MW</span>
-  </div>;
-}
-function GridZoneHoverCard({ zone, data }) {
-  if (!zone) return null;
-  const power = zone.powerBreakdownMw || {};
-  const mixRows = GRID_MIX_KEYS.map((key) => {
-    const pct = mixVal(zone, key);
-    const mwRaw = Number(power[key]);
-    const mw = Number.isFinite(mwRaw) ? Math.round(mwRaw) : Math.round((zone.productionMw || 0) * pct / 100);
-    return { key, label:GRID_SOURCE_LABELS[key], pct, mw };
-  }).filter((r) => r.pct > 0 || r.mw > 0).sort((a,b) => b.mw - a.mw).slice(0, 5);
-  const updated = zone.updatedAtUtc ? new Date(zone.updatedAtUtc) : new Date(data.updatedAtUtc || Date.now());
-  const netLabel = zone.netFlowMw > 0 ? "import net" : zone.netFlowMw < 0 ? "export net" : "echilibrat";
-  return <div className="gridhover gridhoverzone">
-    <div className="gridhoverhead">
-      <div><b>{zone.name}</b><span>{zone.code} · {zone.status || data.status} · {zone.quality || "n/a"}</span></div>
-      <i className={gridTone(zone.carbonIntensity)}>{gridToneLabel(zone.carbonIntensity)}</i>
-    </div>
-    <div className="gridhovermetric"><strong>{fmt(zone.carbonIntensity)}</strong><span>gCO₂eq/kWh · calculat SERVIO din mix ENTSO-E</span></div>
-    <div className="gridhovergrid">
-      <div><span>Renewable</span><b>{fmt(zone.renewablePct)}%</b></div>
-      <div><span>Carbon-free</span><b>{fmt(zone.carbonFreePct)}%</b></div>
-      <div><span>Fossil</span><b>{fmt(zone.fossilPct)}%</b></div>
-      <div><span>Load</span><b>{fmt(zone.loadMw)} MW</b></div>
-      <div><span>Production</span><b>{fmt(zone.productionMw)} MW</b></div>
-      <div><span>{netLabel}</span><b>{(zone.netFlowMw > 0 ? "+" : "") + fmt(zone.netFlowMw)} MW</b></div>
-    </div>
-    <div className="gridhovermix">
-      {mixRows.map((r) => <div key={r.key}><span>{r.label}</span><b>{fmt(r.mw)} MW · {fmt(r.pct)}%</b><i style={{ width: Math.min(100, Math.max(3, r.pct)) + "%", background: GRID_SOURCE_COLORS[r.key] }} /></div>)}
-    </div>
-    <div className="gridhoverfoot">
-      <span>PZU: {zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei/MWh" : "—"}</span>
-      <span>{updated.toLocaleString("ro-RO", { hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit" })}</span>
-      <span>{zone.source || data.source || "sursă necunoscută"}</span>
-    </div>
-  </div>;
-}
-function GridFlowHoverCard({ flow }) {
-  if (!flow) return null;
-  const updated = flow.updatedAtUtc ? new Date(flow.updatedAtUtc) : null;
-  return <div className="gridhover gridhoverflow">
-    <div className="gridhoverhead">
-      <div><b>{flow.from} → {flow.to}</b><span>interconectare · {flow.status || "n/a"}</span></div>
-      <i className="low">A11</i>
-    </div>
-    <div className="gridhovermetric"><strong>{fmt(flow.mw)}</strong><span>MW · flux fizic net ENTSO-E</span></div>
-    <div className="gridhoverfoot">
-      <span>Direcție import/export calculată din ambele sensuri</span>
-      {updated && <span>{updated.toLocaleString("ro-RO", { hour:"2-digit", minute:"2-digit", day:"2-digit", month:"2-digit" })}</span>}
-    </div>
-  </div>;
-}
-function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline, timeIndex }) {
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [drag, setDrag] = useState(null);
-  const [hover, setHover] = useState(null);
-  const [flowHover, setFlowHover] = useState(null);
-  const point = pointForTimeline(data, timeline, timeIndex);
-  const zones = (data.zones || []).map((z) => z.code === selectedZone && point ? { ...z, carbonIntensity: point.carbon, renewablePct: point.renewable, carbonFreePct: point.carbonFree, fossilPct: point.fossil ?? Math.max(0, 100 - point.carbonFree), loadMw: point.load, productionMw: point.production, netFlowMw: point.netFlow, priceLeiMwh: point.price ?? z.priceLeiMwh } : z);
-  const knownZones = new Set(GRID_ZONES.map((z) => z.code));
-  const visibleFlows = (data.flows || []).filter((f) => knownZones.has(f.from) && knownZones.has(f.to) && f.from !== f.to && Number.isFinite(Number(f.mw)) && Math.abs(Number(f.mw)) > 0);
-  const getZone = (code) => zones.find((z) => z.code === code) || enrichGridZone({ code, name: code, status:"unavailable", quality:"unavailable", mix:{} });
-  const startDrag = (e) => {
-    if (e.target instanceof Element && e.target.closest(".gridzone,.gridflow,.mapzoom")) return;
-    setDrag({ x: e.clientX, y: e.clientY, pan });
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-  };
-  const moveDrag = (e) => {
-    if (!drag) return;
-    setPan({ x: drag.pan.x + (e.clientX - drag.x), y: drag.pan.y + (e.clientY - drag.y) });
-  };
-  const stopDrag = () => setDrag(null);
-  return <div className="gridmapcard">
-    <div className="gridmaptoolbar">
-      <div><div className="cardtitle">Hartă live rețea</div><div className="dim small">România + Europa ENTSO-E · {timeline} · {GRID_LAYER_MODES_V2.find((m) => m.id === layer)?.label}</div></div>
-      <div className="mapzoom">
-        <button className="ticon" title="Zoom out" onClick={() => setZoom((z) => Math.max(.75, z - .15))}><Minus size={14} /></button>
-        <button className="ticon" title="Reset view" onClick={() => { setZoom(1); setPan({ x:0, y:0 }); }}>{fmt(zoom, 1)}x</button>
-        <button className="ticon" title="Zoom in" onClick={() => setZoom((z) => Math.min(1.75, z + .15))}><Plus size={14} /></button>
-      </div>
-    </div>
-    <div className={"gridmapcanvas" + (drag ? " dragging" : "")} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
-      <div className="mapgridbg" />
-      <div className="gridmapviewport" style={{ transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})` }}>
-        {visibleFlows.map((f, i) => {
-          const a = gridZoneMeta(f.from); const b = gridZoneMeta(f.to); const dx = b.x - a.x; const dy = b.y - a.y; const len = Math.sqrt(dx*dx + dy*dy); const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-          return <button key={f.id || i} className={"gridflow" + (flowHover?.id === (f.id || i) ? " on" : "")} style={{ left:a.x+"%", top:a.y+"%", width:len+"%", transform:`rotate(${ang}deg)`, ["--w"]: Math.max(2, Math.min(10, Math.abs(f.mw)/85)) + "px" }} title={`${f.from} → ${f.to}: ${fmt(Math.abs(f.mw))} MW`} onMouseEnter={() => setFlowHover({ ...f, id:f.id || i })} onPointerEnter={() => setFlowHover({ ...f, id:f.id || i })} onFocus={() => setFlowHover({ ...f, id:f.id || i })} onMouseLeave={() => setFlowHover(null)} onPointerLeave={() => setFlowHover(null)} onBlur={() => setFlowHover(null)} onClick={() => setFlowHover({ ...f, id:f.id || i })}><span /><i /></button>;
-        })}
-        {GRID_ZONES.map((m) => {
-          const z = getZone(m.code);
-          const metric = gridLayerMetric(z, layer);
-          const unavailable = z.status === "unavailable";
-          return <button key={m.code} data-grid-zone={m.code} className={`gridzone ${m.main ? "main" : ""} ${selectedZone === m.code ? "on" : ""} ${unavailable ? "off" : metric.tone}`} style={{ left:m.x+"%", top:m.y+"%" }} onClick={() => { setSelectedZone(m.code); setHover(z); }} onMouseEnter={() => setHover(z)} onPointerEnter={() => setHover(z)} onFocus={() => setHover(z)} onMouseLeave={() => setHover(null)} onPointerLeave={() => setHover(null)} onBlur={() => setHover(null)}>
-            <b>{m.code}</b><span>{m.name}</span><small>{metric.label}: {metric.value || metric.value === 0 ? fmt(Math.abs(metric.value)) + metric.unit : "—"}</small><em>{z.status} · {z.quality}</em>
-          </button>;
-        })}
-      </div>
-      {flowHover ? <GridFlowHoverCard flow={flowHover} /> : hover ? <GridZoneHoverCard zone={hover} data={data} /> : null}
-    </div>
-    <GridMapLegendV2 layer={layer} />
-  </div>;
-}
-function GridZoneDetailsPanelV2({ zone, data }) {
-  const warnings = [...(zone.warnings || [])];
-  if (data.sourceMode === "demo-fallback") warnings.push("Date demo/fallback");
-  if (zone.quality === "partial") warnings.push("Date parțiale");
-  const mixRows = GRID_MIX_KEYS.map((key) => ({ key, label:GRID_SOURCE_LABELS[key], val:mixVal(zone,key), mw: Math.round((zone.productionMw || 0) * mixVal(zone,key) / 100), cls:GRID_SOURCE_CLASS[key] })).filter((x) => x.val > 0 || ["hydro","nuclear","wind","solar","gas","coal"].includes(x.key));
-  return <Card title={zone.name + " · " + zone.code} right={<Badge tone={zone.status === "live" ? "g" : zone.status === "unavailable" ? "r" : "n"}>{zone.status || data.status}</Badge>}>
-    <div className="zonehero"><div><div className="zonebig">{fmt(zone.carbonIntensity)} <span>gCO₂eq/kWh</span></div><div className="dim small">intensitate carbon · {gridToneLabel(zone.carbonIntensity)}</div></div><div className={`zonering ${gridTone(zone.carbonIntensity)}`}>{fmt(zone.renewablePct)}%</div></div>
-    <div className="zonemetrics">
-      <div><span>Renewable</span><b>{fmt(zone.renewablePct)}%</b></div><div><span>Carbon-free</span><b>{fmt(zone.carbonFreePct)}%</b></div><div><span>Fossil</span><b>{fmt(zone.fossilPct)}%</b></div><div><span>Import/export net</span><b>{(zone.netFlowMw > 0 ? "+" : "") + fmt(zone.netFlowMw)} MW</b></div><div><span>Production</span><b>{fmt(zone.productionMw)} MW</b></div><div><span>Consumption/load</span><b>{fmt(zone.loadMw)} MW</b></div><div><span>Dominant source</span><b>{zone.dominantSource}</b></div><div><span>Preț PZU</span><b>{zone.priceLeiMwh ? fmt(zone.priceLeiMwh) + " Lei/MWh" : "—"}</b></div>
-    </div>
-    <div className="mixlist">{mixRows.map((m) => <div key={m.key} className={"mixrow " + m.cls}><div><span>{m.label}</span><b>{fmt(m.val)}% · {fmt(m.mw)} MW</b></div><i style={{ width: Math.min(100, m.val) + "%", background: GRID_SOURCE_COLORS[m.key] }} /></div>)}</div>
-    <div className="gridwarns">{warnings.length ? warnings.map((w) => <span key={w}><AlertTriangle size={12} /> {w}</span>) : <span><Check size={12} /> Date coerente pentru afișare</span>}</div>
-    <div className="hint"><Clock size={13} /> Actualizat: {new Date(zone.updatedAtUtc || data.updatedAtUtc).toLocaleString("ro-RO")} · calitate: {zone.quality} · sursă: {zone.source || data.source}</div>
-  </Card>;
-}
-function gridMixHistoryRows(zone, series) {
-  return (series || []).map((r) => {
-    const row = { label:r.label };
-    for (const key of ["hydro","nuclear","wind","solar","gas","coal"]) row[key] = Math.round((r.production || zone.productionMw || 0) * mixVal(zone, key) / 100);
-    return row;
-  });
-}
-function GridSignalsChartsV2({ data, timeline, selectedZone, timeIndex }) {
-  const zone = (data.zones || []).find((z) => z.code === selectedZone) || (data.zones || [])[0] || {};
-  const series = timeline === "forecast" ? data.forecast : data.history;
-  const displaySeries = timeline === "live" ? (data.history || []).slice(-96) : series;
-  const mixHistory = gridMixHistoryRows(zone, displaySeries);
-  const zoneCompare = (data.zones || []).map((z) => ({ code:z.code, carbon:z.carbonIntensity, renewable:z.renewablePct, load:Math.round((z.loadMw || 0) / 100), production:Math.round((z.productionMw || 0) / 100) }));
-  return <div className="gridcharts">
-    <Card title={timeline === "forecast" ? "Forecast carbon intensity" : "Carbon intensity · 24h"} pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={240}><ComposedChart data={displaySeries} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={timeline === "forecast" ? 3 : 11} /><YAxis tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={42} /><RTooltip content={<ChartTip unit=" g/kWh" />} /><ReferenceLine y={300} stroke="var(--yellow)" strokeDasharray="3 4" /><Area type="monotone" dataKey="carbon" name="carbon" stroke="var(--accent)" strokeWidth={2} fill="var(--accent)" fillOpacity={0.08} />
-      </ComposedChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Renewable & carbon-free · 24h" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={240}><LineChart data={displaySeries} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={timeline === "forecast" ? 3 : 11} /><YAxis tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={42} domain={[0,100]} /><RTooltip content={<ChartTip unit="%" />} /><Line type="monotone" dataKey="renewable" name="Renewable" stroke="var(--green)" strokeWidth={2} dot={false} /><Line type="monotone" dataKey="carbonFree" name="Carbon-free" stroke="var(--blue)" strokeWidth={2} dot={false} />
-      </LineChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Import/export & load · 24h" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={240}><ComposedChart data={displaySeries} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={timeline === "forecast" ? 3 : 11} /><YAxis yAxisId="l" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><YAxis yAxisId="r" orientation="right" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><RTooltip content={<ChartTip unit=" MW" />} /><Bar yAxisId="l" dataKey="netFlow" name="net import/export" fill="var(--border-strong)" radius={[4,4,0,0]} /><Line yAxisId="r" type="monotone" dataKey="load" name="load" stroke="var(--blue)" strokeWidth={2} dot={false} /><Line yAxisId="r" type="monotone" dataKey="production" name="production" stroke="var(--green)" strokeWidth={2} dot={false} />
-      </ComposedChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Preț PZU / Day-Ahead" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={240}><AreaChart data={displaySeries.filter((r) => r.price !== null && r.price !== undefined)} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={timeline === "forecast" ? 3 : 11} /><YAxis tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><RTooltip content={<ChartTip unit=" Lei/MWh" />} /><Area type="monotone" dataKey="price" name="PZU" stroke="var(--accent-2)" strokeWidth={2} fill="var(--accent-2)" fillOpacity={0.08} />
-      </AreaChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Mix energetic · producție 24h" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={260}><AreaChart data={mixHistory} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={11} /><YAxis tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><RTooltip content={<ChartTip unit=" MW" />} />{["hydro","nuclear","wind","solar","gas","coal"].map((key) => <Area key={key} type="monotone" dataKey={key} stackId="mix" name={GRID_SOURCE_LABELS[key]} stroke={GRID_SOURCE_COLORS[key]} fill={GRID_SOURCE_COLORS[key]} fillOpacity={0.65} />)}
-      </AreaChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Forecast următoarele ore" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={260}><ComposedChart data={data.forecast || []} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="label" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} interval={3} /><YAxis yAxisId="l" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><YAxis yAxisId="r" orientation="right" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><RTooltip content={<ChartTip unit="" />} /><Area yAxisId="l" type="monotone" dataKey="carbon" name="gCO₂/kWh" stroke="var(--accent)" fill="var(--accent)" fillOpacity={0.08} /><Line yAxisId="r" type="monotone" dataKey="load" name="load MW" stroke="var(--blue)" strokeWidth={2} dot={false} />
-      </ComposedChart></ResponsiveContainer></div>
-    </Card>
-    <Card title="Comparație zone · RO și vecini" pad={false}>
-      <div className="hero"><ResponsiveContainer width="100%" height={260}><ComposedChart data={zoneCompare} margin={{ top:16,right:20,left:4,bottom:4 }}>
-        <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="code" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} /><YAxis yAxisId="l" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><YAxis yAxisId="r" orientation="right" tick={{ fontSize:10.5, fill:"var(--text-faint)" }} axisLine={false} tickLine={false} width={44} /><RTooltip content={<ChartTip unit="" />} /><Bar yAxisId="l" dataKey="carbon" name="carbon g/kWh" fill="var(--accent)" radius={[4,4,0,0]} /><Line yAxisId="r" type="monotone" dataKey="renewable" name="renewable %" stroke="var(--green)" strokeWidth={2} /><Line yAxisId="r" type="monotone" dataKey="load" name="load x100 MW" stroke="var(--blue)" strokeWidth={2} />
-      </ComposedChart></ResponsiveContainer></div>
-    </Card>
-  </div>;
-}
-function GridNativeTable({ title, rows, columns, loading, error, empty = "Nu există date pentru filtrul curent." }) {
-  const [q, setQ] = useState("");
-  const [sortKey, setSortKey] = useState(columns[0]?.key || "");
-  const filtered = (rows || []).filter((row) => JSON.stringify(row).toLowerCase().includes(q.toLowerCase()));
-  const sorted = [...filtered].sort((a, b) => {
-    const col = columns.find((c) => c.key === sortKey) || columns[0];
-    const av = col?.sortValue ? col.sortValue(a) : a[sortKey];
-    const bv = col?.sortValue ? col.sortValue(b) : b[sortKey];
-    return typeof av === "number" && typeof bv === "number" ? bv - av : String(av ?? "").localeCompare(String(bv ?? ""), "ro");
-  });
-  return <Card title={title} right={<div className="tabletools"><input className="nsel gridsearch" placeholder="Filtrează" value={q} onChange={(e)=>setQ(e.target.value)} /><select className="nsel gridsort" value={sortKey} onChange={(e)=>setSortKey(e.target.value)}>{columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</select></div>} pad={false}>
-    <div className="tablewrap"><table className="tbl"><thead><tr>{columns.map((c) => <th key={c.key} className={c.num ? "num" : ""}>{c.label}</th>)}</tr></thead><tbody>
-      {loading ? <tr><td colSpan={columns.length} className="dim"><RefreshCw size={13} className="spin" /> Se încarcă datele...</td></tr> :
-       error ? <tr><td colSpan={columns.length} className="dim"><AlertTriangle size={13} /> Eroare: {error}</td></tr> :
-       !sorted.length ? <tr><td colSpan={columns.length} className="dim">{empty}</td></tr> :
-       sorted.map((row, i) => <tr key={row.id || row.code || row.key || i}>{columns.map((c) => <td key={c.key} className={c.num ? "num" : ""}>{c.render ? c.render(row) : row[c.key]}</td>)}</tr>)}
-    </tbody></table></div>
-  </Card>;
-}
-function GridZonesTableV2({ data, setSelectedZone, selectedZone, loading, error }) {
-  const rows = data.zones || [];
-  return <GridNativeTable title="Zone / countries" rows={rows} loading={loading} error={error} columns={[
-    { key:"name", label:"Zonă", render:(z)=><button className={"linkrow" + (z.code === selectedZone ? " on" : "")} onClick={() => setSelectedZone(z.code)}><span className="zflag">{z.code}</span>{z.name}</button> },
-    { key:"carbonIntensity", label:"Carbon", num:true, render:(z)=>fmt(z.carbonIntensity) + " g" },
-    { key:"renewablePct", label:"Renew.", num:true, render:(z)=>fmt(z.renewablePct) + "%" },
-    { key:"carbonFreePct", label:"C-free", num:true, render:(z)=>fmt(z.carbonFreePct) + "%" },
-    { key:"loadMw", label:"Load", num:true, render:(z)=>fmt(z.loadMw) + " MW" },
-    { key:"productionMw", label:"Prod.", num:true, render:(z)=>fmt(z.productionMw) + " MW" },
-    { key:"netFlowMw", label:"Net flow", num:true, render:(z)=>(z.netFlowMw > 0 ? "+" : "") + fmt(z.netFlowMw) + " MW" },
-    { key:"status", label:"Status", render:(z)=><Badge tone={z.status === "live" ? "g" : z.status === "unavailable" ? "r" : "n"}>{z.quality || z.status}</Badge> },
-  ]} />;
-}
-function GridDataTables({ data, selectedZone, setSelectedZone, loading, error }) {
-  const zone = (data.zones || []).find((z) => z.code === selectedZone) || (data.zones || [])[0] || {};
-  const mixRows = GRID_MIX_KEYS.map((key) => ({ key, source:GRID_SOURCE_LABELS[key], pct:mixVal(zone,key), mw:Math.round((zone.productionMw || 0) * mixVal(zone,key) / 100), class:GRID_SOURCE_CLASS[key], status:zone.status || data.status }));
-  const flowRows = (data.flows || []).map((f) => ({ ...f, direction:f.to === selectedZone ? "import" : f.from === selectedZone ? "export" : "tranzit", signed:f.to === selectedZone ? f.mw : f.from === selectedZone ? -f.mw : f.mw }));
-  const forecastRows = (data.forecast || []).map((r) => ({ id:"fc-"+r.index, ...r }));
-  const priceRows = [...(data.history || []).slice(-96), ...(data.forecast || []).slice(0,12)].filter((r) => r.price !== null && r.price !== undefined).map((r, i) => ({ id:"p-"+i, ...r, status:r.status || data.status }));
-  return <div className="gridtables">
-    <GridZonesTableV2 data={data} selectedZone={selectedZone} setSelectedZone={setSelectedZone} loading={loading} error={error} />
-    <GridNativeTable title="Electricity mix table" rows={mixRows} loading={loading} error={error} columns={[
-      { key:"source", label:"Sursă" },
-      { key:"class", label:"Clasă" },
-      { key:"pct", label:"Pondere", num:true, render:(r)=>fmt(r.pct) + "%" },
-      { key:"mw", label:"MW", num:true, render:(r)=>fmt(r.mw) + " MW" },
-      { key:"status", label:"Status", render:(r)=><Badge tone={r.status === "live" ? "g" : "n"}>{r.status}</Badge> },
-    ]} />
-    <GridNativeTable title="Import/export flows" rows={flowRows} loading={loading} error={error} columns={[
-      { key:"from", label:"De la" },
-      { key:"to", label:"Către" },
-      { key:"direction", label:"Direcție" },
-      { key:"signed", label:"MW", num:true, render:(r)=>(r.signed > 0 ? "+" : "") + fmt(r.signed) + " MW" },
-      { key:"status", label:"Status", render:(r)=><Badge tone={r.status === "live" ? "g" : "n"}>{r.status}</Badge> },
-    ]} />
-    <GridNativeTable title="Forecast table" rows={forecastRows} loading={loading} error={error} columns={[
-      { key:"label", label:"Interval" },
-      { key:"carbon", label:"Carbon", num:true, render:(r)=>fmt(r.carbon) + " g" },
-      { key:"renewable", label:"Renew.", num:true, render:(r)=>fmt(r.renewable) + "%" },
-      { key:"load", label:"Load", num:true, render:(r)=>fmt(r.load) + " MW" },
-      { key:"production", label:"Prod.", num:true, render:(r)=>fmt(r.production) + " MW" },
-      { key:"status", label:"Status", render:(r)=><Badge tone="n">{r.status}</Badge> },
-    ]} />
-    <GridNativeTable title="Price / PZU table" rows={priceRows} loading={loading} error={error} columns={[
-      { key:"label", label:"Interval" },
-      { key:"price", label:"Lei/MWh", num:true, render:(r)=>fmt(r.price) + " Lei/MWh" },
-      { key:"carbon", label:"Carbon", num:true, render:(r)=>fmt(r.carbon) + " g" },
-      { key:"load", label:"Load", num:true, render:(r)=>fmt(r.load) + " MW" },
-      { key:"status", label:"Status", render:(r)=><Badge tone={r.status === "forecast" ? "n" : "g"}>{r.status}</Badge> },
-    ]} empty="Nu există preț PZU pentru zona/intervalul selectat." />
-  </div>;
-}
-function GridMapPage({ apiBase, apiToken }) {
-  const gm = useGridMapController(apiBase, apiToken);
-  const data = gm.data;
-  const selected = (data.zones || []).find((z) => z.code === gm.selectedZone) || (data.zones || [])[0] || {};
-  return <div className="stack gridpage">
-    <GridStatusBannerV2 data={data} error={gm.error} loading={gm.loading} />
-    <div className="gridcontrols">
-      <GridTimelineControls timeline={gm.timeline} setTimeline={gm.setTimeline} timeIndex={gm.timeIndex} setTimeIndex={gm.setTimeIndex} data={data} loading={gm.loading} refresh={gm.refresh} lastRefresh={gm.lastRefresh} />
-      <GridLayerSwitcher layer={gm.layer} setLayer={gm.setLayer} />
-    </div>
-    <GridKpiCardsV2 zone={selected} data={data} />
-    <div className="gridmaplayout"><GridNetworkMapV2 data={data} selectedZone={gm.selectedZone} setSelectedZone={gm.setSelectedZone} layer={gm.layer} timeline={gm.timeline} timeIndex={gm.timeIndex} /><GridZoneDetailsPanelV2 zone={selected} data={data} /></div>
-    <GridSignalsChartsV2 data={data} timeline={gm.timeline} selectedZone={gm.selectedZone} timeIndex={gm.timeIndex} />
-    <GridDataTables data={data} selectedZone={gm.selectedZone} setSelectedZone={gm.setSelectedZone} loading={gm.loading} error={gm.error} />
-  </div>;
-}
-function HartaReteaPage(props) { return <GridMapPage {...props} />; }
 
 /* ============================ Sources ============================ */
 function Sources({ md, apiBase, apiToken }) {
@@ -1846,7 +1198,7 @@ function App() {
           {view === "dayahead" && <DayAhead md={md} dayAheadSource={dayAheadSource} setDayAheadSource={setDayAheadSource} />}
           {view === "forecast" && <Forecast md={md} />}
           {view === "battery" && <Battery md={md} />}
-          {view === "map" && <HartaReteaPage apiBase={apiBase} apiToken={apiToken} />}
+          {view === "map" && <MapView apiBase={apiBase} apiToken={apiToken} />}
           {view === "settings" && <SettingsView theme={theme} setTheme={setTheme} apiBase={apiBase} setApiBase={setApiBase} apiToken={apiToken} setApiToken={setApiToken} md={md} />}
         </main>
       </div>
@@ -2125,21 +1477,14 @@ const CSS = `
 .gridpage{container-type:inline-size}
 .gridkpis{grid-template-columns:repeat(7,minmax(128px,1fr))}
 .gridmodebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.gridpage .gridkpis{grid-template-columns:repeat(9,minmax(126px,1fr))}
-.gridcontrols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(280px,.8fr);gap:12px;align-items:stretch}
-.gridcontrolcard{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
-.gridcontrolhead{display:flex;align-items:center;gap:7px;color:var(--text-dim);font-size:12px}.gridcontrolhead b{color:var(--text);font-size:12.5px}.gridcontrolhead span{margin-left:auto}
-.gridlayerbar,.gridtimelinechips{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.gridlayerbar .chip,.gridtimelinechips .chip{display:inline-flex;align-items:center;gap:6px}.gridtimelinechips .chip{height:auto;align-items:flex-start;flex-direction:column;gap:1px;padding:7px 10px}.gridtimelinechips .chip small{font-size:10px;color:var(--text-faint);font-weight:500}
-.gridsliderrow{display:grid;grid-template-columns:minmax(120px,1fr) auto auto;gap:10px;align-items:center}.gridslider{accent-color:var(--accent);width:100%;min-width:0}.gridsliderlabel{display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:11px;color:var(--text-faint);min-width:76px}.gridsliderlabel b{font-size:12px;color:var(--text);font-variant-numeric:tabular-nums}
 .gridmaplayout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,.55fr);gap:14px;align-items:stretch}
-.gridmapcard{border:1px solid var(--border);background:var(--card);border-radius:12px;overflow:hidden;min-height:540px;display:flex;flex-direction:column}
+.gridmapcard{border:1px solid var(--border);background:var(--card);border-radius:12px;overflow:hidden;min-height:480px;display:flex;flex-direction:column}
 .gridmaptoolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border)}
-.gridmapcanvas{position:relative;min-height:460px;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 48%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 24%),linear-gradient(135deg,color-mix(in srgb,var(--blue) 9%,transparent),transparent 44%),var(--bg)}
-.gridmapcanvas.dragging{cursor:grabbing}.gridmapviewport{position:absolute;inset:0;transform-origin:50% 50%;transition:transform .08s ease}.mapzoom{display:flex;align-items:center;gap:6px;flex:none}.mapzoom .ticon{width:auto;min-width:32px;padding:0 8px}
+.gridmapcanvas{position:relative;min-height:400px;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 48%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 24%),linear-gradient(135deg,color-mix(in srgb,var(--blue) 9%,transparent),transparent 44%),var(--bg)}
 .mapgridbg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:44px 44px;opacity:.22;mask-image:radial-gradient(circle at center,#000 58%,transparent 100%)}
-.gridzone{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(10px);color:var(--text);border-radius:14px;padding:8px 9px;min-width:82px;text-align:left;box-shadow:0 12px 34px rgba(0,0,0,.28);cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
+.gridzone{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(10px);color:var(--text);border-radius:14px;padding:10px 12px;min-width:96px;text-align:left;box-shadow:0 12px 34px rgba(0,0,0,.28);cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
 .gridzone:hover,.gridzone.on{transform:translate(-50%,-50%) scale(1.045);border-color:var(--accent)}
-.gridzone.main{min-width:132px;padding:12px 14px;border-width:1.5px}
+.gridzone.main{min-width:136px;padding:13px 15px;border-width:1.5px}
 .gridzone b{font-size:13px;margin-right:7px}.gridzone span{font-size:12px;color:var(--text-dim)}.gridzone small,.gridzone em{display:block;font-size:11px;color:var(--text-faint);font-style:normal;margin-top:2px}
 .gridzone.low{box-shadow:0 0 0 1px color-mix(in srgb,var(--green) 30%,transparent),0 14px 34px rgba(0,0,0,.28)}
 .gridzone.mid{box-shadow:0 0 0 1px color-mix(in srgb,var(--yellow) 28%,transparent),0 14px 34px rgba(0,0,0,.28)}
@@ -2147,19 +1492,15 @@ const CSS = `
 .gridzone.off{opacity:.55;filter:grayscale(.8)}
 .gridflow{position:absolute;z-index:2;transform-origin:0 50%;height:20px;margin-top:-10px;border:0;background:transparent;padding:0;pointer-events:auto}
 .gridflow span{position:absolute;left:0;right:0;top:50%;height:var(--w);border-radius:999px;background:linear-gradient(90deg,color-mix(in srgb,var(--blue) 10%,transparent),var(--accent));opacity:.82;transform:translateY(-50%);animation:flowdash 1.15s linear infinite;background-size:44px 100%}
-.gridflow i{position:absolute;right:-2px;top:50%;width:0;height:0;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid var(--accent);transform:translateY(-50%);opacity:.9}.gridflow.on span,.gridflow:hover span{opacity:1;filter:saturate(1.3);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)}
-.gridhover{position:absolute;left:14px;bottom:14px;z-index:8;width:min(360px,calc(100% - 28px));border:1px solid var(--border-strong);background:color-mix(in srgb,var(--card) 94%,transparent);backdrop-filter:blur(10px);border-radius:10px;padding:11px;box-shadow:0 16px 36px rgba(0,0,0,.28);pointer-events:none}.gridhover b,.gridhover span{display:block}.gridhover span{font-size:11.5px;color:var(--text-dim);margin-top:2px}.gridhoverhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}.gridhoverhead b{font-size:13px}.gridhoverhead i{font-style:normal;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-size:10.5px;color:var(--text-dim);white-space:nowrap}.gridhoverhead i.low{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}.gridhoverhead i.mid{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 45%,transparent)}.gridhoverhead i.high,.gridhoverhead i.very{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}.gridhovermetric{display:flex;align-items:baseline;gap:8px;border:1px solid var(--border);background:var(--bg);border-radius:8px;padding:8px 9px;margin-bottom:8px}.gridhovermetric strong{font-size:22px;line-height:1}.gridhovermetric span{margin:0}.gridhovergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}.gridhovergrid div{border:1px solid var(--border);border-radius:8px;padding:7px;background:color-mix(in srgb,var(--bg) 78%,transparent);min-width:0}.gridhovergrid span{font-size:10.5px;margin:0}.gridhovergrid b{font-size:12px;margin-top:2px;white-space:nowrap}.gridhovermix{display:grid;gap:5px;margin-bottom:8px}.gridhovermix div{position:relative;overflow:hidden;border:1px solid var(--border);border-radius:7px;padding:5px 7px;background:var(--bg)}.gridhovermix div span,.gridhovermix div b{position:relative;z-index:1;display:inline;margin-right:6px;font-size:11px}.gridhovermix div span{color:var(--text-dim)}.gridhovermix div i{position:absolute;left:0;bottom:0;height:3px;border-radius:0 999px 999px 0}.gridhoverfoot{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.gridhoverfoot span{margin:0;border:1px solid var(--border);border-radius:999px;padding:3px 7px;font-size:10.5px}.gridhoverflow{max-width:300px}
 @keyframes flowdash{to{background-position:44px 0}}
 .gridlegend{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 15px;border-top:1px solid var(--border);font-size:11.5px;color:var(--text-dim)}
 .gridlegend span{display:inline-flex;align-items:center;gap:6px}.legdot{width:9px;height:9px;border-radius:50%;display:inline-block}.legdot.low{background:var(--green)}.legdot.mid{background:var(--yellow)}.legdot.high{background:var(--red)}.legdot.off{background:var(--text-faint)}.flowline{width:28px;height:3px;border-radius:999px;background:linear-gradient(90deg,var(--blue),var(--accent));display:inline-block}
 .zonehero{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px}.zonebig{font-size:27px;font-weight:760;letter-spacing:-.02em}.zonebig span{font-size:12px;color:var(--text-dim);font-weight:600}.zonering{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:760;border:1px solid var(--border-strong);background:var(--bg)}.zonering.low{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,transparent)}.zonering.mid{color:var(--yellow);border-color:color-mix(in srgb,var(--yellow) 45%,transparent)}.zonering.high,.zonering.very{color:var(--red);border-color:color-mix(in srgb,var(--red) 45%,transparent)}
 .zonemetrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.zonemetrics div{border:1px solid var(--border);background:var(--bg);border-radius:8px;padding:8px 10px}.zonemetrics span{display:block;font-size:10.5px;color:var(--text-faint);margin-bottom:3px}.zonemetrics b{font-size:13px;font-variant-numeric:tabular-nums}
 .mixlist{display:flex;flex-direction:column;gap:8px}.mixrow>div{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px}.mixrow span{color:var(--text-dim)}.mixrow i{display:block;height:6px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--green));min-width:2%;opacity:.78}
-.gridwarns{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.gridwarns span{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--bg);border-radius:999px;padding:4px 8px;font-size:11px;color:var(--text-dim)}
-.gridcharts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.gridtables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.tablewrap{width:100%;overflow-x:auto}.linkrow{display:inline-flex;align-items:center;border:0;background:none;color:var(--text);font:inherit;cursor:pointer;padding:0}.linkrow.on{font-weight:700;color:var(--accent)}.tbl td .spin{vertical-align:-2px;margin-right:6px}
 .tabletools{display:flex;gap:8px;align-items:center}.gridsearch{width:170px}.gridsort{width:130px}
-@media(max-width:1180px){.gridpage .gridkpis{grid-template-columns:repeat(2,1fr)}.gridcontrols{grid-template-columns:1fr}.gridmaplayout{grid-template-columns:1fr}.gridmapcard{min-height:430px}.gridmapcanvas{min-height:350px}.gridcharts,.gridtables{grid-template-columns:1fr}}
-@media(max-width:720px){.gridpage .gridkpis{grid-template-columns:1fr 1fr}.gridmaptoolbar{align-items:flex-start;flex-direction:column}.gridmapcanvas{min-height:310px}.gridzone{min-width:78px;padding:8px}.gridzone.main{min-width:110px}.gridhovergrid{grid-template-columns:repeat(2,1fr)}.gridhovermetric{align-items:flex-start;flex-direction:column;gap:3px}.zonemetrics{grid-template-columns:1fr}.tabletools{width:100%;flex-direction:column}.gridsearch,.gridsort{width:100%}.gridsliderrow{grid-template-columns:1fr}.gridsliderlabel{align-items:flex-start}.gridlayerbar .chip{max-width:100%;white-space:normal}.gridtables .card,.gridcharts .card{min-width:0}}
+@media(max-width:1180px){.gridkpis{grid-template-columns:repeat(3,1fr)}.gridmaplayout{grid-template-columns:1fr}.gridmapcard{min-height:430px}.gridmapcanvas{min-height:350px}}
+@media(max-width:720px){.gridkpis{grid-template-columns:1fr 1fr}.gridmaptoolbar{align-items:flex-start;flex-direction:column}.gridmapcanvas{min-height:310px}.gridzone{min-width:78px;padding:8px}.gridzone.main{min-width:110px}.zonemetrics{grid-template-columns:1fr}.tabletools{width:100%;flex-direction:column}.gridsearch,.gridsort{width:100%}}
 
 /* pipeline */
 .pipeline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px}
