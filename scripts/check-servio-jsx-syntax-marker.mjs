@@ -13,8 +13,9 @@ const checks = [
   ['no old ENTSO-E day-ahead endpoint in public', !app.includes('/api/servio/entsoe/day-ahead')],
   ['electricity maps first provider', worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes('/v4/electricity-flows/latest') && worker.includes('temporalGranularity:"15_minutes"')],
   ['no fake demo fallback when live provider fails', worker.includes('external-live-unavailable') && worker.includes('unavailableZones')],
-  ['v4.17 subrequest-aware flow parser', worker.includes('flowsProvider') && worker.includes('subrequest-budget-v4.17') && worker.includes('gridRomaniaDayWindowUtc')],
-  ['build version v4.17', worker.includes('servio-grid-map-v4.17-subrequest-budget-live-flows-fix')],
+  ['v4.18 subrequest-aware flow parser', worker.includes('flowsProvider') && worker.includes('subrequest-budget-v4.18') && worker.includes('gridRomaniaDayWindowUtc')],
+  ['build version v4.18', worker.includes('servio-grid-map-v4.18-entsoe-flow-edges-constant-fix')],
+  ['v4.18 no undefined GRID_MAP_FLOW_EDGES', !worker.includes('GRID_MAP_FLOW_EDGES') && worker.includes('GRID_ENTSOE_EDGE_PAIRS') && worker.includes('gridEntsoeOrderedEdges(zoneObj?.code || zone || \"RO\", env)')],
 ];
 
 let failed = false;
@@ -27,4 +28,4 @@ for (const [name, ok] of checks) {
   }
 }
 if (failed) process.exit(1);
-console.log('SERVIO v4.17 syntax/source/flow-arrow/subrequest guards OK.');
+console.log('SERVIO v4.18 syntax/source/flow-arrow/subrequest/ENTSO-E-flow guards OK.');

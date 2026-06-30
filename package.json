@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v417-subrequest-budget-live-flows-fix",
-  "version": "4.17.0",
+  "name": "servio-cloudflare-grid-map-v418-entsoe-flow-edges-constant-fix",
+  "version": "4.18.0",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
@@ -14,6 +14,7 @@
     "test:v4.14": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
     "test:v4.15": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
     "test:v4.16": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
+    "test:v4.18": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
     "test:v4.17": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
   },
   "devDependencies": {
