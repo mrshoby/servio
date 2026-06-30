@@ -132,9 +132,8 @@ function simulate({ capMWh, costEur, eff, maxCycles, days, strategy }) {
 // that API. If no base URL is configured, the app falls back to demo data for preview.
 const ENDPOINTS = {
   health: "/api/servio/health",
-  dayAheadUnified: "/api/servio/day-ahead/pzu",       // Unified PZU router: OPCOM fresh cache or ENTSO-E A44
-  dayAheadOpcom: "/api/servio/day-ahead/pzu?source=opcom",
-  dayAheadEntsoe: "/api/servio/day-ahead/pzu?source=entsoe",
+  dayAheadOpcom: "/api/servio/day-ahead/pzu?source=opcom",      // OPCOM PZU / ROPEX_DAM_15min unified
+  dayAheadEntsoe: "/api/servio/day-ahead/pzu?source=entsoe",   // ENTSO-E Transparency A44 / Romania unified
   intraday: "/api/servio/opcom/intraday",
   imbalance: "/api/servio/transelectrica/imbalance",
   flows: "/api/servio/entsoe/flows",
@@ -172,15 +171,14 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
     (async () => {
       try {
         const endpoint = sourceCfg.endpoint;
-        const appendQuery = (path, query) => path + (path.includes("?") ? "&" : "?") + query;
         const [t, tm] = await Promise.all([
-          apiGet(base, appendQuery(endpoint, "day=today"), token),
-          apiGet(base, appendQuery(endpoint, "day=tomorrow"), token),
+          apiGet(base, endpoint + "?day=today", token),
+          apiGet(base, endpoint + "?day=tomorrow", token),
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
         const sourceMode = (t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local";
-        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest", "external-live-entsoe-fallback"].includes(sourceMode) || String(sourceMode || "").startsWith("external-live");
+        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
         if (!alive) return;
         setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode, error: null, loading: false, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
@@ -811,6 +809,137 @@ const GRID_ZONES = [
   { code: "ES", name: "Spania", x: 7, y: 75 },
   { code: "PT", name: "Portugalia", x: 1, y: 77 },
 ];
+const GRID_MAP_VIEWBOX = { width: 1000, height: 620, source: "Natural Earth 110m admin-0 countries" };
+const GRID_COUNTRY_PATHS = {
+  "FR": "M316.9,196.5L325.7,203.8L352.6,209L343.2,228.1L340.8,248L335.7,252.8L327.2,250.2L327.8,257.3L314.1,273L313.9,285.6L322.8,281.2L329.2,293.5L328.4,301.4L333.9,311.9L327.4,320.4L332.2,342L342.3,345.5L340.2,357.6L323.3,373.4L286.5,365.9L259.3,374.9L257.2,391.7L235.6,395.4L214.6,382.7L207.8,388.8L173.5,376.1L166,365.2L175.7,348.5L179.2,292.8L160,263.5L146.2,249.4L117.7,238.6L115.8,218.3L140,212.2L171.3,219.4L165.4,187.8L183,199.8L226.5,178L232.1,155.1L248.4,149.5L251.1,159.3L259.8,159.7L268.4,170.9L281.5,184.1L291,181.9L307.4,194.7L311.5,197.1L316.9,196.5ZM364.7,387.4L376.7,376.7L379.9,400.7L373.7,422.3L365.2,416.6L360.9,397.8L364.7,387.4Z",
+  "UA": "M794.5,122.8L801.5,124L806.2,117.6L811.9,119L831.2,116.3L843.1,132.1L838.5,137.8L840,146.5L854.9,147.8L861.5,159.9L861.1,165.4L884.8,175.2L899.1,170.8L910.6,183.9L921.5,183.6L949,192.7L949.3,200.9L941.7,215.5L945.8,230.9L942.9,240.2L924.8,242.3L915.2,250.1L914.6,262.5L899.7,264.7L887.3,273.7L869.8,275.2L853.8,285.6L854.7,300.6L851.9,299.7L849.5,294.2L843.5,293.1L830.2,287.1L825.3,294L822.7,291L793.7,283.9L792.4,273.5L775.2,277L768.2,292.3L753.8,313L745.3,308.2L736.6,312.7L728.2,307.5L732.9,304.5L736.2,294.9L741.3,286L740,281L743.9,278.8L745.7,282.7L756.7,283.5L761.7,281.4L758.2,278.6L759.5,274.4L753,267.3L750.3,255.6L743.5,251.1L744.8,241.6L736.4,234.1L728.7,233L715,224.3L702.6,227.1L698.1,231.2L690.3,231.2L685.6,237.7L671.8,240.4L665.4,244.7L656.8,237.9L644.8,237.8L633.3,234.7L625.2,240.7L623.9,233.2L613.5,225.6L617.2,214.3L622.4,207.1L626.4,208.7L621.6,196.1L638.6,172.9L647.8,169.7L649.8,161.8L640.4,137.4L649.3,136.4L659.6,128.8L674,128.2L692.9,130.4L713.7,137.1L728.4,137.6L735.4,141.7L742.4,136.8L747.3,143.3L764.1,142L771.6,144.7L772.8,130.6L778.5,124.5L794.5,122.8Z",
+  "PL": "M639.6,72.3L640.4,84.6L645.6,95.2L645.5,106.4L634.3,112.1L640.1,125L640.4,137.4L649.8,161.8L647.8,169.7L638.6,172.9L621.6,196.1L626.4,208.7L622.4,207.1L604.6,196.3L591.2,200.3L582.4,197.4L571.4,203.4L562,193.5L554.3,197.3L553.2,195.6L544.6,181.8L530.8,180.2L529,171.4L516.2,168.3L513.4,175.5L503.3,169.7L504.5,162L490.5,159.6L481.7,150.6L474,132.8L475.5,123.2L470.9,108.2L464.1,98.3L469.3,90.8L464.9,76.6L477.7,68.4L506.8,55.5L530.3,46L548.9,50.8L550.3,57.6L568.3,57.9L591.3,61.1L625.6,60.7L635.1,63.7L639.6,72.3Z",
+  "AT": "M518.3,233.9L516.9,245.4L506.4,245.4L510,251.5L503.8,269.4L500.2,274.2L483.9,274.8L474.5,281.2L459.1,279L432.4,271.8L428.2,262.1L409.8,266.9L407.6,272.3L396.3,268.3L386.8,267.5L378.4,262.4L381.2,255.6L380.5,250.7L386.1,249.1L395.6,256.9L398.2,249.5L414.7,250.7L428,245.7L437,246.5L442.8,252.3L444.5,247.5L441.9,229.3L448.6,225.8L455.1,212.9L469,221.9L479.5,210.5L486.1,208.4L500.6,216.9L509.3,215.4L517.9,220.7L516.4,224.3L518.3,233.9Z",
+  "HU": "M613.5,225.6L623.9,233.2L625.2,240.7L613.8,246.5L605,265.5L593.7,284.4L578.7,289.7L567.1,288.4L552.8,295.8L552.8,295.8L545.8,300L530.4,294.6L516.5,282.6L510.5,279.2L506.9,269.7L503.8,269.4L510,251.5L506.4,245.4L516.9,245.4L518.3,233.9L527.8,241.1L534.6,244.1L550.3,240.7L551.8,235.1L559.2,234.3L568.3,229.9L570.3,231.7L579.1,228.2L583.5,221.7L589.6,220L609.6,228.5L613.5,225.6Z",
+  "MD": "M698.1,231.2L702.6,227.1L715,224.3L728.7,233L736.4,234.1L744.8,241.6L743.5,251.1L750.3,255.6L753,267.3L759.5,274.4L758.2,278.6L761.7,281.4L756.7,283.5L745.7,282.7L743.9,278.8L740,281L741.3,286L736.2,294.9L732.9,304.5L728.2,307.5L724.9,294.8L726.9,282.9L726.3,270.6L715.5,254L709.6,242.2L703.8,233.9L698.1,231.2Z",
+  "RO": "M728.2,307.5L736.6,312.7L745.3,308.2L753.8,313L754.2,320.2L745.2,326.2L739.5,323.6L734.3,357.3L723.3,354.3L709.7,344.2L687.8,350.7L678.5,357.8L651.1,356.3L636.8,352L629.6,354L624.2,342.5L620.8,337.7L625.1,333L620.5,329.5L614.6,335.7L603.8,327.6L602.3,316.1L590.9,309.5L588.8,300.7L578.7,289.7L593.7,284.4L605,265.5L613.8,246.5L625.2,240.7L633.3,234.7L644.8,237.8L656.8,237.9L665.4,244.7L671.8,240.4L685.6,237.7L690.3,231.2L698.1,231.2L703.8,233.9L709.6,242.2L715.5,254L726.3,270.6L726.9,282.9L724.9,294.8L728.2,307.5Z",
+  "DE": "M464.9,76.6L469.3,90.8L464.1,98.3L470.9,108.2L475.5,123.2L474,132.8L481.7,150.6L473.3,153.5L468.4,150.3L463.7,155.6L450.3,161.1L443.4,168L429.9,174.1L433.1,182.4L435.1,194.2L444.6,200.9L455.1,212.9L448.6,225.8L441.9,229.3L444.5,247.5L442.8,252.3L437,246.5L428,245.7L414.7,250.7L398.2,249.5L395.6,256.9L386.1,249.1L380.5,250.7L360.5,242.1L356.7,248.2L340.8,248L343.2,228.1L352.6,209L325.7,203.8L316.9,196.5L318,184.3L314.2,178L316.4,159.1L313.2,129.8L324.4,129.8L329.2,119.3L333.8,93.7L330.3,84.3L334,78.4L349.6,76.8L353,83L365.7,69.2L361.4,58.8L360.6,42.9L374.7,46.6L386.6,42.4L386.9,53.2L405.8,59.7L405.6,69.6L424.6,64.3L435,56.7L456.1,67.7L464.9,76.6Z",
+  "BG": "M624.2,342.5L629.6,354L636.8,352L651.1,356.3L678.5,357.8L687.8,350.7L709.7,344.2L723.3,354.3L734.3,357.3L724.6,368.8L717.8,388.8L723.8,404.7L707.8,401L688.8,409.8L688.5,423.7L671.6,426.3L658.4,416.6L643.5,424.3L629.7,423.4L628.4,405L619,396L622.1,392.1L620.1,388.7L623.2,379.9L630.3,371.1L621.3,359.1L619.6,348.9L624.2,342.5Z",
+  "GR": "M692,592.1L689.6,600.3L662.8,602.7L663,598.1L640.2,592.6L643.7,580.8L653.9,590.2L668.4,588.6L682.3,590.6L681.8,595.4L692,592.1ZM629.7,423.4L643.5,424.3L658.4,416.6L671.6,426.3L688.5,423.7L688.8,409.8L697.8,417.2L692.1,434.7L687.6,437.8L676.3,437L666.5,434.4L643.9,441.6L656.9,457.3L647.4,461.9L637,461.9L627.1,447.5L623.6,453.6L627.8,470.3L637.1,483.4L630.1,489.6L640.5,502.4L649.7,510.5L650,526.3L632.7,518.9L638.2,533.1L626.4,536.1L633.5,560.7L621.1,561.1L605.8,548.9L598.8,526.6L595.5,508L588.2,495.2L578.7,479.2L577.4,471.3L586.1,457.7L587.2,448.7L593.3,444.6L593.7,437.3L605.9,434.8L613,428.7L623.1,429.2L626.2,424.4L629.7,423.4Z",
+  "AL": "M593.7,437.3L593.3,444.6L587.2,448.7L586.1,457.7L577.4,471.3L574.3,469.3L573.9,463.2L563.5,453.8L561.9,440.5L563.5,421.4L566,412.8L562.9,408.4L562.9,408.4L561.7,399.5L569.7,385.7L570.9,391L575.9,388.5L579.9,396L584.4,398.9L585.6,409L585.6,409L583.3,418.5L585.9,430.5L593.7,437.3Z",
+  "HR": "M510.5,279.2L516.5,282.6L530.4,294.6L545.8,300L552.8,295.8L557.3,306.6L563.3,314.6L556.1,325.1L547.6,318.9L534.7,319.3L518.7,314.6L510,315.3L505.9,321.1L499.2,314.6L495.3,326.2L504.5,339.3L508.5,347.9L517.1,358.4L524.2,364.6L531.2,376.2L547.8,386.8L545.7,391.5L545.7,391.5L528.2,381.2L517.4,371.2L500.3,362.9L484.6,342.3L488.4,340.2L479.9,328.5L479.5,319L467.5,314.6L461.8,326.7L456.3,317.3L456.7,307.6L457.4,307.2L470.4,308.2L473.8,303.4L480.1,308L487.5,308.5L487.4,300.7L493.9,297.9L495.7,286.6L510.5,279.2Z",
+  "CH": "M380.5,250.7L381.2,255.6L378.4,262.4L386.8,267.5L396.3,268.3L394.8,279.7L386.6,284.4L372.8,280.9L368.8,292.2L359.9,293.1L356.7,288.7L346.2,298.1L337.2,299.5L329.2,293.5L322.8,281.2L313.9,285.6L314.1,273L327.8,257.3L327.2,250.2L335.7,252.8L340.8,248L356.7,248.2L360.5,242.1L380.5,250.7Z",
+  "BE": "M316.4,159.1L314.2,178L309.4,179L307.4,194.7L291,181.9L281.5,184.1L268.4,170.9L259.8,159.7L251.1,159.3L248.4,149.5L263.3,143.9L263.3,143.9L263.3,143.9L277,146.1L294.3,140.3L306.1,152.6L316.4,159.1Z",
+  "NL": "M330.3,84.3L333.8,93.7L329.2,119.3L324.4,129.8L313.2,129.8L316.4,159.1L306.1,152.6L294.3,140.3L277,146.1L263.3,143.9L263.3,143.9L273,136.3L289.3,95.2L314.8,83.5L330.3,84.3Z",
+  "PT": "M32.9,408.3L39.7,401.2L47.3,397.1L52,410.8L63,410.8L66.2,407.2L77.1,408.2L82.3,422.2L73.7,429.8L73.4,451.6L70.4,455.7L69.7,468.9L61.6,471.2L69.1,487.9L63.9,506.2L70.3,514.6L67.8,522.1L60.9,532.6L62.4,541.9L54.9,549.1L45.1,545.2L35.5,548.3L38.3,526.4L36.6,509.2L28.2,506.7L23.8,496.1L25.2,477.8L32.7,467.7L34,456.4L37.9,439.6L37.5,427.7L33.8,417.7L32.9,408.3Z",
+  "ES": "M62.4,541.9L60.9,532.6L67.8,522.1L70.3,514.6L63.9,506.2L69.1,487.9L61.6,471.2L69.7,468.9L70.4,455.7L73.4,451.6L73.7,429.8L82.3,422.2L77.1,408.2L66.2,407.2L63,410.8L52,410.8L47.3,397.1L39.7,401.2L32.9,408.3L33.9,388.4L26.3,376.3L52.6,356.1L75.5,361.2L100.5,361L120.4,365.8L135.9,364.3L166,365.2L173.5,376.1L207.8,388.8L214.6,382.7L235.6,395.4L257.2,391.7L258.2,408L240.5,426.6L216.6,432.5L215,441.9L203.5,457.3L196.3,480.1L203.6,496L192.8,508.5L188.7,526.7L174.7,532.2L161.4,553.7L137.8,554.1L120,553.6L108.3,563.5L101.2,574L92,571.7L85.1,562.3L79.8,546.2L62.4,541.9Z",
+  "IT": "M396.3,268.3L407.6,272.3L409.8,266.9L428.2,262.1L432.4,271.8L459.1,279L457.1,292.8L461.5,304.7L446.7,300.6L431.5,310.5L432.5,324.4L430.3,332.3L436.4,346.5L453.9,360.6L463.2,383.7L484,406.2L498.6,406L503.2,412.2L497.9,417.8L514.6,427.9L528.3,436.3L544.3,450.9L546.3,456.1L542.8,466.1L532.4,453.1L516.2,448.5L508.4,466.5L521.9,476.9L519.6,491.5L511.8,493.1L501.9,517.1L494.1,519.2L494.2,510.7L498,495.7L502,489.7L494.8,473.5L489.1,459.5L481.3,456L475.8,443.9L463.8,438.8L455.7,427.6L441.9,425.8L427.4,413.2L410.3,395L397.6,378.9L391.8,351.3L382.5,348.1L367.3,338.9L358.7,342.6L348,355.6L340.2,357.6L342.3,345.5L332.2,342L327.4,320.4L333.9,311.9L328.4,301.4L329.2,293.5L337.2,299.5L346.2,298.1L356.7,288.7L359.9,293.1L368.8,292.2L372.8,280.9L386.6,284.4L394.8,279.7L396.3,268.3ZM476.9,512.6L491.1,510.2L484.3,532.2L487.1,540.8L483.2,555.2L468.9,544.7L459.5,541.7L433.4,527.5L436,513.1L457.9,515.7L476.9,512.6ZM364,435.7L373.3,427L384.5,446.8L381.9,483.8L373.4,482L365.8,491.3L358.7,483.9L358,450.2L353.7,434.3L364,435.7Z",
+  "SI": "M459.1,279L474.5,281.2L483.9,274.8L500.2,274.2L503.8,269.4L506.9,269.7L510.5,279.2L495.7,286.6L493.9,297.9L487.4,300.7L487.5,308.5L480.1,308L473.8,303.4L470.4,308.2L457.4,307.2L461.5,304.7L457.1,292.8L459.1,279Z",
+  "SK": "M622.4,207.1L617.2,214.3L613.5,225.6L609.6,228.5L589.6,220L583.5,221.7L579.1,228.2L570.3,231.7L568.3,229.9L559.2,234.3L551.8,235.1L550.3,240.7L534.6,244.1L527.8,241.1L518.3,233.9L516.4,224.3L517.9,220.7L520.6,214.6L528.8,215L535.2,212.2L535.7,209.6L539.3,208.2L540.5,201.9L544.8,200.7L547.7,195.6L553.2,195.6L554.3,197.3L562,193.5L571.4,203.4L582.4,197.4L591.2,200.3L604.6,196.3L622.4,207.1Z",
+  "CZ": "M481.7,150.6L490.5,159.6L504.5,162L503.3,169.7L513.4,175.5L516.2,168.3L529,171.4L530.8,180.2L544.6,181.8L553.2,195.6L547.7,195.6L544.8,200.7L540.5,201.9L539.3,208.2L535.7,209.6L535.2,212.2L528.8,215L520.6,214.6L517.9,220.7L509.3,215.4L500.6,216.9L486.1,208.4L479.5,210.5L469,221.9L455.1,212.9L444.6,200.9L435.1,194.2L433.1,182.4L429.9,174.1L443.4,168L450.3,161.1L463.7,155.6L468.4,150.3L473.3,153.5L481.7,150.6Z",
+  "BA": "M547.8,386.8L531.2,376.2L524.2,364.6L517.1,358.4L508.5,347.9L504.5,339.3L495.3,326.2L499.2,314.6L505.9,321.1L510,315.3L518.7,314.6L534.7,319.3L547.6,318.9L556.1,325.1L556.1,325.1L562.8,325L558.2,337.3L567.2,348L564.4,361.2L560,362.4L556.6,364.9L550.5,371.4L547.8,386.8Z",
+  "MK": "M619,396L628.4,405L629.7,423.4L626.2,424.4L623.1,429.2L613,428.7L605.9,434.8L593.7,437.3L585.9,430.5L583.3,418.5L585.6,409L585.6,409L588,409.2L588.8,403.5L599.9,399.2L604,398.1L610.4,396.5L619,396Z",
+  "RS": "M552.8,295.8L552.8,295.8L567.1,288.4L578.7,289.7L588.8,300.7L590.9,309.5L602.3,316.1L603.8,327.6L614.6,335.7L620.5,329.5L625.1,333L620.8,337.7L624.2,342.5L619.6,348.9L621.3,359.1L630.3,371.1L623.2,379.9L620.1,388.7L622.1,392.1L619,396L610.4,396.5L604,398.1L603.4,396L605.7,392.7L607.7,385.9L605.1,386L601.5,380.9L598.4,379.6L596,375.1L592.5,373.4L589.8,369.4L586.5,371L583.9,380.2L579.4,382.3L581,379.9L573.9,374.1L567.7,371.1L565,367.2L560,362.4L564.4,361.2L567.2,348L558.2,337.3L562.8,325L556.1,325.1L556.1,325.1L563.3,314.6L557.3,306.6L552.8,295.8Z",
+  "ME": "M575.9,388.5L570.9,391L569.7,385.7L561.7,399.5L562.9,408.4L559,406.2L553.8,397.1L545.7,391.5L547.8,386.8L550.5,371.4L556.6,364.9L560,362.4L565,367.2L567.7,371.1L573.9,374.1L581,379.9L579.4,382.3L575.9,388.5Z"
+};
+const GRID_COUNTRY_CENTERS = {
+  "FR": {
+    "x": 247.8,
+    "y": 285.9
+  },
+  "UA": {
+    "x": 781.4,
+    "y": 214.6
+  },
+  "PL": {
+    "x": 556.9,
+    "y": 127.4
+  },
+  "AT": {
+    "x": 448.3,
+    "y": 244.8
+  },
+  "HU": {
+    "x": 564.5,
+    "y": 260
+  },
+  "MD": {
+    "x": 729.9,
+    "y": 265.9
+  },
+  "RO": {
+    "x": 666.5,
+    "y": 294.5
+  },
+  "DE": {
+    "x": 397.4,
+    "y": 149.6
+  },
+  "BG": {
+    "x": 676.7,
+    "y": 384.4
+  },
+  "GR": {
+    "x": 637.6,
+    "y": 506.2
+  },
+  "AL": {
+    "x": 577.7,
+    "y": 428.5
+  },
+  "HR": {
+    "x": 509.8,
+    "y": 335.4
+  },
+  "CH": {
+    "x": 355.1,
+    "y": 270.8
+  },
+  "BE": {
+    "x": 282.4,
+    "y": 167.5
+  },
+  "NL": {
+    "x": 298.6,
+    "y": 121.3
+  },
+  "PT": {
+    "x": 53,
+    "y": 473.1
+  },
+  "ES": {
+    "x": 142.2,
+    "y": 465.1
+  },
+  "IT": {
+    "x": 436.8,
+    "y": 408.7
+  },
+  "SI": {
+    "x": 483.8,
+    "y": 289
+  },
+  "SK": {
+    "x": 569.4,
+    "y": 218.8
+  },
+  "CZ": {
+    "x": 491.5,
+    "y": 186.1
+  },
+  "BA": {
+    "x": 531.2,
+    "y": 350.7
+  },
+  "MK": {
+    "x": 606.5,
+    "y": 416.6
+  },
+  "RS": {
+    "x": 591.6,
+    "y": 343.3
+  },
+  "ME": {
+    "x": 563.3,
+    "y": 385.4
+  }
+};
+
 const GRID_VIEW_MODES = [
   { id: "live", label: "Live" },
   { id: "history", label: "Ultimele 24h" },
@@ -1367,7 +1496,7 @@ function GridMapLegendV2({ layer }) {
     <span><i className="legdot mid" /> medium</span>
     <span><i className="legdot high" /> high</span>
     <span><i className="legdot off" /> unknown</span>
-    <span><i className="flowline" /> flux MW</span>
+    <span><i className="flowline" /> exportator → importator · MW live</span>
   </div>;
 }
 function GridZoneHoverCard({ zone, data }) {
@@ -1420,6 +1549,12 @@ function GridFlowHoverCard({ flow }) {
     </div>
   </div>;
 }
+function gridCountryCenter(code) {
+  const point = GRID_COUNTRY_CENTERS[code];
+  if (point) return point;
+  const meta = gridZoneMeta(code);
+  return { x: meta.x * 10, y: meta.y * 6.2 };
+}
 function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline, timeIndex }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -1432,7 +1567,7 @@ function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline
   const visibleFlows = (data.flows || []).filter((f) => knownZones.has(f.from) && knownZones.has(f.to) && f.from !== f.to && Number.isFinite(Number(f.mw)) && Math.abs(Number(f.mw)) > 0);
   const getZone = (code) => zones.find((z) => z.code === code) || enrichGridZone({ code, name: code, status:"unavailable", quality:"unavailable", mix:{} });
   const startDrag = (e) => {
-    if (e.target instanceof Element && e.target.closest(".gridzone,.gridflow,.mapzoom")) return;
+    if (e.target instanceof Element && e.target.closest(".gridcountry,.gridflowgeo,.mapzoom")) return;
     setDrag({ x: e.clientX, y: e.clientY, pan });
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
@@ -1441,6 +1576,13 @@ function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline
     setPan({ x: drag.pan.x + (e.clientX - drag.x), y: drag.pan.y + (e.clientY - drag.y) });
   };
   const stopDrag = () => setDrag(null);
+  const inspectCountryFromPointer = (e) => {
+    const target = e.target instanceof Element ? e.target.closest(".gridcountry") : null;
+    const code = target?.getAttribute?.("data-grid-zone");
+    if (!code) { setHover(null); return; }
+    setFlowHover(null);
+    setHover(getZone(code));
+  };
   return <div className="gridmapcard">
     <div className="gridmaptoolbar">
       <div><div className="cardtitle">Hartă live rețea</div><div className="dim small">România + Europa ENTSO-E · {timeline} · {GRID_LAYER_MODES_V2.find((m) => m.id === layer)?.label}</div></div>
@@ -1453,18 +1595,46 @@ function GridNetworkMapV2({ data, selectedZone, setSelectedZone, layer, timeline
     <div className={"gridmapcanvas" + (drag ? " dragging" : "")} onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
       <div className="mapgridbg" />
       <div className="gridmapviewport" style={{ transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})` }}>
-        {visibleFlows.map((f, i) => {
-          const a = gridZoneMeta(f.from); const b = gridZoneMeta(f.to); const dx = b.x - a.x; const dy = b.y - a.y; const len = Math.sqrt(dx*dx + dy*dy); const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-          return <button key={f.id || i} className={"gridflow" + (flowHover?.id === (f.id || i) ? " on" : "")} style={{ left:a.x+"%", top:a.y+"%", width:len+"%", transform:`rotate(${ang}deg)`, ["--w"]: Math.max(2, Math.min(10, Math.abs(f.mw)/85)) + "px" }} title={`${f.from} → ${f.to}: ${fmt(Math.abs(f.mw))} MW`} onMouseEnter={() => setFlowHover({ ...f, id:f.id || i })} onPointerEnter={() => setFlowHover({ ...f, id:f.id || i })} onFocus={() => setFlowHover({ ...f, id:f.id || i })} onMouseLeave={() => setFlowHover(null)} onPointerLeave={() => setFlowHover(null)} onBlur={() => setFlowHover(null)} onClick={() => setFlowHover({ ...f, id:f.id || i })}><span /><i /></button>;
-        })}
-        {GRID_ZONES.map((m) => {
-          const z = getZone(m.code);
-          const metric = gridLayerMetric(z, layer);
-          const unavailable = z.status === "unavailable";
-          return <button key={m.code} data-grid-zone={m.code} className={`gridzone ${m.main ? "main" : ""} ${selectedZone === m.code ? "on" : ""} ${unavailable ? "off" : metric.tone}`} style={{ left:m.x+"%", top:m.y+"%" }} onClick={() => { setSelectedZone(m.code); setHover(z); }} onMouseEnter={() => setHover(z)} onPointerEnter={() => setHover(z)} onFocus={() => setHover(z)} onMouseLeave={() => setHover(null)} onPointerLeave={() => setHover(null)} onBlur={() => setHover(null)}>
-            <b>{m.code}</b><span>{m.name}</span><small>{metric.label}: {metric.value || metric.value === 0 ? fmt(Math.abs(metric.value)) + metric.unit : "—"}</small><em>{z.status} · {z.quality}</em>
-          </button>;
-        })}
+        <svg className="gridgeosvg" viewBox={`0 0 ${GRID_MAP_VIEWBOX.width} ${GRID_MAP_VIEWBOX.height}`} aria-label="Hartă geografică ENTSO-E cu granițe de țări" onMouseMove={inspectCountryFromPointer} onPointerMove={inspectCountryFromPointer} onMouseLeave={() => setHover(null)} onPointerLeave={() => setHover(null)}>
+          <defs>
+            <marker id="gridArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path className="gridflowarrow" d="M0,0 L12,6 L0,12 Z" />
+            </marker>
+          </defs>
+          <g className="gridcountries">
+            {GRID_ZONES.map((m) => {
+              const z = getZone(m.code);
+              const metric = gridLayerMetric(z, layer);
+              const unavailable = z.status === "unavailable";
+              const d = GRID_COUNTRY_PATHS[m.code];
+              if (!d) return null;
+              return <path key={m.code} data-grid-zone={m.code} className={`gridcountry ${selectedZone === m.code ? "on" : ""} ${unavailable ? "off" : metric.tone}`} d={d} fillRule="evenodd" role="button" tabIndex={0} aria-label={`${m.name}: ${metric.label}`} onClick={() => { setSelectedZone(m.code); setHover(z); }} onMouseEnter={() => setHover(z)} onPointerEnter={() => setHover(z)} onFocus={() => setHover(z)} onMouseLeave={() => setHover(null)} onPointerLeave={() => setHover(null)} onBlur={() => setHover(null)} />;
+            })}
+          </g>
+          <g className="gridflowsgeo">
+            {visibleFlows.map((f, i) => {
+              const a = gridCountryCenter(f.from); const b = gridCountryCenter(f.to);
+              const id = f.id || `${f.from}-${f.to}-${i}`;
+              const width = Math.max(1.6, Math.min(8, Math.abs(f.mw) / 260));
+              const dx = b.x - a.x; const dy = b.y - a.y; const len = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+              const offset = (i % 2 ? 1 : -1) * Math.min(20, Math.max(8, width * 2.2));
+              const midX = (a.x + b.x) / 2 + (-dy / len) * offset;
+              const midY = (a.y + b.y) / 2 + (dx / len) * offset;
+              const label = `${f.from} → ${f.to} · ${fmt(Math.abs(f.mw))} MW`;
+              const tagWidth = Math.min(142, Math.max(82, label.length * 5.8));
+              return <g key={id} className={"gridflowgeo" + (flowHover?.id === id ? " on" : "")} role="button" tabIndex={0} aria-label={`${f.from} către ${f.to}: ${fmt(Math.abs(f.mw))} MW`} onMouseEnter={() => setFlowHover({ ...f, id })} onPointerEnter={() => setFlowHover({ ...f, id })} onFocus={() => setFlowHover({ ...f, id })} onMouseLeave={() => setFlowHover(null)} onPointerLeave={() => setFlowHover(null)} onBlur={() => setFlowHover(null)} onClick={() => setFlowHover({ ...f, id })}>
+                <circle className="gridflowdot from" cx={a.x} cy={a.y} r={Math.max(2.4, width * .72)} />
+                <circle className="gridflowdot to" cx={b.x} cy={b.y} r={Math.max(2.8, width * .86)} />
+                <line className="gridflowhit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+                <line className="gridflowline" x1={a.x} y1={a.y} x2={b.x} y2={b.y} style={{ strokeWidth: width }} markerEnd="url(#gridArrow)" />
+                <g className="gridflowtag" transform={`translate(${midX},${midY})`}>
+                  <rect x={-tagWidth / 2} y="-10" width={tagWidth} height="20" rx="6" />
+                  <text textAnchor="middle" dominantBaseline="central">{label}</text>
+                </g>
+              </g>;
+            })}
+          </g>
+        </svg>
       </div>
       {flowHover ? <GridFlowHoverCard flow={flowHover} /> : hover ? <GridZoneHoverCard zone={hover} data={data} /> : null}
     </div>
@@ -2139,6 +2309,8 @@ const CSS = `
 .gridmapcanvas{position:relative;min-height:460px;flex:1;overflow:hidden;background:radial-gradient(circle at 50% 48%,color-mix(in srgb,var(--accent) 10%,transparent),transparent 24%),linear-gradient(135deg,color-mix(in srgb,var(--blue) 9%,transparent),transparent 44%),var(--bg)}
 .gridmapcanvas.dragging{cursor:grabbing}.gridmapviewport{position:absolute;inset:0;transform-origin:50% 50%;transition:transform .08s ease}.mapzoom{display:flex;align-items:center;gap:6px;flex:none}.mapzoom .ticon{width:auto;min-width:32px;padding:0 8px}
 .mapgridbg{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:44px 44px;opacity:.22;mask-image:radial-gradient(circle at center,#000 58%,transparent 100%)}
+.gridgeosvg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.gridcountries{filter:drop-shadow(0 14px 24px rgba(0,0,0,.22))}.gridcountry{stroke:color-mix(in srgb,var(--border-strong) 84%,transparent);stroke-width:1.45;vector-effect:non-scaling-stroke;cursor:pointer;outline:none;transition:fill .14s ease,stroke .14s ease,opacity .14s ease,filter .14s ease}.gridcountry.low{fill:color-mix(in srgb,var(--green) 62%,var(--card))}.gridcountry.mid{fill:color-mix(in srgb,var(--yellow) 58%,var(--card))}.gridcountry.high{fill:color-mix(in srgb,var(--red) 52%,var(--card))}.gridcountry.very{fill:color-mix(in srgb,var(--red) 68%,var(--card))}.gridcountry.off{fill:color-mix(in srgb,var(--text-faint) 25%,var(--bg));opacity:.5}.gridcountry:hover,.gridcountry:focus,.gridcountry.on{stroke:var(--accent);stroke-width:2.6;filter:brightness(1.08) saturate(1.08)}.gridcountry.on{filter:brightness(1.12) saturate(1.12) drop-shadow(0 0 12px color-mix(in srgb,var(--accent) 34%,transparent))}
+.gridflowsgeo,.gridflowgeo,.gridflowhit,.gridflowline,.gridflowtag,.gridflowdot{pointer-events:none}.gridflowgeo{color:var(--accent);outline:none}.gridflowhit{stroke:transparent;stroke-width:18}.gridflowline{stroke:color-mix(in srgb,var(--accent) 80%,var(--blue));stroke-linecap:round;opacity:.9;vector-effect:non-scaling-stroke;stroke-dasharray:11 8;animation:gridflowmarch 1.4s linear infinite;filter:drop-shadow(0 0 5px rgba(0,0,0,.35))}.gridflowgeo.on .gridflowline{opacity:1;stroke:var(--accent);filter:drop-shadow(0 0 9px color-mix(in srgb,var(--accent) 55%,transparent))}.gridflowarrow{fill:var(--accent)}.gridflowdot{vector-effect:non-scaling-stroke;stroke:var(--bg);stroke-width:1.2}.gridflowdot.from{fill:var(--blue)}.gridflowdot.to{fill:var(--accent)}.gridflowtag rect{fill:color-mix(in srgb,var(--panel) 86%,transparent);stroke:color-mix(in srgb,var(--accent) 38%,var(--border));stroke-width:1;vector-effect:non-scaling-stroke}.gridflowtag text{font-size:11px;font-weight:760;fill:var(--text);paint-order:stroke;stroke:rgba(0,0,0,.28);stroke-width:2;stroke-linejoin:round}.gridflowgeo:nth-child(n+16) .gridflowtag{display:none}@keyframes gridflowmarch{to{stroke-dashoffset:-38}}
 .gridzone{position:absolute;transform:translate(-50%,-50%);z-index:3;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(10px);color:var(--text);border-radius:14px;padding:8px 9px;min-width:82px;text-align:left;box-shadow:0 12px 34px rgba(0,0,0,.28);cursor:pointer;transition:transform .14s ease,border-color .14s ease,background .14s ease}
 .gridzone:hover,.gridzone.on{transform:translate(-50%,-50%) scale(1.045);border-color:var(--accent)}
 .gridzone.main{min-width:132px;padding:12px 14px;border-width:1.5px}
