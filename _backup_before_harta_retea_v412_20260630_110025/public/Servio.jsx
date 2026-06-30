@@ -134,7 +134,7 @@ const ENDPOINTS = {
   health: "/api/servio/health",
   dayAheadUnified: "/api/servio/day-ahead/pzu",       // Unified PZU router: OPCOM fresh cache or ENTSO-E A44
   dayAheadOpcom: "/api/servio/day-ahead/pzu?source=opcom",
-  dayAheadEntsoe: "/api/servio/day-ahead/pzu?source=entsoe",
+  dayAheadEntsoe: "/api/servio/day-ahead/pzu?source=entsoe"
   intraday: "/api/servio/opcom/intraday",
   imbalance: "/api/servio/transelectrica/imbalance",
   flows: "/api/servio/entsoe/flows",
