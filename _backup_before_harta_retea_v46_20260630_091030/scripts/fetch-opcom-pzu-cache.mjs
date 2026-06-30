@@ -193,26 +193,18 @@ async function main() {
     console.log(`OPCOM cache updated: ${deliveryDay}, ${records.length}/96 intervals`);
   } catch (err) {
     const prev = await readJsonIfExists(latestFile);
-    const errorMessage = err?.message || String(err);
     const failed = {
       ...status,
       ok: false,
-      status: 'opcom-unavailable-preserve-last-cache',
-      stale: true,
-      error: errorMessage,
+      error: err?.message || String(err),
       lastGoodDeliveryDay: prev?.deliveryDay || null,
       lastGoodUpdatedAtUtc: prev?.updatedAtUtc || null,
-      lastGoodIntervals: Array.isArray(prev?.records) ? prev.records.length : null,
-      latestFilePreserved: Boolean(prev && prev.ok !== false),
-      fallbackStrategy: 'SERVIO Worker should use ENTSO-E A44 live price when OPCOM cache is missing/stale/unavailable.',
-      note: 'OPCOM fetch failed. latest.json was not overwritten and the workflow exits successfully so scheduled GitHub Actions do not stay red.',
+      note: 'Latest cache was not overwritten on failure.',
     };
     await writeFile(statusFile, JSON.stringify(failed, null, 2) + '\n');
-    console.warn('OPCOM cache unavailable:', errorMessage);
-    console.warn('Preserved previous latest.json:', failed.latestFilePreserved ? `${failed.lastGoodDeliveryDay} (${failed.lastGoodIntervals}/96)` : 'none');
-    // Important: do not fail scheduled runs when OPCOM blocks GitHub Actions (HTTP 403).
-    // The app has ENTSO-E A44 fallback and status.json records the outage.
-    process.exitCode = 0;
+    console.error(failed.error);
+    // Fail the workflow so GitHub visibly reports OPCOM fetch/parser issues.
+    process.exitCode = 1;
   }
 }
 

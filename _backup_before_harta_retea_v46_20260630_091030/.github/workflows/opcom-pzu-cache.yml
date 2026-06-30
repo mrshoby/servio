@@ -23,9 +23,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "20"
 
-      - name: Fetch OPCOM PZU CSV and write JSON cache (preserve last good on 403)
+      - name: Fetch OPCOM PZU CSV and write JSON cache
         run: node scripts/fetch-opcom-pzu-cache.mjs
 
       - name: Commit cache if changed
