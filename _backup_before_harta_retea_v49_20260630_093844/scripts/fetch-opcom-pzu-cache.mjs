@@ -49,14 +49,12 @@ function splitCsvLine(line) {
   const cells = [];
   let cell = '';
   let quote = false;
-  // OPCOM RO CSV is semicolon-separated and uses decimal comma. Do not split decimal commas.
-  const delimiter = String(line || '').includes(';') ? ';' : ',';
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
     if (ch === '"') {
       if (quote && line[i + 1] === '"') { cell += '"'; i++; }
       else quote = !quote;
-    } else if (ch === delimiter && !quote) {
+    } else if ((ch === ';' || ch === ',') && !quote) {
       cells.push(cell.trim());
       cell = '';
     } else {

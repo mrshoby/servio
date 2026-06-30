@@ -1,0 +1,9 @@
+name = "servio"
+main = "src/worker.js"
+compatibility_date = "2026-06-26"
+workers_dev = true
+
+[vars]
+OPCOM_GITHUB_CACHE_URL = "https://raw.githubusercontent.com/mrshoby/servio/main/data/opcom/pzu/latest.json"
+ELECTRICITY_MAPS_BASE_URL = "https://api.electricitymap.org"
+ELECTRICITY_MAPS_DEFAULT_ZONE = "RO"
