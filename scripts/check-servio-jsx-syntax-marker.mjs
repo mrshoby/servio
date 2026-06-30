@@ -13,10 +13,10 @@ const checks = [
   ['no old ENTSO-E day-ahead endpoint in public', !app.includes('/api/servio/entsoe/day-ahead')],
   ['electricity maps first provider', worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes('/v4/electricity-flows/latest') && worker.includes('temporalGranularity:"15_minutes"')],
   ['no fake demo fallback when live provider fails', worker.includes('external-live-unavailable') && worker.includes('unavailableZones')],
-  ['v4.20 full Europe robust mix parser', worker.includes('flowsProvider') && worker.includes('full-europe-single-signal-v4.20-payload-parser-fix') && worker.includes('GRID_MAP_ZONES.length') && worker.includes('/v4/electricity-mix/latest')],
-  ['build version v4.20', worker.includes('servio-grid-map-v4.20-electricitymaps-mix-payload-parser-fix')],
+  ['v4.21 full Europe robust mix parser', worker.includes('flowsProvider') && worker.includes('full-europe-single-signal-v4.21-null-finite-mix-values-fix') && worker.includes('GRID_MAP_ZONES.length') && worker.includes('/v4/electricity-mix/latest')],
+  ['build version v4.21', worker.includes('servio-grid-map-v4.21-null-finite-mix-values-fix')],
   ['v4.19 no undefined GRID_MAP_FLOW_EDGES', !worker.includes('GRID_MAP_FLOW_EDGES') && worker.includes('GRID_ENTSOE_EDGE_PAIRS') && worker.includes('gridEntsoeOrderedEdges(zoneObj?.code || zone || \"RO\", env)')],
-  ['v4.20 robust Electricity Maps mix parser', worker.includes('gridPickPayloadObject') && worker.includes('gridDeepNumber') && worker.includes('electricity-maps-empty-mix-payload')],
+  ['v4.21 robust Electricity Maps mix parser', worker.includes('gridPickPayloadObject') && worker.includes('gridDeepNumber') && worker.includes('electricity-maps-empty-mix-payload') && worker.includes('v === null || v === undefined || v === \"\"')],
 ];
 
 let failed = false;
@@ -29,4 +29,4 @@ for (const [name, ok] of checks) {
   }
 }
 if (failed) process.exit(1);
-console.log('SERVIO v4.20 syntax/source/flow-arrow/full-Europe/parser guards OK.');
+console.log('SERVIO v4.21 syntax/source/flow-arrow/full-Europe/null-finite guards OK.');
