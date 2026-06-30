@@ -13,8 +13,8 @@ const checks = [
   ['no old ENTSO-E day-ahead endpoint in public', !app.includes('/api/servio/entsoe/day-ahead')],
   ['electricity maps first provider', worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes('/v4/electricity-flows/latest') && worker.includes('temporalGranularity:"15_minutes"')],
   ['no fake demo fallback when live provider fails', worker.includes('external-live-unavailable') && worker.includes('unavailableZones')],
-  ['v4.16 robust flow parser', worker.includes('flowsProvider') && worker.includes('electricitymaps-mix-breakdown') && worker.includes('breakdownType:"normal"')],
-  ['build version v4.16', worker.includes('servio-grid-map-v4.16-electricitymaps-coverage-flow-parser')],
+  ['v4.17 subrequest-aware flow parser', worker.includes('flowsProvider') && worker.includes('subrequest-budget-v4.17') && worker.includes('gridRomaniaDayWindowUtc')],
+  ['build version v4.17', worker.includes('servio-grid-map-v4.17-subrequest-budget-live-flows-fix')],
 ];
 
 let failed = false;
@@ -27,4 +27,4 @@ for (const [name, ok] of checks) {
   }
 }
 if (failed) process.exit(1);
-console.log('SERVIO v4.16 syntax/source/flow-arrow/Electricity-Maps guards OK.');
+console.log('SERVIO v4.17 syntax/source/flow-arrow/subrequest guards OK.');
