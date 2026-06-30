@@ -8,7 +8,7 @@
     "fetch:opcom": "node scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.6": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.7": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
-    "test:v4.10": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs"
+    "test:v4.9": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.105.0"
