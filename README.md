@@ -1,3 +1,1 @@
-# SERVIO v4.14 — Live Flow Arrows on v4.13 Stable
-
-Vezi `README_HARTA_RETEA_GRID_MAP_V414.md`.
+SERVIO Grid Map v4.15 — Electricity Maps-first no-demo grid over v4.13 stable + v4.14 live arrows.

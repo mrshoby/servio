@@ -11,7 +11,9 @@ const checks = [
   ['live-flow arrows UI marker gridflowgeo', app.includes('gridflowgeo') && worker.includes('gridflowgeo')],
   ['live-flow arrowhead marker', app.includes('markerEnd="url(#gridArrow)"') && worker.includes('markerEnd=\\\"url(#gridArrow)\\\"')],
   ['no old ENTSO-E day-ahead endpoint in public', !app.includes('/api/servio/entsoe/day-ahead')],
-  ['build version v4.14', worker.includes('servio-grid-map-v4.14-live-flow-arrows-on-v413-stable')],
+  ['electricity maps first provider', worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes('/v4/electricity-flows/latest') && worker.includes('temporalGranularity:"15_minutes"')],
+  ['no fake demo fallback when live provider fails', worker.includes('external-live-unavailable') && worker.includes('unavailableZones')],
+  ['build version v4.15', worker.includes('servio-grid-map-v4.15-electricitymaps-first-no-demo-grid')],
 ];
 
 let failed = false;
@@ -24,4 +26,4 @@ for (const [name, ok] of checks) {
   }
 }
 if (failed) process.exit(1);
-console.log('SERVIO v4.14 syntax/source/flow-arrow guards OK.');
+console.log('SERVIO v4.15 syntax/source/flow-arrow/Electricity-Maps guards OK.');

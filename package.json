@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v414-live-flow-arrows-on-v413-stable",
-  "version": "4.14.0",
+  "name": "servio-cloudflare-grid-map-v415-electricitymaps-first-no-demo-grid",
+  "version": "4.15.0",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
@@ -11,7 +11,8 @@
     "test:v4.10": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.11": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.12": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
-    "test:v4.14": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
+    "test:v4.14": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
+    "test:v4.15": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.105.0"
