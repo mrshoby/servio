@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v411-white-page-client-loader-fix",
-  "version": "4.11.0",
+  "name": "servio-cloudflare-grid-map-v49-entsoe-a44-92-interval-normalization",
+  "version": "4.9.0",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
@@ -8,8 +8,7 @@
     "fetch:opcom": "node scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.6": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
     "test:v4.7": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
-    "test:v4.10": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
-    "test:v4.11": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs"
+    "test:v4.10": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.105.0"
