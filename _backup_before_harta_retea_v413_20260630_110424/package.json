@@ -1,0 +1,18 @@
+{
+  "name": "servio-cloudflare-grid-map-v412-white-page-endpoints-syntax-fix",
+  "version": "4.12.0",
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
+    "deploy": "wrangler deploy --config wrangler.toml",
+    "fetch:opcom": "node scripts/fetch-opcom-pzu-cache.mjs",
+    "test:v4.6": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
+    "test:v4.7": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
+    "test:v4.10": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
+    "test:v4.11": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs",
+    "test:v4.12": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.105.0"
+  }
+}
