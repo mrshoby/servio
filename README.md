@@ -1,7 +1,13 @@
-# SERVIO v4.42.1 — Energy Lab Upload Workspace
+# SERVIO v4.42.2 — Clean Energy Lab Results Curve
 
-Build intermediar pe baza `SERVIO v4.42 — Combined Dataset Analyzer`.
+Build ID: `servio-grid-map-v4.42.2-clean-energy-lab-results-curve`
 
-Adaugă în meniul principal pagina **Energy Lab**, unde operatorul poate încărca fișiere de consum, producție PV sau fișiere combinate pentru a vedea rezultatele: data quality, template match, granularitate, consum, producție, autoconsum, import/export, surplus/deficit și capabilități de calcul.
+Build intermediar peste v4.42.1.
 
-Păstrează strict shell-ul SERVIO / Energy Market OS, Auth v4.29, Day-Ahead strict, Harta Rețea live, BESS v4.28 și Data Learning Center admin-only.
+Energy Lab este curățat pentru utilizare operator:
+- inițial apare doar butonul de upload;
+- după upload apare graficul curbei și rezultatele;
+- nu mai apar liste tehnice, preview sheet/raw, search, warnings brute sau scoruri interne;
+- PVGIS CSV este citit din raw complet, nu doar din preview.
+
+Nu schimbă shell-ul global, Auth/Login/UserMenu, Day-Ahead strict, Harta Rețea live, BESS sau Data Learning Center admin-only.

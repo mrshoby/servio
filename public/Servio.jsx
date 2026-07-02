@@ -3166,7 +3166,8 @@ async function readWorkbookInfo(file) {
   }
   const raw = await file.text();
   const profile = buildSheetProfile("Text/CSV", splitLearningRows(raw).map((r) => splitLearningCells(r)));
-  return buildWorkbookInfoFromSheets(file.name, [profile]);
+  const info = buildWorkbookInfoFromSheets(file.name, [profile]);
+  return { ...info, raw: `SHEET: Text/CSV\n${raw}` };
 }
 function detectLearningSheetMode(fileName, raw, workbookInfo) {
   if (workbookInfo?.sheetMode) return workbookInfo.sheetMode;
@@ -3885,30 +3886,268 @@ function forceEnergyLabMode(profile, mode) {
     status: profile.status === "manual" ? "review" : profile.status
   };
 }
-function capabilityListForEnergyLab(file) {
-  const q = file?.qualityProfile?.allowedAnalyses || {};
-  const combined = file?.combinedDatasetProfile?.readiness || {};
-  const items = [
-    ["consumption", "Consum", !!q.consumption || !!file?.consumptionProfile?.sampleCount],
-    ["production", "Producție PV", !!q.production || !!file?.productionProfile?.sampleCount],
-    ["pvSelfConsumption", "Autoconsum PV", !!q.pvSelfConsumption || !!combined.pvSelfConsumption],
-    ["realAutoconsumption", "Autoconsum real", !!q.realAutoconsumption || !!combined.realAutoconsumption],
-    ["bess", "BESS / peak shaving", !!q.bess || !!combined.bess],
-    ["tariff", "Contract / tarif", !!q.tariff],
-    ["report", "Raport client", !!q.report || !!combined.report]
+function normalizeEnergyLabHeader(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9%]+/g, " ")
+    .trim();
+}
+function parseEnergyLabNumber(value) {
+  let s = String(value ?? "").trim().replace(/\s+/g, "");
+  if (!s || /^[-–—]$/.test(s)) return null;
+  s = s.replace(/[−–—]/g, "-").replace(/[^0-9,\.\-]/g, "");
+  if (!s || s === "-" || s === "." || s === ",") return null;
+  const comma = s.lastIndexOf(",");
+  const dot = s.lastIndexOf(".");
+  if (comma > -1 && dot > -1) {
+    s = comma > dot ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+  } else if (comma > -1) {
+    const decimals = s.length - comma - 1;
+    s = decimals === 3 && /^-?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function splitEnergyLabLine(line) {
+  const text = String(line || "").trim();
+  const candidates = [";", "\t", ",", "|"];
+  let delim = ";";
+  let max = 0;
+  candidates.forEach((d) => {
+    const count = (text.match(new RegExp("\\" + d, "g")) || []).length;
+    if (count > max) { max = count; delim = d; }
+  });
+  return text.split(delim).map((c) => String(c ?? "").trim().replace(/^"|"$/g, ""));
+}
+function parseEnergyLabTimestamp(value, fallbackDate, fallbackTime) {
+  const v = String(value || "").trim();
+  const combined = [fallbackDate, fallbackTime].filter(Boolean).join(" ").trim() || v;
+  const pv = combined.match(/^(\d{4})(\d{2})(\d{2})[:\sT]?(\d{2})(\d{2})$/);
+  if (pv) {
+    const [, y, mo, d, h, mi] = pv;
+    const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+  const iso = combined.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})[\sT]+(\d{1,2}):(\d{2})/);
+  if (iso) {
+    const [, y, mo, d, h, mi] = iso;
+    const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+  const eu = combined.match(/^(\d{1,2})[.\/\-](\d{1,2})[.\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2}))?/);
+  if (eu) {
+    const [, d, mo, y, h = "0", mi = "0"] = eu;
+    const dt = new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi));
+    return Number.isFinite(dt.getTime()) ? dt : null;
+  }
+  return null;
+}
+function formatEnergyLabLabel(dt, index) {
+  if (!dt) return `#${index + 1}`;
+  return `${String(dt.getDate()).padStart(2, "0")}.${String(dt.getMonth() + 1).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+}
+function findEnergyLabHeader(lines, fileName) {
+  const lowerName = String(fileName || "").toLowerCase();
+  let best = { index: -1, cells: [], score: -1 };
+  lines.forEach((line, index) => {
+    const cells = splitEnergyLabLine(line);
+    if (cells.length < 2) return;
+    const h = cells.map(normalizeEnergyLabHeader);
+    let score = 0;
+    if (h.some((x) => /(^| )(time|timestamp|data|date|ora|hour)( |$)/.test(x))) score += 4;
+    if (h.some((x) => /(consum|consumption|load|sarcina)/.test(x))) score += 4;
+    if (h.some((x) => /(productie|production|yield|pv|solar|energie produsa)/.test(x))) score += 4;
+    if (h.some((x) => /(^p$|^p | p$)/.test(x)) && /pvgis|timeseries/.test(lowerName + " " + lines.slice(0, 20).join(" ").toLowerCase())) score += 4;
+    if (h.some((x) => /(import|export|inject|livrat|preluat)/.test(x))) score += 3;
+    if (h.some((x) => /(kwh|mwh|wh|kw|mw|w)/.test(x))) score += 2;
+    if (score > best.score) best = { index, cells, score };
+  });
+  return best.score >= 4 ? best : { index: -1, cells: [], score: 0 };
+}
+function energyLabColumnMap(headerCells, fileName, mode) {
+  const hs = headerCells.map(normalizeEnergyLabHeader);
+  const original = headerCells.map((x) => String(x || ""));
+  const lowerName = String(fileName || "").toLowerCase();
+  const isPvgis = /pvgis|timeseries/.test(lowerName + " " + hs.join(" "));
+  const find = (fn) => hs.findIndex(fn);
+  let timestamp = find((x) => /(^| )(timestamp|time)( |$)/.test(x));
+  let date = find((x) => /(^| )(data|date)( |$)/.test(x));
+  let time = find((x) => /(^| )(ora|hour)( |$)/.test(x));
+  if (timestamp < 0 && date >= 0 && time < 0 && /time/.test(hs[date])) timestamp = date;
+  let consumption = find((x) => /(consum|consumption|load|sarcina)/.test(x) && !/(export|inject|prod)/.test(x));
+  let production = find((x) => /(productie|production|yield|pv|solar|energie produsa)/.test(x) && !/(consum|import|export)/.test(x));
+  if (production < 0 && isPvgis) production = find((x) => x === "p" || /^p\s/.test(x));
+  let importKwh = find((x) => /(import|preluat|retea intrare|grid import)/.test(x));
+  let exportKwh = find((x) => /(export|inject|livrat|retea iesire|grid export)/.test(x));
+  const numericCandidates = hs.map((_, i) => i).filter((i) => ![timestamp, date, time].includes(i));
+  if (production < 0 && consumption < 0 && importKwh < 0 && exportKwh < 0 && numericCandidates.length) {
+    if (mode === "production" || isPvgis || /produc|pv|solar|invert/.test(lowerName)) production = numericCandidates.find((i) => hs[i] === "p") >= 0 ? numericCandidates.find((i) => hs[i] === "p") : numericCandidates[0];
+    else if (mode === "consumption" || /consum|ibd|load|sarcina/.test(lowerName)) consumption = numericCandidates[0];
+  }
+  return { timestamp, date, time, consumption, production, importKwh, exportKwh, headers: original, normalized: hs, isPvgis };
+}
+function inferEnergyLabInterval(points, fallback) {
+  const stamps = points.map((p) => p.ts).filter(Boolean).map((d) => d.getTime()).sort((a, b) => a - b);
+  for (let i = 1; i < Math.min(stamps.length, 40); i++) {
+    const diff = Math.round((stamps[i] - stamps[i - 1]) / 60000);
+    if (diff > 0 && diff <= 1440) return diff;
+  }
+  return fallback || 60;
+}
+function valueToEnergyLabKwh(value, header, kind, intervalMinutes, isPvgis) {
+  if (value == null) return null;
+  const h = normalizeEnergyLabHeader(header);
+  const hours = Math.max(1 / 60, (intervalMinutes || 60) / 60);
+  if (isPvgis && (h === "p" || /^p\s/.test(h))) return Math.max(0, value * hours / 1000);
+  if (/mwh/.test(h)) return value * 1000;
+  if (/(^| )wh( |$)/.test(h) && !/kwh|mwh/.test(h)) return value / 1000;
+  if (/mw/.test(h) && !/mwh/.test(h)) return value * 1000 * hours;
+  if (/kw/.test(h) && !/kwh/.test(h)) return value * hours;
+  if (kind === "production" && isPvgis && Math.abs(value) > 1000) return value * hours / 1000;
+  return value;
+}
+function downsampleEnergyLab(points, max = 720) {
+  if (!points.length || points.length <= max) return points;
+  const step = Math.ceil(points.length / max);
+  const out = [];
+  for (let i = 0; i < points.length; i += step) {
+    const slice = points.slice(i, i + step);
+    const avg = (key) => {
+      const vals = slice.map((x) => x[key]).filter((v) => Number.isFinite(v));
+      return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 1000) / 1000 : null;
+    };
+    out.push({ ...slice[0], consumption: avg("consumption"), production: avg("production"), importKwh: avg("importKwh"), exportKwh: avg("exportKwh"), balance: avg("balance") });
+  }
+  return out;
+}
+function buildEnergyLabAnalysis(profile, workbookInfo, mode = "auto") {
+  const raw = String(workbookInfo?.raw || "");
+  const lines = splitLearningRows(raw).filter((line) => line && !/^SHEET:/i.test(String(line).trim()));
+  const header = findEnergyLabHeader(lines, profile?.fileName || "");
+  const map = energyLabColumnMap(header.cells, profile?.fileName || "", mode);
+  const rows = header.index >= 0 ? lines.slice(header.index + 1) : lines;
+  const rawPoints = [];
+  rows.forEach((line, idx) => {
+    const cells = splitEnergyLabLine(line);
+    if (cells.length < 2) return;
+    const dateCell = map.date >= 0 ? cells[map.date] : "";
+    const timeCell = map.time >= 0 ? cells[map.time] : "";
+    const tsCell = map.timestamp >= 0 ? cells[map.timestamp] : "";
+    const ts = parseEnergyLabTimestamp(tsCell, dateCell, timeCell);
+    const cRaw = map.consumption >= 0 ? parseEnergyLabNumber(cells[map.consumption]) : null;
+    const pRaw = map.production >= 0 ? parseEnergyLabNumber(cells[map.production]) : null;
+    const iRaw = map.importKwh >= 0 ? parseEnergyLabNumber(cells[map.importKwh]) : null;
+    const eRaw = map.exportKwh >= 0 ? parseEnergyLabNumber(cells[map.exportKwh]) : null;
+    if (cRaw == null && pRaw == null && iRaw == null && eRaw == null) return;
+    rawPoints.push({ ts, sourceIndex: idx, cRaw, pRaw, iRaw, eRaw });
+  });
+  const fallbackInterval = profile?.granularityProfile?.intervalMinutes || (profile?.granularity === "15m" ? 15 : profile?.granularity === "60m" ? 60 : (map.isPvgis ? 60 : 60));
+  const intervalMinutes = inferEnergyLabInterval(rawPoints, fallbackInterval);
+  const points = rawPoints.map((r, idx) => {
+    const consumption = valueToEnergyLabKwh(r.cRaw, map.headers[map.consumption], "consumption", intervalMinutes, map.isPvgis);
+    const production = valueToEnergyLabKwh(r.pRaw, map.headers[map.production], "production", intervalMinutes, map.isPvgis);
+    const importKwh = valueToEnergyLabKwh(r.iRaw, map.headers[map.importKwh], "import", intervalMinutes, map.isPvgis);
+    const exportKwh = valueToEnergyLabKwh(r.eRaw, map.headers[map.exportKwh], "export", intervalMinutes, map.isPvgis);
+    return { label: formatEnergyLabLabel(r.ts, idx), timestamp: r.ts ? r.ts.toISOString() : null, ts: r.ts, consumption, production, importKwh, exportKwh, balance: (production || 0) - (consumption || 0) };
+  });
+  const sum = (key) => Math.round(points.reduce((a, r) => a + (Number.isFinite(r[key]) ? Math.max(0, r[key]) : 0), 0) * 100) / 100;
+  const consumptionTotal = sum("consumption");
+  const productionTotal = sum("production");
+  const hasConsumption = points.some((r) => Number.isFinite(r.consumption));
+  const hasProduction = points.some((r) => Number.isFinite(r.production));
+  const hasImport = points.some((r) => Number.isFinite(r.importKwh));
+  const hasExport = points.some((r) => Number.isFinite(r.exportKwh));
+  const estimatedImport = points.reduce((a, r) => a + Math.max(0, (r.consumption || 0) - (r.production || 0)), 0);
+  const estimatedSurplus = points.reduce((a, r) => a + Math.max(0, (r.production || 0) - (r.consumption || 0)), 0);
+  const importTotal = hasImport ? sum("importKwh") : Math.round(estimatedImport * 100) / 100;
+  const exportTotal = hasExport ? sum("exportKwh") : Math.round(estimatedSurplus * 100) / 100;
+  const selfConsumed = hasImport && hasConsumption ? Math.max(0, consumptionTotal - importTotal) : hasExport && hasProduction ? Math.max(0, productionTotal - exportTotal) : hasConsumption && hasProduction ? points.reduce((a, r) => a + Math.min(Math.max(0, r.consumption || 0), Math.max(0, r.production || 0)), 0) : null;
+  const selfConsumedRounded = selfConsumed == null ? null : Math.round(selfConsumed * 100) / 100;
+  const coveragePct = hasConsumption && selfConsumedRounded != null && consumptionTotal > 0 ? Math.round((selfConsumedRounded / consumptionTotal) * 1000) / 10 : null;
+  const pvUtilizationPct = hasProduction && selfConsumedRounded != null && productionTotal > 0 ? Math.round((selfConsumedRounded / productionTotal) * 1000) / 10 : null;
+  const peakSurplus = points.reduce((m, r) => Math.max(m, Math.max(0, (r.production || 0) - (r.consumption || 0))), 0);
+  const peakDeficit = points.reduce((m, r) => Math.max(m, Math.max(0, (r.consumption || 0) - (r.production || 0))), 0);
+  const kind = hasConsumption && hasProduction && (hasImport || hasExport) ? "full" : hasConsumption && hasProduction ? "combined" : hasProduction ? "production" : hasConsumption ? "consumption" : hasImport || hasExport ? "import_export" : "unknown";
+  const title = kind === "production" ? "Curbă de producție PV" : kind === "consumption" ? "Curbă de sarcină" : kind === "combined" || kind === "full" ? "Consum + producție" : "Curbă energetică";
+  const sourceLabel = map.isPvgis ? "PVGIS" : (profile?.sourceVendor && profile.sourceVendor !== "unknown" ? profile.sourceVendor : "Fișier încărcat");
+  const chart = downsampleEnergyLab(points.map(({ ts, ...r }) => r));
+  return {
+    ok: points.length > 0,
+    title,
+    sourceLabel,
+    kind,
+    intervalMinutes,
+    rows: points.length,
+    chart,
+    hasConsumption,
+    hasProduction,
+    hasImport,
+    hasExport,
+    valuesAreEstimated: !(hasImport || hasExport) && hasConsumption && hasProduction,
+    stats: {
+      consumptionTotal,
+      productionTotal,
+      selfConsumedKwh: selfConsumedRounded,
+      coveragePct,
+      pvUtilizationPct,
+      importTotal,
+      exportTotal,
+      peakSurplus: Math.round(peakSurplus * 100) / 100,
+      peakDeficit: Math.round(peakDeficit * 100) / 100
+    }
+  };
+}
+function energyLabCapabilityBadges(analysis) {
+  if (!analysis?.ok) return [];
+  return [
+    ["Consum", analysis.hasConsumption || analysis.hasImport],
+    ["Producție PV", analysis.hasProduction],
+    ["Autoconsum", analysis.stats.selfConsumedKwh != null],
+    ["BESS", analysis.hasConsumption || (analysis.hasConsumption && analysis.hasProduction)],
+    ["Contract / tarif", analysis.hasConsumption || analysis.hasImport],
+    ["Raport client", true]
   ];
-  return items;
+}
+function EnergyLabUploadButton({ busy, onFiles, compact = false }) {
+  return (
+    <label className={compact ? "btn ghost elcompactupload" : "btn elbigupload"}>
+      {busy ? <RefreshCw size={16} className="spin" /> : <Upload size={16} />}
+      Încarcă fișier
+      <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" onChange={onFiles} />
+    </label>
+  );
+}
+function EnergyLabChart({ analysis }) {
+  const data = analysis?.chart || [];
+  if (!data.length) return null;
+  const hasC = analysis.hasConsumption;
+  const hasP = analysis.hasProduction;
+  return (
+    <div className="elchartwrap">
+      <ResponsiveContainer width="100%" height={320}>
+        <ComposedChart data={data} margin={{ top: 16, right: 18, left: 4, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="label" minTickGap={38} />
+          <YAxis />
+          <RTooltip formatter={(value) => [fmt(value, 2) + " kWh", ""]} />
+          {hasC && <Area type="monotone" dataKey="consumption" name="Consum" fillOpacity={0.16} strokeWidth={2} />}
+          {hasP && <Line type="monotone" dataKey="production" name="Producție PV" dot={false} strokeWidth={2} />}
+          {!hasC && !hasP && <Line type="monotone" dataKey="importKwh" name="Import" dot={false} strokeWidth={2} />}
+          {(hasC && hasP) && <ReferenceLine y={0} />}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
 }
 function EnergyLabView({ currentUser }) {
-  const storageKey = "servio.energyLab.v4421";
+  const storageKey = "servio.energyLab.v4422.clean";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
-  const [analysisMode, setAnalysisMode] = useState("auto");
-  const [templateQuery, setTemplateQuery] = useState("");
-  const templates = useMemo(() => readStoredLearningTemplates().filter((tpl) => (tpl.status || "active") !== "disabled"), [files.length]);
-  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 20))); } catch {} }, [files]);
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 6))); } catch {} }, [files]);
   const onFiles = async (event) => {
     const list = Array.from(event.target.files || []);
     if (!list.length) return;
@@ -3917,110 +4156,39 @@ function EnergyLabView({ currentUser }) {
     for (const file of list) {
       const workbookInfo = await readWorkbookInfo(file);
       const detected = buildTrainingDetection(file, workbookInfo);
-      parsed.push({ ...forceEnergyLabMode(detected, analysisMode), labUploadedAt: new Date().toISOString(), labMode: analysisMode });
+      const analysis = buildEnergyLabAnalysis(detected, workbookInfo, "auto");
+      parsed.push({ id: detected.id, fileName: detected.fileName, uploadedAt: new Date().toISOString(), analysis });
     }
-    setFiles((prev) => [...parsed, ...prev].slice(0, 20));
+    setFiles((prev) => [...parsed, ...prev].slice(0, 6));
     setBusy(false);
     event.target.value = "";
   };
-  const filteredFiles = useMemo(() => {
-    const q = templateQuery.trim().toLowerCase();
-    if (!q) return files;
-    return files.filter((f) => [f.fileName, f.sourceVendor, f.detectedFileType, f.dataKind, f.sheetMode, f.layout].filter(Boolean).join(" ").toLowerCase().includes(q));
-  }, [files, templateQuery]);
-  const avgQuality = files.length ? Math.round(files.reduce((sum, f) => sum + (f.qualityProfile?.score || f.qualityScore || 0), 0) / files.length) : 0;
-  const combinedReady = files.filter((f) => ["ready", "preview", "estimated"].includes(f.combinedDatasetProfile?.status)).length;
-  const bestRuntime = files.length ? Math.max(...files.map((f) => getLearningSmartParserRuntime(f, templates).score || 0)) : 0;
-  const clearAll = () => setFiles([]);
+  const active = files[0];
+  const analysis = active?.analysis;
+  if (!active) {
+    return <div className="energylab elclean"><div className="elonlyupload"><EnergyLabUploadButton busy={busy} onFiles={onFiles} /></div></div>;
+  }
+  const caps = energyLabCapabilityBadges(analysis);
   return (
-    <div className="energylab">
-      <Card className="elhero" title="Energy Lab" right={<Badge tone="b">Operator workspace</Badge>}>
-        <div className="elherogrid">
-          <div>
-            <div className="setname">Upload curbe energetice și vezi rezultatele</div>
-            <div className="setsub">Încarcă o curbă de sarcină, o curbă de producție PV sau un fișier combinat. SERVIO folosește detectarea din Data Learning Center, verifică granularitatea și calitatea datelor, apoi afișează ce analize pot fi calculate.</div>
-            <div className="elpills"><span>CSV</span><span>XLSX</span><span>XLS</span><span>15 min</span><span>60 min</span><span>single / multi-sheet</span><span>matrice zi × interval</span></div>
-          </div>
-          <div className="eluploadpanel">
-            <div className="elsegtitle">Tip fișier</div>
-            <div className="seg elmode">
-              <button className={"segbtn" + (analysisMode === "auto" ? " on" : "")} onClick={() => setAnalysisMode("auto")}>Auto</button>
-              <button className={"segbtn" + (analysisMode === "consumption" ? " on" : "")} onClick={() => setAnalysisMode("consumption")}>Consum</button>
-              <button className={"segbtn" + (analysisMode === "production" ? " on" : "")} onClick={() => setAnalysisMode("production")}>Producție</button>
-              <button className={"segbtn" + (analysisMode === "combined" ? " on" : "")} onClick={() => setAnalysisMode("combined")}>Consum + PV</button>
-              <button className={"segbtn" + (analysisMode === "full_energy_balance" ? " on" : "")} onClick={() => setAnalysisMode("full_energy_balance")}>Full balance</button>
-            </div>
-            <label className="btn eluploadbtn">
-              {busy ? <RefreshCw size={15} className="spin" /> : <Upload size={15} />}
-              Upload fișiere pentru analiză
-              <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" multiple onChange={onFiles} />
-            </label>
-            <div className="hint"><FileSpreadsheet size={13} /> Fișierele sunt analizate local în workspace. Template-urile globale rămân administrate separat în Settings · Data Learning Center.</div>
-          </div>
+    <div className="energylab elclean">
+      <Card className="elresultcard" title={analysis?.title || "Curbă energetică"} right={<div className="elactions2"><EnergyLabUploadButton busy={busy} onFiles={onFiles} compact /><button className="btn ghost" onClick={() => setFiles([])}>Curăță</button></div>}>
+        <div className="elresulthead">
+          <div><b>{active.fileName}</b><span>{analysis?.sourceLabel || "Fișier încărcat"} · {analysis?.intervalMinutes ? `${analysis.intervalMinutes} min` : "granularitate detectată"} · {fmt(analysis?.rows || 0)} intervale</span></div>
+          {analysis?.valuesAreEstimated && <Badge tone="y">autoconsum estimat</Badge>}
+          {(analysis?.hasImport || analysis?.hasExport) && <Badge tone="g">balanță reală</Badge>}
         </div>
-      </Card>
-
-      <div className="kpirow elkpis">
-        <Kpi label="Fișiere analizate" value={files.length} sub="în Energy Lab" Icon={FileSpreadsheet} />
-        <Kpi label="Data quality" value={avgQuality + "%"} sub="scor mediu" Icon={ShieldCheckFallback} tone={avgQuality >= 75 ? "green" : "accent"} />
-        <Kpi label="Template match" value={bestRuntime + "%"} sub="cel mai bun scor" Icon={Cpu} tone="accent" />
-        <Kpi label="Consum ready" value={files.filter((f) => ["ready", "preview"].includes(f.consumptionProfile?.status)).length} sub="profil sarcină" Icon={Gauge} tone="accent" />
-        <Kpi label="Producție ready" value={files.filter((f) => ["ready", "preview"].includes(f.productionProfile?.status)).length} sub="profil PV" Icon={Sun} tone="accent" />
-        <Kpi label="Combined ready" value={combinedReady} sub="balanță / autoconsum" Icon={Plug} tone="green" />
-      </div>
-
-      <Card title="Analize încărcate" right={<div className="eltools"><div className="dlcsearch"><Search size={13} /><input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Caută fișier, vendor, layout..." /></div>{files.length > 0 && <button className="btn ghost" onClick={clearAll}>Curăță</button>}</div>}>
-        {filteredFiles.length === 0 ? (
-          <div className="elempty">
-            <FileSpreadsheet size={22} />
-            <b>Nicio curbă încărcată</b>
-            <span>Încarcă fișier de consum, producție PV, import/export sau full balance pentru a vedea aici calitatea datelor, capabilitățile și rezultatele combinate.</span>
-          </div>
-        ) : (
-          <div className="ellist">
-            {filteredFiles.map((f) => {
-              const runtime = getLearningSmartParserRuntime(f, templates);
-              const q = f.qualityProfile || {};
-              const c = f.consumptionProfile || {};
-              const p = f.productionProfile || {};
-              const b = f.combinedDatasetProfile || {};
-              const caps = capabilityListForEnergyLab(f);
-              const runtimeTone = runtime.score >= 90 ? "g" : runtime.score >= 70 ? "y" : "n";
-              return (
-                <div className="elitem" key={f.id}>
-                  <div className="elitemhead">
-                    <div className="elicn"><FileSpreadsheet size={16} /></div>
-                    <div className="elmeta"><b>{f.fileName}</b><span>{LEARNING_KIND_LABELS[f.dataKind] || f.dataKind} · {LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {LAYOUT_LABELS[f.layout] || f.layout}</span></div>
-                    <div className="elbadges"><Badge tone={q.score >= 80 ? "g" : q.score >= 60 ? "y" : "r"}>{q.score || 0}% quality</Badge><Badge tone={runtimeTone}>{runtime.score || 0}% template</Badge></div>
-                  </div>
-                  <div className="elgrid">
-                    <div><b>{GRANULARITY_NORMALIZATION_LABELS[f.granularityProfile?.normalizationMode] || f.normalizationMode || f.granularity || "—"}</b><span>granularitate</span></div>
-                    <div><b>{q.missingIntervals || 0}</b><span>intervale lipsă</span></div>
-                    <div><b>{q.duplicateTimestamps || 0}</b><span>duplicate</span></div>
-                    <div><b>{SMART_PARSER_ACTION_LABELS[runtime.action] || runtime.action}</b><span>parser runtime</span></div>
-                  </div>
-                  <div className="elresultgrid">
-                    <div><b>{fmt(c.totalKwh || 0, 1)} kWh</b><span>consum detectat</span></div>
-                    <div><b>{fmt(p.totalKwh || 0, 1)} kWh</b><span>producție detectată</span></div>
-                    <div><b>{b.selfConsumedKwh == null ? "—" : fmt(b.selfConsumedKwh || 0, 1) + " kWh"}</b><span>autoconsum</span></div>
-                    <div><b>{b.coveragePct == null ? "—" : fmt(b.coveragePct, 1) + "%"}</b><span>acoperire consum</span></div>
-                    <div><b>{fmt(b.importKwh || 0, 1)} kWh</b><span>import</span></div>
-                    <div><b>{fmt(b.exportKwh || 0, 1)} kWh</b><span>export</span></div>
-                    <div><b>{fmt(b.peakSurplusKwh || 0, 2)} kWh</b><span>peak surplus</span></div>
-                    <div><b>{fmt(b.peakDeficitKwh || 0, 2)} kWh</b><span>peak deficit</span></div>
-                  </div>
-                  <div className="elcaps">{caps.map(([key, label, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {label}</span>)}</div>
-                  <div className="eldetails">
-                    <div className="dlcreasons">{[...(b.insights || []), ...(q.warnings || []), ...(runtime.reasons || [])].slice(0, 9).map((r) => <span key={r}>{r}</span>)}</div>
-                    <div className="hint"><Plug size={13} /> {b.recommendedNextStep || q.recommendedNextStep || "Încarcă date complementare pentru scenarii PV+BESS și raport client."}</div>
-                  </div>
-                  <div className="dlcpreview">{(f.previewRows || []).slice(0, 4).map((r, i) => <code key={i}>{r}</code>)}</div>
-                  <div className="elactions"><button className="btn ghost" onClick={() => setFiles((prev) => prev.filter((x) => x.id !== f.id))}>Elimină</button></div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <EnergyLabChart analysis={analysis} />
+        <div className="elcleanstats">
+          <div><b>{fmt(analysis?.stats?.consumptionTotal || 0, 1)} kWh</b><span>Consum</span></div>
+          <div><b>{fmt(analysis?.stats?.productionTotal || 0, 1)} kWh</b><span>Producție PV</span></div>
+          <div><b>{analysis?.stats?.selfConsumedKwh == null ? "—" : fmt(analysis.stats.selfConsumedKwh, 1) + " kWh"}</b><span>Autoconsum</span></div>
+          <div><b>{analysis?.stats?.coveragePct == null ? "—" : fmt(analysis.stats.coveragePct, 1) + "%"}</b><span>Acoperire consum</span></div>
+          <div><b>{fmt(analysis?.stats?.importTotal || 0, 1)} kWh</b><span>Import</span></div>
+          <div><b>{fmt(analysis?.stats?.exportTotal || 0, 1)} kWh</b><span>{analysis?.hasExport ? "Export" : "Surplus"}</span></div>
+          <div><b>{fmt(analysis?.stats?.peakSurplus || 0, 2)} kWh</b><span>Peak surplus</span></div>
+          <div><b>{fmt(analysis?.stats?.peakDeficit || 0, 2)} kWh</b><span>Peak deficit</span></div>
+        </div>
+        <div className="elcleancaps">{caps.map(([label, ok]) => <span className={ok ? "ok" : "blocked"} key={label}>{ok ? "✓" : "×"} {label}</span>)}</div>
       </Card>
     </div>
   );
@@ -4698,8 +4866,8 @@ const CSS = `
 
 
 /* energy lab */
-.energylab{display:flex;flex-direction:column;gap:14px}.elhero{border-color:rgba(245,165,36,.22);background:linear-gradient(135deg,rgba(245,165,36,.09),rgba(15,23,42,.42) 45%,rgba(34,197,94,.055))}.elherogrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,.8fr);gap:16px;align-items:stretch}.elpills{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.elpills span{font-size:10.8px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);border-radius:999px;padding:4px 8px}.eluploadpanel{border:1px solid var(--border);border-radius:14px;background:rgba(15,23,42,.34);padding:12px;display:flex;flex-direction:column;gap:10px}.elsegtitle{font-size:11px;font-weight:650;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}.elmode{display:flex;flex-wrap:wrap;gap:6px;background:transparent;padding:0}.elmode .segbtn{font-size:11px;padding:7px 9px}.eluploadbtn{justify-content:center;width:100%;height:38px}.eluploadbtn input{display:none}.elkpis{grid-template-columns:repeat(6,minmax(0,1fr))}.eltools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.elempty{border:1px dashed var(--border);border-radius:14px;background:rgba(15,23,42,.24);padding:28px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--text-faint);text-align:center}.elempty b{color:var(--text);font-size:13px}.elempty span{max-width:620px;font-size:12px}.ellist{display:flex;flex-direction:column;gap:12px}.elitem{border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.28);padding:12px;display:flex;flex-direction:column;gap:10px}.elitemhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.elicn{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.22);color:var(--accent)}.elmeta{min-width:0}.elmeta b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elmeta span{display:block;margin-top:2px;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elbadges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.elgrid,.elresultgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.elresultgrid{grid-template-columns:repeat(8,minmax(0,1fr))}.elgrid div,.elresultgrid div{border:1px solid var(--border);border-radius:10px;background:var(--card);padding:8px;min-width:0}.elgrid b,.elresultgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elgrid span,.elresultgrid span{display:block;margin-top:3px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elcaps{display:flex;flex-wrap:wrap;gap:6px}.elcaps span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:4px 8px}.elcaps .ok{background:rgba(34,197,94,.08);color:var(--green)}.elcaps .blocked{background:rgba(239,68,68,.055);color:var(--text-faint)}.eldetails{display:flex;flex-direction:column;gap:8px}.elactions{display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:9px}
-@media(max-width:1100px){.elherogrid{grid-template-columns:1fr}.elkpis{grid-template-columns:repeat(2,minmax(0,1fr))}.elresultgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.elgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.elitemhead{grid-template-columns:auto minmax(0,1fr)}.elbadges{grid-column:1/-1;justify-content:flex-start}.eltools{justify-content:flex-start}}
+.energylab{display:flex;flex-direction:column;gap:14px}.elclean{min-height:calc(100vh - 160px)}.elonlyupload{min-height:420px;display:grid;place-items:center}.elbigupload{height:46px;padding:0 22px;border-radius:14px;font-weight:750;box-shadow:0 14px 35px rgba(245,165,36,.16)}.elbigupload input,.elcompactupload input{display:none}.elcompactupload{height:34px}.elresultcard{border-color:rgba(245,165,36,.22);background:linear-gradient(135deg,rgba(245,165,36,.07),rgba(15,23,42,.34) 42%,rgba(34,197,94,.045))}.elactions2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.elresulthead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.elresulthead b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:760px}.elresulthead span{display:block;margin-top:3px;font-size:11.5px;color:var(--text-faint)}.elchartwrap{height:332px;border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.32);padding:8px;margin-bottom:12px}.elcleanstats{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}.elcleanstats div{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:10px;min-width:0}.elcleanstats b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elcleanstats span{display:block;margin-top:4px;font-size:10.8px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elcleancaps{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.elcleancaps span{font-size:10.8px;border:1px solid var(--border);border-radius:999px;padding:5px 9px}.elcleancaps .ok{background:rgba(34,197,94,.08);color:var(--green)}.elcleancaps .blocked{background:rgba(239,68,68,.055);color:var(--text-faint)}
+@media(max-width:1100px){.elcleanstats{grid-template-columns:repeat(2,minmax(0,1fr))}.elresulthead{flex-direction:column}.elactions2{justify-content:flex-start}.elresulthead b{max-width:100%}}
 
 /* data learning center */
 .dlchead{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
