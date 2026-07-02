@@ -1,5 +1,5 @@
-# SERVIO v4.27
+# SERVIO v4.28
 
-Build: `servio-grid-map-v4.27-loading-settings-overview-cleanup`
+Build: `servio-grid-map-v4.28-bess-clean-dispatch-period`
 
-UI cleanup: loading screen nou cu spinner orange, Settings păstrează doar fereastra Aspect, iar Overview nu mai afișează cardul „Necesită atenție”.
+BESS cleanup: elimină cardul `Price Thresholds · Inowattio old engine`, elimină cardul separat `Custom Simulation Period` și mută `Custom simulation period` cu `Start date` / `End date` pe același rând în headerul `Dispatch Strategy`.

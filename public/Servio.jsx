@@ -562,12 +562,10 @@ function Battery() {
   const [grid, setGrid] = useState(() => presetGrid("pv"));
   const [brush, setBrush] = useState("charge");
   const [activePreset, setActivePreset] = useState("pv");
-  const [custom, setCustom] = useState(false);
   const [from, setFrom] = useState(INOWATTIO_REFERENCE_PERIOD.from);
   const [to, setTo] = useState(INOWATTIO_REFERENCE_PERIOD.to);
-  const fromEff = custom ? from : INOWATTIO_REFERENCE_PERIOD.from;
-  const toEff = custom ? to : INOWATTIO_REFERENCE_PERIOD.to;
-  const th = useMemo(() => inowattioThresholds(sp), [sp]);
+  const fromEff = from;
+  const toEff = to;
 
   const res = useMemo(() => applyInowattioReferenceTarget(runRevenue(sp, grid, fromEff, toEff), sp, activePreset, fromEff, toEff), [sp, grid, activePreset, fromEff, toEff]);
   const scenarios = useMemo(() => Object.keys(DISP_PRESETS).map((k) => { const g = presetGrid(k); const rr = applyInowattioReferenceTarget(runRevenue(sp, g, fromEff, toEff), sp, k, fromEff, toEff); return { key: k, label: DISP_PRESETS[k].label, investment: rr.investment, totalRevenue: rr.totalRevenue, totalCycles: rr.totalCycles, annual: rr.annual, roi: rr.roi, payback: rr.payback, paybackMonths: rr.paybackMonths }; }), [sp, fromEff, toEff]);
@@ -584,18 +582,18 @@ function Battery() {
       {/* KPIs */}
       <div className="kpirow">
         <Kpi label="Total Revenue" value={fmtEur(res.totalRevenue)} sub={(res.totalMonths || 29) + " months · " + res.days + " days"} Icon={DollarSign} tone="green" />
-        <Kpi label="Avg Yearly" value={fmtEur(res.annual)} sub={res.targetMatched ? "Inowattio reference" : "calculated"} Icon={Activity} />
+        <Kpi label="Avg Yearly" value={fmtEur(res.annual)} sub={res.targetMatched ? "calibrat pe date istorice" : "calculat"} Icon={Activity} />
         <Kpi label="Avg Monthly" value={fmtEur(res.avgMonthly)} sub="Revenue & ROI" Icon={Activity} />
         <Kpi label="Avg Daily" value={fmtEur(res.avgDaily)} sub="daily average" Icon={Sun} />
         <Kpi label="Total Cycles" value={fmt(res.totalCycles, 0)} sub={(res.avgCyclesPerDay || 0).toFixed(2) + " / day avg"} Icon={RefreshCw} />
-        <Kpi label="Revenue / Cycle" value={fmtEur(res.revenuePerCycle || (res.totalCycles ? res.totalRevenue / res.totalCycles : 0))} sub="Inowattio exact" Icon={Zap} />
+        <Kpi label="Revenue / Cycle" value={fmtEur(res.revenuePerCycle || (res.totalCycles ? res.totalRevenue / res.totalCycles : 0))} sub="pe ciclu" Icon={Zap} />
         <Kpi label="Annual ROI" value={res.roi.toFixed(1) + "%"} sub={res.recoveredPct ? "Recovered " + res.recoveredPct.toFixed(1) + "%" : fmtEur(res.annual) + " / year"} Icon={TrendingUp} tone="accent" />
-        <Kpi label="Payback" value={res.paybackMonths ? res.paybackMonths + " months" : (res.payback ? res.payback.toFixed(1) + " years" : "—")} sub={res.breakeven ? "Breakeven " + res.breakeven : (res.targetMatched ? "Inowattio target" : "calculated")} Icon={Clock} />
+        <Kpi label="Payback" value={res.paybackMonths ? res.paybackMonths + " months" : (res.payback ? res.payback.toFixed(1) + " years" : "—")} sub={res.breakeven ? "Breakeven " + res.breakeven : (res.targetMatched ? "calibrat" : "calculat")} Icon={Clock} />
       </div>
 
       <div className="grid2">
         {/* Battery Specifications */}
-        <Card title="Battery Specifications" right={<Badge tone="g">DB locked · {INOWATTIO_REFERENCE_PERIOD.datasetLabel}</Badge>}>
+        <Card title="Battery Specifications" right={<Badge tone="g">Configurare BESS</Badge>}>
           <div className="ingrid">
             <In label="Capacity" value={sp.capacityMWh} set={set("capacityMWh")} unit="MWh" step={0.25} />
             <In label="Max charge power" value={sp.maxChargePowerMW} set={set("maxChargePowerMW")} unit="MW" step={0.25} />
@@ -620,44 +618,19 @@ function Battery() {
         </Card>
       </div>
 
-      <div className="grid2">
-        {/* Price Thresholds */}
-        <Card title="Price Thresholds · Inowattio old engine">
-          <div className="kpirow mini">
-            <MiniMetric label="Degradation Cost" value={fmt(th.degradationCostRonMwh) + " lei/MWh"} sub={fmt(th.degradationLeiPerCycle) + " lei/cycle"} />
-            <MiniMetric label="Max Charge Price" value={fmt(th.maxChargePriceRonMwh) + " lei/MWh"} sub="Charge only below this" />
-            <MiniMetric label="Min Discharge Price" value={fmt(th.minDischargePriceRonMwh) + " lei/MWh"} sub="Discharge above this" />
-            <MiniMetric label="Max ID Charge Price" value={fmt(th.maxIdChargePriceRonMwh) + " lei/MWh"} sub="Inowattio parity" />
-          </div>
-          <div className="hint" style={{ marginTop: 12 }}><Sparkles size={13} /> Valorile sunt calculate automat ca în vechiul engine Inowattio: investiție / cicluri de viață / capacitate utilizabilă. Nu mai sunt praguri manuale.</div>
-          {res.targetMatched && <div className="hint" style={{ marginTop: 10 }}><Database size={13} /> Referință activă: <b>{res.activeReferenceLabel}</b> · recovered <b>{res.recoveredPct.toFixed(1)}%</b> · remaining <b>{fmtEur(res.remainingEur)}</b> · full payback în <b>{res.estFullPaybackMonthsLeft} months</b>.</div>}
-        </Card>
-
-        {/* Custom Simulation Period */}
-        <Card title="Custom Simulation Period">
-          <div className="setrow" style={{ paddingTop: 0 }}>
-            <div><div className="setname">Custom simulation period</div><div className="setsub">Altfel se folosește întregul set de date 2023–2026.</div></div>
-            <button className={"switch" + (custom ? " on" : "")} onClick={() => setCustom((c) => !c)}><span className="knob" /></button>
-          </div>
-          <div className="ingrid" style={{ opacity: custom ? 1 : 0.5, pointerEvents: custom ? "auto" : "none" }}>
-            <In label="Start date" value={from} set={setFrom} unit="" type="date" />
-            <In label="End date" value={to} set={setTo} unit="" type="date" />
-          </div>
-          <div className="apiactions">
-            <button className="btn ghost" onClick={() => { setCustom(false); }}><Database size={14} /> Use full dataset</button>
-            <button className="btn ghost" onClick={() => { setSp({ ...INOWATTIO_OLD_BESS_DEFAULTS }); setGrid(presetGrid("pv")); setActivePreset("pv"); }}><RefreshCw size={14} /> Reset Inowattio specs + PV</button>
-            <span className="dim small">{daysBetween(fromEff, toEff)} zile · {res.totalMonths} luni</span>
-          </div>
-          <div className="hint" style={{ marginTop: 12 }}><Database size={13} /> Baza de date Inowattio încărcată în calculator: <b>{INOWATTIO_REFERENCE_PERIOD.days} zile</b> · {INOWATTIO_REFERENCE_PERIOD.datasetLabel} · medie {fmt(REAL.stats.avg)} Lei/MWh · <b>{REAL.stats.neg}%</b> intervale negative.</div>
-        </Card>
-      </div>
-
       {/* Dispatch Strategy */}
-      <Card title="Dispatch Strategy" right={<div className="brushbar">
-        <span className="dim small">Brush</span>
-        <button className={"brushbtn charge" + (brush === "charge" ? " on" : "")} onClick={() => setBrush("charge")}>Charge</button>
-        <button className={"brushbtn discharge" + (brush === "discharge" ? " on" : "")} onClick={() => setBrush("discharge")}>Discharge</button>
-        <button className={"brushbtn erase" + (brush === "erase" ? " on" : "")} onClick={() => setBrush("erase")}>Erase</button>
+      <Card title="Dispatch Strategy" right={<div className="dispatchheadcontrols">
+        <div className="dispatchperiod">
+          <span className="dim small">Custom simulation period</span>
+          <label className="perioddate"><span>Start date</span><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
+          <label className="perioddate"><span>End date</span><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
+        </div>
+        <div className="brushbar">
+          <span className="dim small">Brush</span>
+          <button className={"brushbtn charge" + (brush === "charge" ? " on" : "")} onClick={() => setBrush("charge")}>Charge</button>
+          <button className={"brushbtn discharge" + (brush === "discharge" ? " on" : "")} onClick={() => setBrush("discharge")}>Discharge</button>
+          <button className={"brushbtn erase" + (brush === "erase" ? " on" : "")} onClick={() => setBrush("erase")}>Erase</button>
+        </div>
       </div>}>
         <div className="dispwrap">
           <div className="dispgrid">
@@ -2302,6 +2275,10 @@ const CSS = `
 .switch.on{background:var(--accent)}
 .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;transition:left .15s}
 .switch.on .knob{left:19px}
+.dispatchheadcontrols{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.dispatchperiod{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:4px 6px;border:1px solid var(--border);background:var(--bg);border-radius:999px}
+.perioddate{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-faint)}
+.perioddate input{height:26px;border:1px solid var(--border);background:var(--panel);color:var(--text);border-radius:999px;padding:0 8px;font-size:11px;outline:none}
 .brushbar{display:inline-flex;align-items:center;gap:6px}
 .brushbtn{border:1px solid var(--border);background:var(--card);color:var(--text-dim);font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:6px;cursor:pointer}
 .brushbtn:hover{background:var(--hover)}
