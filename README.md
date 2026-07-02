@@ -1,13 +1,26 @@
-# SERVIO v4.42.2 — Clean Energy Lab Results Curve
+# SERVIO v4.42 — Combined Dataset Analyzer FINAL
 
-Build ID: `servio-grid-map-v4.42.2-clean-energy-lab-results-curve`
+Build ID: `servio-grid-map-v4.42-combined-dataset-analyzer-final`
 
-Build intermediar peste v4.42.1.
+Acest build finalizează corect roadmap-ul v4.42 Combined Dataset Analyzer.
 
-Energy Lab este curățat pentru utilizare operator:
-- inițial apare doar butonul de upload;
-- după upload apare graficul curbei și rezultatele;
-- nu mai apar liste tehnice, preview sheet/raw, search, warnings brute sau scoruri interne;
-- PVGIS CSV este citit din raw complet, nu doar din preview.
+## Ce adaugă
 
-Nu schimbă shell-ul global, Auth/Login/UserMenu, Day-Ahead strict, Harta Rețea live, BESS sau Data Learning Center admin-only.
+- suport pentru fișiere consum + producție;
+- suport pentru import/export;
+- suport pentru full balance;
+- calcule pentru autoconsum, surplus, import, export, acoperire consum, utilizare PV locală și balanță energetică;
+- separare explicită între rezultat real și estimat.
+
+## Regulă importantă
+
+Dacă fișierul nu conține import/export, SERVIO nu marchează exportul/autoconsumul ca real. În acel caz afișează:
+- autoconsum estimat;
+- surplus estimat;
+- deficit estimat.
+
+Export/import real apar doar când există coloane import/export.
+
+## Nu s-a schimbat
+
+Nu s-a rescris aplicația, nu s-a schimbat shell-ul, nu s-au atins Auth/Login/UserMenu, Day-Ahead strict, Harta Rețea live sau BESS curățat.

@@ -5,7 +5,7 @@ const worker = fs.readFileSync("src/worker.js", "utf8");
 const workflow = fs.readFileSync(".github/workflows/opcom-pzu-cache.yml", "utf8");
 
 const checks = [
-  ["build version v4.42.2", worker.includes("servio-grid-map-v4.42.2-clean-energy-lab-results-curve")],
+  ["build version v4.42 combined final", worker.includes("servio-grid-map-v4.42-combined-dataset-analyzer-final")],
   ["xlsx import support", app.includes('import * as XLSX from "xlsx"') && worker.includes('xlsx@0.18.5') && worker.includes('XLSX')],
   ["auth endpoints preserved", worker.includes('path === "/api/servio/auth/login"') && worker.includes('path === "/api/servio/auth/me"') && worker.includes('path === "/api/servio/auth/logout"')],
   ["auth frontend preserved", app.includes("function AuthGate") && app.includes("function LoginView") && app.includes("function UserMenu") && worker.includes("function AuthGate")],
@@ -36,6 +36,9 @@ const checks = [
   ["combined dataset analyzer exists", app.includes("buildCombinedDatasetProfile") && app.includes("extractLearningBalanceSamples") && app.includes("COMBINED_DATASET_PROFILE_LABELS")],
   ["combined dataset UI exists", app.includes("Combined Dataset Analyzer") && app.includes("dlccombined") && app.includes("Combined ready")],
   ["combined dataset profile persisted", app.includes("combinedDatasetProfile") && app.includes("combinedDatasetRules") && app.includes("selfConsumedKwh") && app.includes("coveragePct") && app.includes("pvUtilizationPct")],
+  ["combined analyzer accepts import/export", app.includes('"import_export_only"') && app.includes('hasImportSignal') && app.includes('hasExportSignal')],
+  ["combined analyzer real vs estimated rule", app.includes('autoconsumptionBasis') && app.includes('exportBasis') && app.includes('Nu există import/export: autoconsumul, surplusul și deficitul sunt estimate, nu reale.')],
+  ["combined analyzer surplus deficit balance fields", app.includes('surplusKwh') && app.includes('deficitKwh') && app.includes('energyBalanceKwh')],
 
   ["energy lab navigation exists", app.includes('id: "energyLab"') && app.includes('label: "Energy Lab"') && app.includes('view === "energyLab"') && app.includes('/energy-lab')],
   ["energy lab clean upload exists", app.includes('function EnergyLabView') && app.includes('EnergyLabUploadButton') && app.includes('Încarcă fișier') && app.includes('elonlyupload')],
@@ -62,4 +65,4 @@ for (const [name, ok] of checks) {
   else console.log(`OK: ${name}`);
 }
 if (failed) process.exit(1);
-console.log("SERVIO v4.42.2 clean energy lab results curve guards OK.");
+console.log("SERVIO v4.42 combined dataset analyzer final guards OK.");

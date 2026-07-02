@@ -2015,8 +2015,9 @@ const COMBINED_DATASET_PROFILE_LABELS = {
   blocked: "blocat"
 };
 const COMBINED_DATASET_PROFILE_MODE_LABELS = {
-  full_balance: "balanță completă",
-  pv_consumption_pair: "consum + producție",
+  full_balance: "balanță completă reală",
+  import_export_only: "import/export",
+  pv_consumption_pair: "consum + producție estimat",
   pv_theoretical: "consum + producție estimat",
   insufficient: "insuficient"
 };
@@ -3015,8 +3016,12 @@ function extractLearningBalanceSamples(raw, layoutProfile = {}, normalizationPro
 function buildCombinedDatasetProfile(raw, fileName, kind, normalizationProfile = {}, qualityProfile = {}, layoutProfile = {}, fileTypeProfile = {}, mappingDraft = {}, consumptionProfile = {}, productionProfile = {}) {
   const hasConsumption = isLearningConsumptionDataset(kind, fileTypeProfile);
   const hasProduction = isLearningProductionDataset(kind, fileTypeProfile);
-  const hasImportExport = kind === "full_energy_balance" || kind === "import_export" || !!fileTypeProfile?.dataSignals?.import || !!fileTypeProfile?.dataSignals?.export;
-  if (!hasConsumption || !hasProduction) return { available: false, status: "blocked", mode: "insufficient", reason: "Combined Dataset Analyzer cere consum + producție sau import/export/full balance în același fișier ori template compatibil.", updatedAt: new Date().toISOString() };
+  const signals = fileTypeProfile?.dataSignals || {};
+  const hasImportSignal = kind === "import_export" || kind === "full_energy_balance" || !!signals.import || ["import_export_file", "full_balance_file"].includes(fileTypeProfile?.fileType);
+  const hasExportSignal = kind === "import_export" || kind === "full_energy_balance" || !!signals.export || ["import_export_file", "full_balance_file"].includes(fileTypeProfile?.fileType);
+  const canAnalyzeCombined = (hasConsumption && hasProduction) || hasImportSignal || hasExportSignal;
+  if (!canAnalyzeCombined) return { available: false, status: "blocked", mode: "insufficient", reason: "Combined Dataset Analyzer cere consum + producție, import/export sau full balance.", updatedAt: new Date().toISOString() };
+
   const balance = extractLearningBalanceSamples(raw, layoutProfile, normalizationProfile, mappingDraft);
   let samples = balance.samples.filter((s) => Number.isFinite(s.consumptionKwh) || Number.isFinite(s.productionKwh) || Number.isFinite(s.importKwh) || Number.isFinite(s.exportKwh));
   const warnings = [];
@@ -3024,49 +3029,141 @@ function buildCombinedDatasetProfile(raw, fileName, kind, normalizationProfile =
     const c = extractLearningConsumptionSamples(raw, layoutProfile, normalizationProfile);
     const p = extractLearningProductionSamples(raw, layoutProfile, normalizationProfile);
     const n = Math.min(c.length, p.length, 800);
-    samples = Array.from({ length: n }, (_, i) => ({ hour: c[i]?.hour ?? p[i]?.hour ?? null, weekend: c[i]?.weekend ?? p[i]?.weekend ?? null, consumptionKwh: c[i]?.kwh ?? null, productionKwh: p[i]?.kwh ?? null, importKwh: null, exportKwh: null, source: c[i]?.source || p[i]?.source || "" }));
-    if (n) warnings.push("Balanță combinată calculată prin aliniere preview consum/producție; confirmă coloanele pentru rezultat final.");
+    samples = Array.from({ length: n }, (_, i) => ({
+      hour: c[i]?.hour ?? p[i]?.hour ?? null,
+      weekend: c[i]?.weekend ?? p[i]?.weekend ?? null,
+      consumptionKwh: c[i]?.kwh ?? null,
+      productionKwh: p[i]?.kwh ?? null,
+      importKwh: null,
+      exportKwh: null,
+      source: c[i]?.source || p[i]?.source || ""
+    }));
+    if (n) warnings.push("Consum + producție aliniate ca estimare; import/export lipsesc, deci autoconsumul nu este marcat real.");
   }
-  if (!samples.length) warnings.push("Nu am putut alinia consumul cu producția în preview; verifică maparea consum/producție/import/export.");
+  if (!samples.length) warnings.push("Nu am putut alinia datele pentru balanță; confirmă maparea consum/producție/import/export.");
+
   const rows = samples.map((s) => {
     const c = Number.isFinite(s.consumptionKwh) ? Math.max(0, s.consumptionKwh) : null;
     const p = Number.isFinite(s.productionKwh) ? Math.max(0, s.productionKwh) : null;
     const imp = Number.isFinite(s.importKwh) ? Math.max(0, s.importKwh) : null;
     const exp = Number.isFinite(s.exportKwh) ? Math.max(0, s.exportKwh) : null;
-    const theoreticalSelf = c !== null && p !== null ? Math.min(c, p) : null;
-    const realFromExport = p !== null && exp !== null ? Math.max(0, p - exp) : null;
-    const realFromImport = c !== null && imp !== null ? Math.max(0, c - imp) : null;
-    const self = realFromExport !== null ? realFromExport : realFromImport !== null ? realFromImport : theoreticalSelf !== null ? theoreticalSelf : 0;
-    const surplus = exp !== null ? exp : c !== null && p !== null ? Math.max(0, p - c) : 0;
-    const deficit = imp !== null ? imp : c !== null && p !== null ? Math.max(0, c - p) : 0;
-    return { ...s, c, p, imp, exp, self: Math.max(0, self), surplus, deficit };
+    const selfRealFromExport = p !== null && exp !== null ? Math.max(0, p - exp) : null;
+    const selfRealFromImport = c !== null && imp !== null ? Math.max(0, c - imp) : null;
+    const selfEstimated = c !== null && p !== null ? Math.min(c, p) : null;
+    const surplusEstimated = c !== null && p !== null ? Math.max(0, p - c) : null;
+    const deficitEstimated = c !== null && p !== null ? Math.max(0, c - p) : null;
+    return {
+      ...s,
+      c,
+      p,
+      imp,
+      exp,
+      selfReal: selfRealFromExport !== null ? selfRealFromExport : selfRealFromImport,
+      selfEstimated,
+      surplusReal: exp,
+      deficitReal: imp,
+      surplusEstimated,
+      deficitEstimated
+    };
   });
-  const sum = (key) => rows.reduce((a, r) => a + (Number.isFinite(r[key]) ? r[key] : 0), 0);
-  const totalConsumptionKwh = sum("c");
-  const totalProductionKwh = sum("p");
-  const rawSelfConsumedKwh = sum("self");
-  const selfConsumedKwh = rawSelfConsumedKwh ? Math.min(rawSelfConsumedKwh, totalConsumptionKwh || rawSelfConsumedKwh, totalProductionKwh || rawSelfConsumedKwh) : 0;
-  const importKwh = sum("imp") || sum("deficit");
-  const exportKwh = sum("exp") || sum("surplus");
-  const coveragePct = totalConsumptionKwh > 0 ? Math.round((selfConsumedKwh / totalConsumptionKwh) * 1000) / 10 : null;
-  const pvUtilizationPct = totalProductionKwh > 0 ? Math.round((selfConsumedKwh / totalProductionKwh) * 1000) / 10 : null;
-  const exportSharePct = totalProductionKwh > 0 ? Math.round((exportKwh / totalProductionKwh) * 1000) / 10 : null;
-  const importSharePct = totalConsumptionKwh > 0 ? Math.round((importKwh / totalConsumptionKwh) * 1000) / 10 : null;
-  const peakSurplusKwh = rows.length ? Math.max(...rows.map((r) => r.surplus || 0)) : 0;
-  const peakDeficitKwh = rows.length ? Math.max(...rows.map((r) => r.deficit || 0)) : 0;
+
+  const hasRealImport = rows.some((r) => r.imp !== null);
+  const hasRealExport = rows.some((r) => r.exp !== null);
+  const hasRealImportExport = hasRealImport || hasRealExport;
+  const hasAlignedConsumptionProduction = rows.some((r) => r.c !== null && r.p !== null);
+  const sum = (fn) => rows.reduce((a, r) => a + (Number.isFinite(fn(r)) ? fn(r) : 0), 0);
+  const totalConsumptionKwh = sum((r) => r.c);
+  const totalProductionKwh = sum((r) => r.p);
+  const realImportKwh = hasRealImport ? sum((r) => r.deficitReal) : null;
+  const realExportKwh = hasRealExport ? sum((r) => r.surplusReal) : null;
+  const estimatedDeficitKwh = hasAlignedConsumptionProduction ? sum((r) => r.deficitEstimated) : null;
+  const estimatedSurplusKwh = hasAlignedConsumptionProduction ? sum((r) => r.surplusEstimated) : null;
+  const rawRealSelf = hasRealImportExport ? sum((r) => r.selfReal) : null;
+  const rawEstimatedSelf = hasAlignedConsumptionProduction ? sum((r) => r.selfEstimated) : null;
+  const selfConsumedKwh = rawRealSelf !== null && rawRealSelf > 0
+    ? Math.min(rawRealSelf, totalConsumptionKwh || rawRealSelf, totalProductionKwh || rawRealSelf)
+    : rawEstimatedSelf !== null
+      ? Math.min(rawEstimatedSelf, totalConsumptionKwh || rawEstimatedSelf, totalProductionKwh || rawEstimatedSelf)
+      : null;
+  const importKwh = realImportKwh;
+  const exportKwh = realExportKwh;
+  const deficitKwh = realImportKwh !== null ? realImportKwh : estimatedDeficitKwh;
+  const surplusKwh = realExportKwh !== null ? realExportKwh : estimatedSurplusKwh;
+  const coveragePct = totalConsumptionKwh > 0 && selfConsumedKwh !== null ? Math.round((selfConsumedKwh / totalConsumptionKwh) * 1000) / 10 : null;
+  const pvUtilizationPct = totalProductionKwh > 0 && selfConsumedKwh !== null ? Math.round((selfConsumedKwh / totalProductionKwh) * 1000) / 10 : null;
+  const exportSharePct = totalProductionKwh > 0 && realExportKwh !== null ? Math.round((realExportKwh / totalProductionKwh) * 1000) / 10 : null;
+  const importSharePct = totalConsumptionKwh > 0 && realImportKwh !== null ? Math.round((realImportKwh / totalConsumptionKwh) * 1000) / 10 : null;
+  const surplusSharePct = totalProductionKwh > 0 && surplusKwh !== null ? Math.round((surplusKwh / totalProductionKwh) * 1000) / 10 : null;
+  const peakSurplusKwh = rows.length ? Math.max(...rows.map((r) => r.surplusReal ?? r.surplusEstimated ?? 0)) : 0;
+  const peakDeficitKwh = rows.length ? Math.max(...rows.map((r) => r.deficitReal ?? r.deficitEstimated ?? 0)) : 0;
   const midday = rows.filter((r) => r.hour !== null && r.hour >= 10 && r.hour < 16);
   const evening = rows.filter((r) => r.hour !== null && r.hour >= 18 && r.hour < 23);
-  const middaySurplusKwh = midday.reduce((a, r) => a + (r.surplus || 0), 0);
-  const eveningDeficitKwh = evening.reduce((a, r) => a + (r.deficit || 0), 0);
-  if (hasImportExport && (!exportKwh && !importKwh)) warnings.push("Fișierul pare să aibă import/export, dar valorile nu au fost extrase clar din preview.");
+  const middaySurplusKwh = midday.reduce((a, r) => a + (r.surplusReal ?? r.surplusEstimated ?? 0), 0);
+  const eveningDeficitKwh = evening.reduce((a, r) => a + (r.deficitReal ?? r.deficitEstimated ?? 0), 0);
+  const energyBalanceKwh = (Number.isFinite(totalProductionKwh) ? totalProductionKwh : 0) - (Number.isFinite(totalConsumptionKwh) ? totalConsumptionKwh : 0);
+  const autoconsumptionBasis = hasRealImportExport && selfConsumedKwh !== null ? "real" : hasAlignedConsumptionProduction && selfConsumedKwh !== null ? "estimated" : "unavailable";
+  const exportBasis = hasRealExport ? "real" : hasAlignedConsumptionProduction ? "surplus_estimated" : "unavailable";
+  const importBasis = hasRealImport ? "real" : hasAlignedConsumptionProduction ? "deficit_estimated" : "unavailable";
+  if (!hasRealImportExport && hasAlignedConsumptionProduction) warnings.push("Nu există import/export: autoconsumul, surplusul și deficitul sunt estimate, nu reale.");
+  if ((hasImportSignal || hasExportSignal) && !hasRealImportExport) warnings.push("Fișierul pare să aibă import/export, dar valorile nu au fost extrase clar din preview.");
   if (coveragePct !== null && coveragePct < 20 && totalProductionKwh > 0) warnings.push("Acoperirea consumului din PV este mică în preview; verifică suprapunerea orară sau dimensionarea PV.");
-  if (exportSharePct !== null && exportSharePct > 45) warnings.push("Export PV ridicat; posibil potențial pentru BESS/shift de consum.");
+  if (surplusSharePct !== null && surplusSharePct > 45) warnings.push("Surplus PV ridicat; posibil potențial pentru BESS/shift de consum.");
   const qualityScore = qualityProfile?.score || 0;
   const intervalMinutes = normalizationProfile?.intervalMinutes || (normalizationProfile?.sourceGranularity === "15m" ? 15 : normalizationProfile?.sourceGranularity === "60m" ? 60 : null);
-  const mode = hasImportExport ? "full_balance" : "pv_consumption_pair";
-  const status = !rows.length || qualityScore < 55 ? "blocked" : qualityScore >= 75 && (coveragePct !== null || pvUtilizationPct !== null) ? "ready" : "preview";
-  const readiness = { pvSelfConsumption: !!qualityProfile?.allowedAnalyses?.pvSelfConsumption, realAutoconsumption: !!qualityProfile?.allowedAnalyses?.realAutoconsumption, bess: !!qualityProfile?.allowedAnalyses?.bess, bessDispatch: !!qualityProfile?.allowedAnalyses?.bessDispatch, report: !!qualityProfile?.allowedAnalyses?.report };
-  return { available: true, status, mode, source: fileName, sampleCount: rows.length, intervalMinutes: intervalMinutes || null, totalConsumptionKwh: Math.round(totalConsumptionKwh * 100) / 100, totalProductionKwh: Math.round(totalProductionKwh * 100) / 100, selfConsumedKwh: Math.round(selfConsumedKwh * 100) / 100, importKwh: Math.round(importKwh * 100) / 100, exportKwh: Math.round(exportKwh * 100) / 100, coveragePct, pvUtilizationPct, exportSharePct, importSharePct, peakSurplusKwh: Math.round(peakSurplusKwh * 100) / 100, peakDeficitKwh: Math.round(peakDeficitKwh * 100) / 100, middaySurplusKwh: Math.round(middaySurplusKwh * 100) / 100, eveningDeficitKwh: Math.round(eveningDeficitKwh * 100) / 100, columns: balance.columns, readiness, insights: [coveragePct !== null ? `Acoperire consum din PV: ${fmt(coveragePct, 1)}%.` : "Acoperirea consumului necesită consum și producție aliniate.", pvUtilizationPct !== null ? `Utilizare producție PV locală: ${fmt(pvUtilizationPct, 1)}%.` : "Utilizarea PV necesită producție clară.", exportSharePct !== null ? `Pondere export din producție: ${fmt(exportSharePct, 1)}%.` : "Exportul necesită coloană export sau balanță completă.", middaySurplusKwh > 0 || eveningDeficitKwh > 0 ? `Surplus prânz ${fmt(middaySurplusKwh, 1)} kWh / deficit seară ${fmt(eveningDeficitKwh, 1)} kWh.` : "Nu există încă pattern clar surplus/deficit."].filter(Boolean), warnings: warnings.slice(0, 8), recommendedNextStep: status === "blocked" ? "Confirmă maparea consum/producție/import/export înainte de balanța combinată." : readiness.realAutoconsumption ? "Poate continua către autoconsum real, BESS sizing și raport client." : "Poate continua ca balanță consum + producție estimată; adaugă import/export pentru rezultat real.", updatedAt: new Date().toISOString() };
+  const mode = hasAlignedConsumptionProduction && hasRealImportExport ? "full_balance" : hasRealImportExport ? "import_export_only" : hasAlignedConsumptionProduction ? "pv_consumption_pair" : "insufficient";
+  const status = !rows.length || qualityScore < 45 ? "blocked" : qualityScore >= 75 && (coveragePct !== null || hasRealImportExport) ? "ready" : "preview";
+  const readiness = {
+    pvSelfConsumption: autoconsumptionBasis !== "unavailable",
+    realAutoconsumption: autoconsumptionBasis === "real",
+    bess: !!qualityProfile?.allowedAnalyses?.bess || !!hasRealImportExport || !!hasAlignedConsumptionProduction,
+    bessDispatch: !!qualityProfile?.allowedAnalyses?.bessDispatch,
+    report: !!qualityProfile?.allowedAnalyses?.report || rows.length > 0
+  };
+  const f2 = (v) => v === null || !Number.isFinite(v) ? null : Math.round(v * 100) / 100;
+  return {
+    available: true,
+    status,
+    mode,
+    source: fileName,
+    sampleCount: rows.length,
+    intervalMinutes: intervalMinutes || null,
+    totalConsumptionKwh: f2(totalConsumptionKwh) || 0,
+    totalProductionKwh: f2(totalProductionKwh) || 0,
+    selfConsumedKwh: f2(selfConsumedKwh),
+    autoconsumptionBasis,
+    importKwh: f2(importKwh),
+    exportKwh: f2(exportKwh),
+    deficitKwh: f2(deficitKwh),
+    surplusKwh: f2(surplusKwh),
+    importBasis,
+    exportBasis,
+    coveragePct,
+    pvUtilizationPct,
+    exportSharePct,
+    importSharePct,
+    surplusSharePct,
+    energyBalanceKwh: f2(energyBalanceKwh),
+    peakSurplusKwh: f2(peakSurplusKwh) || 0,
+    peakDeficitKwh: f2(peakDeficitKwh) || 0,
+    middaySurplusKwh: f2(middaySurplusKwh) || 0,
+    eveningDeficitKwh: f2(eveningDeficitKwh) || 0,
+    hasRealImport,
+    hasRealExport,
+    hasRealImportExport,
+    columns: balance.columns,
+    readiness,
+    insights: [
+      autoconsumptionBasis === "real" ? "Autoconsum calculat real din import/export." : autoconsumptionBasis === "estimated" ? "Autoconsum estimat din suprapunerea consum + producție." : "Autoconsumul necesită consum + producție sau import/export.",
+      coveragePct !== null ? `Acoperire consum din PV: ${fmt(coveragePct, 1)}%.` : "Acoperirea consumului necesită consum și producție aliniate.",
+      pvUtilizationPct !== null ? `Utilizare producție PV locală: ${fmt(pvUtilizationPct, 1)}%.` : "Utilizarea PV necesită producție clară.",
+      exportBasis === "real" ? `Export real: ${fmt(exportKwh || 0, 1)} kWh.` : exportBasis === "surplus_estimated" ? `Surplus estimat: ${fmt(surplusKwh || 0, 1)} kWh.` : "Exportul real necesită coloană export.",
+      importBasis === "real" ? `Import real: ${fmt(importKwh || 0, 1)} kWh.` : importBasis === "deficit_estimated" ? `Deficit estimat: ${fmt(deficitKwh || 0, 1)} kWh.` : "Importul real necesită coloană import.",
+      middaySurplusKwh > 0 || eveningDeficitKwh > 0 ? `Surplus prânz ${fmt(middaySurplusKwh, 1)} kWh / deficit seară ${fmt(eveningDeficitKwh, 1)} kWh.` : "Nu există încă pattern clar surplus/deficit."
+    ].filter(Boolean),
+    warnings: warnings.slice(0, 8),
+    recommendedNextStep: status === "blocked" ? "Confirmă maparea consum/producție/import/export înainte de balanța combinată." : autoconsumptionBasis === "real" ? "Poate continua către autoconsum real, BESS sizing și raport client." : "Poate continua ca estimare consum + producție; adaugă import/export pentru autoconsum/export real.",
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function detectLearningLayout(raw) {
@@ -3443,10 +3540,18 @@ function DataLearningCenter({ currentUser }) {
       mode: f.combinedDatasetProfile?.mode,
       sampleCount: f.combinedDatasetProfile?.sampleCount,
       selfConsumedKwh: f.combinedDatasetProfile?.selfConsumedKwh,
+      autoconsumptionBasis: f.combinedDatasetProfile?.autoconsumptionBasis,
       coveragePct: f.combinedDatasetProfile?.coveragePct,
       pvUtilizationPct: f.combinedDatasetProfile?.pvUtilizationPct,
+      importKwh: f.combinedDatasetProfile?.importKwh,
+      exportKwh: f.combinedDatasetProfile?.exportKwh,
+      surplusKwh: f.combinedDatasetProfile?.surplusKwh,
+      deficitKwh: f.combinedDatasetProfile?.deficitKwh,
+      importBasis: f.combinedDatasetProfile?.importBasis,
+      exportBasis: f.combinedDatasetProfile?.exportBasis,
       exportSharePct: f.combinedDatasetProfile?.exportSharePct,
       importSharePct: f.combinedDatasetProfile?.importSharePct,
+      energyBalanceKwh: f.combinedDatasetProfile?.energyBalanceKwh,
       peakSurplusKwh: f.combinedDatasetProfile?.peakSurplusKwh,
       peakDeficitKwh: f.combinedDatasetProfile?.peakDeficitKwh,
       readiness: f.combinedDatasetProfile?.readiness
@@ -3734,14 +3839,14 @@ function DataLearningCenter({ currentUser }) {
                     <Badge tone={f.combinedDatasetProfile.status === "ready" ? "g" : f.combinedDatasetProfile.status === "preview" ? "y" : "n"}>{COMBINED_DATASET_PROFILE_LABELS[f.combinedDatasetProfile.status] || f.combinedDatasetProfile.status}</Badge>
                   </div>
                   <div className="dlccombinedgrid">
-                    <div><b>{fmt(f.combinedDatasetProfile.selfConsumedKwh || 0, 1)} kWh</b><span>autoconsumat</span></div>
+                    <div><b>{f.combinedDatasetProfile.selfConsumedKwh === null ? "—" : fmt(f.combinedDatasetProfile.selfConsumedKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.autoconsumptionBasis === "real" ? "autoconsum real" : f.combinedDatasetProfile.autoconsumptionBasis === "estimated" ? "autoconsum estimat" : "autoconsum"}</span></div>
                     <div><b>{f.combinedDatasetProfile.coveragePct === null ? "—" : fmt(f.combinedDatasetProfile.coveragePct, 1) + "%"}</b><span>acoperire consum PV</span></div>
                     <div><b>{f.combinedDatasetProfile.pvUtilizationPct === null ? "—" : fmt(f.combinedDatasetProfile.pvUtilizationPct, 1) + "%"}</b><span>utilizare PV local</span></div>
-                    <div><b>{f.combinedDatasetProfile.exportSharePct === null ? "—" : fmt(f.combinedDatasetProfile.exportSharePct, 1) + "%"}</b><span>export din producție</span></div>
-                    <div><b>{fmt(f.combinedDatasetProfile.importKwh || 0, 1)} kWh</b><span>import</span></div>
-                    <div><b>{fmt(f.combinedDatasetProfile.exportKwh || 0, 1)} kWh</b><span>export</span></div>
+                    <div><b>{f.combinedDatasetProfile.surplusKwh === null ? "—" : fmt(f.combinedDatasetProfile.surplusKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.exportBasis === "real" ? "export real" : f.combinedDatasetProfile.exportBasis === "surplus_estimated" ? "surplus estimat" : "surplus/export"}</span></div>
+                    <div><b>{f.combinedDatasetProfile.importKwh === null ? "—" : fmt(f.combinedDatasetProfile.importKwh, 1) + " kWh"}</b><span>import real</span></div>
+                    <div><b>{f.combinedDatasetProfile.deficitKwh === null ? "—" : fmt(f.combinedDatasetProfile.deficitKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.importBasis === "real" ? "import/deficit real" : f.combinedDatasetProfile.importBasis === "deficit_estimated" ? "deficit estimat" : "deficit"}</span></div>
                     <div><b>{fmt(f.combinedDatasetProfile.peakSurplusKwh || 0, 2)} kWh</b><span>peak surplus/interval</span></div>
-                    <div><b>{COMBINED_DATASET_PROFILE_MODE_LABELS[f.combinedDatasetProfile.mode] || f.combinedDatasetProfile.mode}</b><span>mod balanță</span></div>
+                    <div><b>{f.combinedDatasetProfile.energyBalanceKwh === null ? "—" : fmt(f.combinedDatasetProfile.energyBalanceKwh, 1) + " kWh"}</b><span>balanță energetică</span></div>
                   </div>
                   <div className="dlcanalyses">
                     {Object.entries(f.combinedDatasetProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
@@ -4061,14 +4166,17 @@ function buildEnergyLabAnalysis(profile, workbookInfo, mode = "auto") {
   const hasExport = points.some((r) => Number.isFinite(r.exportKwh));
   const estimatedImport = points.reduce((a, r) => a + Math.max(0, (r.consumption || 0) - (r.production || 0)), 0);
   const estimatedSurplus = points.reduce((a, r) => a + Math.max(0, (r.production || 0) - (r.consumption || 0)), 0);
-  const importTotal = hasImport ? sum("importKwh") : Math.round(estimatedImport * 100) / 100;
-  const exportTotal = hasExport ? sum("exportKwh") : Math.round(estimatedSurplus * 100) / 100;
+  const importTotal = hasImport ? sum("importKwh") : null;
+  const exportTotal = hasExport ? sum("exportKwh") : null;
+  const deficitTotal = hasImport ? importTotal : Math.round(estimatedImport * 100) / 100;
+  const surplusTotal = hasExport ? exportTotal : Math.round(estimatedSurplus * 100) / 100;
+  const autoconsumptionBasis = (hasImport || hasExport) ? "real" : hasConsumption && hasProduction ? "estimated" : "unavailable";
   const selfConsumed = hasImport && hasConsumption ? Math.max(0, consumptionTotal - importTotal) : hasExport && hasProduction ? Math.max(0, productionTotal - exportTotal) : hasConsumption && hasProduction ? points.reduce((a, r) => a + Math.min(Math.max(0, r.consumption || 0), Math.max(0, r.production || 0)), 0) : null;
   const selfConsumedRounded = selfConsumed == null ? null : Math.round(selfConsumed * 100) / 100;
   const coveragePct = hasConsumption && selfConsumedRounded != null && consumptionTotal > 0 ? Math.round((selfConsumedRounded / consumptionTotal) * 1000) / 10 : null;
   const pvUtilizationPct = hasProduction && selfConsumedRounded != null && productionTotal > 0 ? Math.round((selfConsumedRounded / productionTotal) * 1000) / 10 : null;
-  const peakSurplus = points.reduce((m, r) => Math.max(m, Math.max(0, (r.production || 0) - (r.consumption || 0))), 0);
-  const peakDeficit = points.reduce((m, r) => Math.max(m, Math.max(0, (r.consumption || 0) - (r.production || 0))), 0);
+  const peakSurplus = points.reduce((m, r) => Math.max(m, Math.max(0, (r.exportKwh ?? r.production ?? 0) - (r.consumption || 0))), 0);
+  const peakDeficit = points.reduce((m, r) => Math.max(m, Math.max(0, (r.importKwh ?? r.consumption ?? 0) - (r.production || 0))), 0);
   const kind = hasConsumption && hasProduction && (hasImport || hasExport) ? "full" : hasConsumption && hasProduction ? "combined" : hasProduction ? "production" : hasConsumption ? "consumption" : hasImport || hasExport ? "import_export" : "unknown";
   const title = kind === "production" ? "Curbă de producție PV" : kind === "consumption" ? "Curbă de sarcină" : kind === "combined" || kind === "full" ? "Consum + producție" : "Curbă energetică";
   const sourceLabel = map.isPvgis ? "PVGIS" : (profile?.sourceVendor && profile.sourceVendor !== "unknown" ? profile.sourceVendor : "Fișier încărcat");
@@ -4085,7 +4193,8 @@ function buildEnergyLabAnalysis(profile, workbookInfo, mode = "auto") {
     hasProduction,
     hasImport,
     hasExport,
-    valuesAreEstimated: !(hasImport || hasExport) && hasConsumption && hasProduction,
+    valuesAreEstimated: autoconsumptionBasis === "estimated",
+    autoconsumptionBasis,
     stats: {
       consumptionTotal,
       productionTotal,
@@ -4094,6 +4203,8 @@ function buildEnergyLabAnalysis(profile, workbookInfo, mode = "auto") {
       pvUtilizationPct,
       importTotal,
       exportTotal,
+      deficitTotal,
+      surplusTotal,
       peakSurplus: Math.round(peakSurplus * 100) / 100,
       peakDeficit: Math.round(peakDeficit * 100) / 100
     }
@@ -4181,10 +4292,10 @@ function EnergyLabView({ currentUser }) {
         <div className="elcleanstats">
           <div><b>{fmt(analysis?.stats?.consumptionTotal || 0, 1)} kWh</b><span>Consum</span></div>
           <div><b>{fmt(analysis?.stats?.productionTotal || 0, 1)} kWh</b><span>Producție PV</span></div>
-          <div><b>{analysis?.stats?.selfConsumedKwh == null ? "—" : fmt(analysis.stats.selfConsumedKwh, 1) + " kWh"}</b><span>Autoconsum</span></div>
+          <div><b>{analysis?.stats?.selfConsumedKwh == null ? "—" : fmt(analysis.stats.selfConsumedKwh, 1) + " kWh"}</b><span>{analysis?.autoconsumptionBasis === "real" ? "Autoconsum real" : analysis?.autoconsumptionBasis === "estimated" ? "Autoconsum estimat" : "Autoconsum"}</span></div>
           <div><b>{analysis?.stats?.coveragePct == null ? "—" : fmt(analysis.stats.coveragePct, 1) + "%"}</b><span>Acoperire consum</span></div>
-          <div><b>{fmt(analysis?.stats?.importTotal || 0, 1)} kWh</b><span>Import</span></div>
-          <div><b>{fmt(analysis?.stats?.exportTotal || 0, 1)} kWh</b><span>{analysis?.hasExport ? "Export" : "Surplus"}</span></div>
+          <div><b>{analysis?.stats?.importTotal == null ? "—" : fmt(analysis.stats.importTotal, 1) + " kWh"}</b><span>Import real</span></div>
+          <div><b>{analysis?.stats?.surplusTotal == null ? "—" : fmt(analysis.stats.surplusTotal, 1) + " kWh"}</b><span>{analysis?.hasExport ? "Export real" : "Surplus estimat"}</span></div>
           <div><b>{fmt(analysis?.stats?.peakSurplus || 0, 2)} kWh</b><span>Peak surplus</span></div>
           <div><b>{fmt(analysis?.stats?.peakDeficit || 0, 2)} kWh</b><span>Peak deficit</span></div>
         </div>
