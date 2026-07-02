@@ -184,8 +184,8 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
         const endpoint = sourceCfg.endpoint;
         const requestId = `${dayAheadSource}-${Date.now()}`;
         const [t, tm] = await Promise.all([
-          apiGet(base, apiPathWithQuery(endpoint, { day: "today", _source: dayAheadSource, _t: requestId }), token),
-          apiGet(base, apiPathWithQuery(endpoint, { day: "tomorrow", _source: dayAheadSource, _t: requestId }), token),
+          apiGet(base, apiPathWithQuery(endpoint, { day: "today", strict: dayAheadSource === "opcom" ? "1" : "", _source: dayAheadSource, _t: requestId }), token),
+          apiGet(base, apiPathWithQuery(endpoint, { day: "tomorrow", strict: dayAheadSource === "opcom" ? "1" : "", _source: dayAheadSource, _t: requestId }), token),
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
@@ -193,7 +193,7 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
         const sourceName = (t && (t.sourceLabel || t.source)) || (tm && (tm.sourceLabel || tm.source)) || sourceCfg.label;
         const confirmed = ["external-live", "external-live-partial-normalized", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
         if (!alive) return;
-        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceName, sourceMode, error: null, loading: false, requestId, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
+        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceName, sourceMode, warning: (t && t.warning) || (tm && tm.warning) || null, error: null, loading: false, requestId, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
         if (!alive) return;
         setState({ ...demo, mode: "demo", sourceMode: "error-fallback", error: String(e.message || e), loading: false });
@@ -348,6 +348,7 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
         <button className="btn ghost"><Download size={14} /> Export CSV</button>
         <button className="btn"><Plus size={14} /> Ofertă D+1</button>
       </div>
+      {md.warning && <div className="hint" key={`${daySourceKey}-warning`} style={{ marginTop: -2 }}><AlertTriangle size={13} /> {md.warning}</div>}
       <div className="kpirow" key={daySourceKey}>
         <Kpi label="Medie" value={fmtLei(avg)} sub={`${md.sourceLabel || DAY_AHEAD_SOURCES[dayAheadSource]?.label || "PZU"} · ${day === "today" ? "astăzi" : "mâine"}`} Icon={Activity} />
         <Kpi label="Vârf" value={fmtLei(peak)} sub={`${peakIv.label} · ${md.sourceMode || "source"}`} Icon={TrendingUp} tone="red" />

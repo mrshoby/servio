@@ -15,13 +15,16 @@ const checks = [
   ['no old ENTSO-E day-ahead endpoint in public', !app.includes('/api/servio/entsoe/day-ahead')],
   ['electricity maps first provider', worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes('/v4/electricity-flows/latest') && worker.includes('temporalGranularity:"15_minutes"')],
   ['no fake demo fallback when live provider fails', worker.includes('external-live-unavailable') && worker.includes('unavailableZones')],
-  ['v4.24 full Europe robust mix parser preserved', worker.includes('flowsProvider') && worker.includes('full-europe-single-signal-v4.24-dayahead-source-statistics-fix') && worker.includes('GRID_MAP_ZONES.length') && worker.includes('/v4/electricity-mix/latest')],
-  ['build version v4.24', worker.includes('servio-grid-map-v4.24-dayahead-source-statistics-fix')],
+  ['v4.25 full Europe robust mix parser preserved', worker.includes('flowsProvider') && worker.includes('full-europe-single-signal-v4.25-dayahead-strict-source-fix') && worker.includes('GRID_MAP_ZONES.length') && worker.includes('/v4/electricity-mix/latest')],
+  ['build version v4.25', worker.includes('servio-grid-map-v4.25-dayahead-strict-source-fix')],
   ['no undefined GRID_MAP_FLOW_EDGES', !worker.includes('GRID_MAP_FLOW_EDGES') && worker.includes('GRID_ENTSOE_EDGE_PAIRS') && worker.includes('gridEntsoeOrderedEdges(zoneObj?.code || zone || "RO", env)')],
   ['mouse wheel zoom handler', app.includes('handleMapWheel') && worker.includes('handleMapWheel') && app.includes('onWheel={handleMapWheel}') && worker.includes('onWheel={handleMapWheel}')],
   ['map wheel scroll containment CSS', app.includes('overscroll-behavior:contain') && worker.includes('overscroll-behavior:contain') && app.includes('touch-action:none') && worker.includes('touch-action:none')],
   ['day-ahead source query join fix', app.includes('apiPathWithQuery') && worker.includes('apiPathWithQuery') && !app.includes('endpoint + "?day=') && !worker.includes('endpoint + \"?day=')],
   ['day-ahead keyed statistics/chart refresh', app.includes('daySourceKey') && worker.includes('daySourceKey') && app.includes('key={daySourceKey}') && worker.includes('key={daySourceKey}')],
+  ['day-ahead OPCOM strict source param in frontend', app.includes('strict: dayAheadSource === "opcom" ? "1" : ""') && worker.includes('strict: dayAheadSource === \\\"opcom\\\" ? \\\"1\\\" : \\\"\\\"')],
+  ['day-ahead backend disables masked ENTSO-E fallback for strict OPCOM', worker.includes('strictSource') && worker.includes('fallbackDisabled') && worker.includes('allowStaleToday: true') && worker.includes('OPCOM strict indisponibil')],
+  ['day-ahead stale OPCOM cache is explicit, not masked', worker.includes('external-cache-github-stale') && worker.includes('fără fallback ENTSO-E mascat')],
   ['robust Electricity Maps mix parser', worker.includes('gridPickPayloadObject') && worker.includes('gridDeepNumber') && worker.includes('electricity-maps-empty-mix-payload') && worker.includes('v === null || v === undefined || v === ""')],
 ];
 
@@ -35,4 +38,4 @@ for (const [name, ok] of checks) {
   }
 }
 if (failed) process.exit(1);
-console.log('SERVIO v4.24 syntax/source/flow-inspector/full-Europe/mouse-wheel/day-ahead-source guards OK.');
+console.log('SERVIO v4.25 syntax/source/flow-inspector/full-Europe/mouse-wheel/day-ahead-source guards OK.');
