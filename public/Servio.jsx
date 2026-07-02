@@ -144,9 +144,20 @@ const DAY_AHEAD_SOURCES = {
   entsoe: { label: "ENTSO-E", short: "ENTSO-E", endpoint: ENDPOINTS.dayAheadEntsoe, unit: "Lei/MWh" },
 };
 async function apiGet(base, path, token) {
-  const r = await fetch(base.replace(/\/$/, "") + path, { headers: token ? { Authorization: "Bearer " + token } : {} });
+  const r = await fetch(base.replace(/\/$/, "") + path, {
+    headers: token ? { Authorization: "Bearer " + token } : {},
+    cache: "no-store",
+  });
   if (!r.ok) throw new Error("HTTP " + r.status);
   return r.json();
+}
+function apiPathWithQuery(path, params = {}) {
+  const qs = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== null && v !== "")
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join("&");
+  if (!qs) return path;
+  return path + (path.includes("?") ? "&" : "?") + qs;
 }
 // Normalize whatever the API returns into our 96-interval shape.
 function parseSeries(json) {
@@ -171,16 +182,18 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
     (async () => {
       try {
         const endpoint = sourceCfg.endpoint;
+        const requestId = `${dayAheadSource}-${Date.now()}`;
         const [t, tm] = await Promise.all([
-          apiGet(base, endpoint + "?day=today", token),
-          apiGet(base, endpoint + "?day=tomorrow", token),
+          apiGet(base, apiPathWithQuery(endpoint, { day: "today", _source: dayAheadSource, _t: requestId }), token),
+          apiGet(base, apiPathWithQuery(endpoint, { day: "tomorrow", _source: dayAheadSource, _t: requestId }), token),
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
         const sourceMode = (t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local";
-        const confirmed = ["external-live", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
+        const sourceName = (t && (t.sourceLabel || t.source)) || (tm && (tm.sourceLabel || tm.source)) || sourceCfg.label;
+        const confirmed = ["external-live", "external-live-partial-normalized", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
         if (!alive) return;
-        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode, error: null, loading: false, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
+        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceName, sourceMode, error: null, loading: false, requestId, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
         if (!alive) return;
         setState({ ...demo, mode: "demo", sourceMode: "error-fallback", error: String(e.message || e), loading: false });
@@ -313,7 +326,8 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
   const [day, setDay] = useState("today");
   const curve = day === "today" ? md.today : md.tomorrow;
   const hrs = day === "today" ? md.todayH : md.tomorrowH;
-  const avg = Math.round(curve.reduce((a, b) => a + b.price, 0) / 96);
+  const daySourceKey = `${md.source || dayAheadSource}-${md.sourceMode || ""}-${md.requestId || md.lastSync || ""}-${day}`;
+  const avg = Math.round(curve.reduce((a, b) => a + b.price, 0) / Math.max(1, curve.length));
   const peak = Math.max(...curve.map((p) => p.price));
   const trough = Math.min(...curve.map((p) => p.price));
   const peakIv = curve.find((p) => p.price === peak);
@@ -334,16 +348,16 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
         <button className="btn ghost"><Download size={14} /> Export CSV</button>
         <button className="btn"><Plus size={14} /> Ofertă D+1</button>
       </div>
-      <div className="kpirow">
-        <Kpi label="Medie" value={fmtLei(avg)} sub={day === "today" ? "PZU astăzi" : "PZU mâine"} Icon={Activity} />
-        <Kpi label="Vârf" value={fmtLei(peak)} sub={peakIv.label} Icon={TrendingUp} tone="red" />
-        <Kpi label="Minim" value={fmtLei(trough)} sub={lowIv.label} Icon={TrendingDown} tone="green" />
-        <Kpi label="Spread" value={fmtLei(spread)} sub="oportunitate arbitraj" Icon={Layers} tone="accent" />
+      <div className="kpirow" key={daySourceKey}>
+        <Kpi label="Medie" value={fmtLei(avg)} sub={`${md.sourceLabel || DAY_AHEAD_SOURCES[dayAheadSource]?.label || "PZU"} · ${day === "today" ? "astăzi" : "mâine"}`} Icon={Activity} />
+        <Kpi label="Vârf" value={fmtLei(peak)} sub={`${peakIv.label} · ${md.sourceMode || "source"}`} Icon={TrendingUp} tone="red" />
+        <Kpi label="Minim" value={fmtLei(trough)} sub={`${lowIv.label} · ${md.loading ? "actualizare..." : "actualizat"}`} Icon={TrendingDown} tone="green" />
+        <Kpi label="Spread" value={fmtLei(spread)} sub={md.sourceLabel || "oportunitate arbitraj"} Icon={Layers} tone="accent" />
       </div>
-      <Card title={"Preț la 15 minute · " + (day === "today" ? "astăzi" : "mâine")} pad={false}>
+      <Card title={`Preț la 15 minute · ${day === "today" ? "astăzi" : "mâine"} · ${md.sourceLabel || DAY_AHEAD_SOURCES[dayAheadSource]?.label || "PZU"}`} pad={false}>
         <div className="hero">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={curve} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}>
+            <BarChart key={daySourceKey} data={curve} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}>
               <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 10.5, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} interval={11} />
               <YAxis tick={{ fontSize: 10.5, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={42} />
@@ -357,8 +371,8 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
       <Card title="Tabel orar" right={<span className="dim small">24 ore · agregat din 96 intervale</span>} pad={false}>
         <table className="tbl">
           <thead><tr><th>Oră</th><th className="num">Preț (Lei/MWh)</th><th>vs medie</th><th>Semnal baterie</th></tr></thead>
-          <tbody>{hrs.map((h) => { const d = Math.round(((h.price - avg) / avg) * 100); const sig = h.price <= trough + spread * 0.25 ? "charge" : h.price >= peak - spread * 0.25 ? "discharge" : "hold"; return (
-            <tr key={h.hour}><td className="strong">{h.label}:00</td><td className="num">{fmt(h.price)}</td><td><span className={"vsavg " + (d >= 0 ? "up" : "dn")}>{d >= 0 ? "+" : ""}{d}%</span></td><td>{sig === "charge" ? <Badge tone="g">Încarcă</Badge> : sig === "discharge" ? <Badge tone="r">Descarcă</Badge> : <Badge tone="n">Așteaptă</Badge>}</td></tr>
+          <tbody key={daySourceKey}>{hrs.map((h) => { const d = Math.round(((h.price - avg) / Math.max(1, avg)) * 100); const sig = h.price <= trough + spread * 0.25 ? "charge" : h.price >= peak - spread * 0.25 ? "discharge" : "hold"; return (
+            <tr key={`${daySourceKey}-${h.hour}`}><td className="strong">{h.label}:00</td><td className="num">{fmt(h.price)}</td><td><span className={"vsavg " + (d >= 0 ? "up" : "dn")}>{d >= 0 ? "+" : ""}{d}%</span></td><td>{sig === "charge" ? <Badge tone="g">Încarcă</Badge> : sig === "discharge" ? <Badge tone="r">Descarcă</Badge> : <Badge tone="n">Așteaptă</Badge>}</td></tr>
           ); })}</tbody>
         </table>
       </Card>

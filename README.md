@@ -1,5 +1,5 @@
-SERVIO v4.19 full Europe live single-signal
+# SERVIO Cloudflare Worker — v4.24
 
+Build: `servio-grid-map-v4.24-dayahead-source-statistics-fix`
 
-## SERVIO Harta Rețea v4.21
-Fix pentru valori live Electricity Maps afișate ca 0 din cauza `Number(null) === 0` în helperul `firstFinite`.
+Patch peste v4.23. Repară statisticile Day-Ahead la comutarea OPCOM / ENTSO-E și păstrează Harta Rețea live + zoom wheel.
