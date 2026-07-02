@@ -1,5 +1,5 @@
-# SERVIO v4.26
+# SERVIO v4.27
 
-Build: `servio-grid-map-v4.26-dayahead-per-day-warning-autocache-ux`
+Build: `servio-grid-map-v4.27-loading-settings-overview-cleanup`
 
-Day-Ahead PZU: surse stricte OPCOM/ENTSO-E, warninguri izolate pe zi și OPCOM GitHub cache automat la fiecare 15 minute.
+UI cleanup: loading screen nou cu spinner orange, Settings păstrează doar fereastra Aspect, iar Overview nu mai afișează cardul „Necesită atenție”.

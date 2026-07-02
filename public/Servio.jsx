@@ -313,14 +313,6 @@ function Overview({ go, md }) {
             <div className="planleg"><span><i className="sq charge" /> Încarcă</span><span><i className="sq discharge" /> Descarcă</span><span><i className="sq" /> Inactiv</span></div>
           </div>
         </Card>
-
-        <Card title="Necesită atenție" right={<Badge tone="y">3</Badge>}>
-          <div className="alerts">
-            <button className="alert" onClick={() => go("dayahead")}><span className="aicn a"><Activity size={14} /></span><div><div className="atitle">Alege sursa PZU</div><div className="asub">OPCOM sau ENTSO-E în pagina Day-Ahead</div></div><ChevronRight size={15} className="achev" /></button>
-            <button className="alert" onClick={() => go("dayahead")}><span className="aicn a"><TrendingUp size={14} /></span><div><div className="atitle">Vârf de preț la 19:30</div><div className="asub">1.080 Lei/MWh · descărcare recomandată</div></div><ChevronRight size={15} className="achev" /></button>
-            <button className="alert" onClick={() => go("forecast")}><span className="aicn b"><Wind size={14} /></span><div><div className="atitle">Prognoză PV revizuită</div><div className="asub">−8% mâine · nebulozitate ridicată</div></div><ChevronRight size={15} className="achev" /></button>
-          </div>
-        </Card>
       </div>
     </div>
   );
@@ -1917,35 +1909,14 @@ function Sources({ md, apiBase, apiToken }) {
 
 /* ============================ Settings ============================ */
 function SettingsView({ theme, setTheme, apiBase, setApiBase, apiToken, setApiToken, md }) {
-  const [base, setBase] = useState(apiBase);
-  const [token, setToken] = useState(apiToken);
   return (
     <div className="stack">
-      <Card title="Surse de date · OPCOM & ENTSO-E" right={<Badge tone={md.mode === "live" ? "g" : "n"}>{md.mode === "live" ? "Live" : "Demo"}</Badge>}>
-        <p className="setsub" style={{ marginBottom: 14 }}>Conectează aplicația la backend-ul Servio (Cloudflare Worker) care interoghează OPCOM și ENTSO-E server-side cu cheile tale. Fără URL, aplicația rulează pe date demonstrative.</p>
-        <div className="apiform">
-          <div className="field"><div className="fieldhead"><label>URL backend Servio</label></div><input className="nsel" placeholder="https://api.servio.ro" value={base} onChange={(e) => setBase(e.target.value)} /></div>
-          <div className="field"><div className="fieldhead"><label>Token API (opțional)</label></div><input className="nsel" type="password" placeholder="Bearer token" value={token} onChange={(e) => setToken(e.target.value)} /></div>
-        </div>
-        <div className="apiactions">
-          <button className="btn" onClick={() => { setApiBase(base.trim()); setApiToken(token.trim()); }}><Plug size={14} /> Conectează</button>
-          <button className="btn ghost" onClick={() => { setBase(""); setToken(""); setApiBase(""); setApiToken(""); }}>Deconectează (demo)</button>
-          {md.loading && <span className="dim small"><RefreshCw size={12} className="spin" /> se încarcă…</span>}
-          {md.mode === "live" && <span className="g small"><Check size={12} /> Conectat la OPCOM / ENTSO-E</span>}
-          {md.error && apiBase && <span className="r small"><AlertTriangle size={12} /> {md.error}</span>}
-        </div>
-        <div className="hint" style={{ marginTop: 14 }}><Cpu size={13} /> Backend-ul mapează: <b>GET /api/servio/opcom/day-ahead</b>, <b>/opcom/intraday</b>, <b>/transelectrica/imbalance</b>, <b>/entsoe/flows</b>. Răspuns așteptat: listă de 96 intervale <code>{"{ interval, price }"}</code>.</div>
-      </Card>
       <Card title="Aspect">
         <div className="setrow"><div><div className="setname">Temă</div><div className="setsub">Întunecat este recomandat pentru sălile de control.</div></div>
           <div className="seg"><button className={"segbtn" + (theme === "dark" ? " on" : "")} onClick={() => setTheme("dark")}><Moon size={13} /> Întunecat</button><button className={"segbtn" + (theme === "light" ? " on" : "")} onClick={() => setTheme("light")}><Sun size={13} /> Luminos</button></div>
         </div>
         <div className="setrow"><div><div className="setname">Monedă</div><div className="setsub">Afișarea prețurilor pe piață.</div></div><div className="seg"><button className="segbtn on">Lei / MWh</button><button className="segbtn">EUR / MWh</button></div></div>
         <div className="setrow"><div><div className="setname">Fus orar piață</div><div className="setsub">Sincronizat cu gate-closure OPCOM.</div></div><Badge tone="b">Europe/Bucharest</Badge></div>
-      </Card>
-      <Card title="Conformitate">
-        <div className="setrow"><div><div className="setname">Licență agregare ANRE</div><div className="setsub">Nr. 2699 · operare servicii de agregare</div></div><Badge tone="g"><Check size={11} /> Activă</Badge></div>
-        <div className="setrow"><div><div className="setname">Raportare D-1</div><div className="setsub">Decontare zilnică către piață</div></div><Badge tone="n">Programată 06:00</Badge></div>
       </Card>
     </div>
   );
