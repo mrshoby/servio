@@ -1966,6 +1966,22 @@ const UNIT_NORMALIZATION_LABELS = {
   MW: "MW → kWh după durată",
   unknown: "unitate neconfirmată"
 };
+const DATA_QUALITY_SCORE_LABELS = {
+  excellent: "calitate excelentă",
+  good: "calitate bună",
+  review: "necesită verificare",
+  poor: "calitate slabă"
+};
+const DATA_QUALITY_ANALYSIS_LABELS = {
+  consumption: "Analiză consum",
+  tariff: "Contract / tarif",
+  bess: "BESS fezabilitate",
+  bessDispatch: "BESS dispatch fin",
+  production: "Analiză producție",
+  pvSelfConsumption: "Autoconsum PV",
+  realAutoconsumption: "Autoconsum real",
+  report: "Raport"
+};
 const LEARNING_COLUMN_MAP_FIELDS = [
   ["timestamp", "Timestamp"],
   ["date", "Dată"],
@@ -2544,7 +2560,152 @@ function ensureLearningMapping(file) {
   const fileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
   const mappingDraft = file?.mappingDraft?.columnMap ? file.mappingDraft : buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
   const metadataDraft = file?.metadataDraft?.metadataMap ? file.metadataDraft : buildLearningMetadataDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [] });
-  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata };
+  const qualityProfile = file?.qualityProfile || buildLearningDataQuality(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [], sheetMode: file?.sheetMode }, { confidence: file?.fileTypeConfidence || 0, dataSignals: file?.dataSignals || {} });
+  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata, qualityProfile, qualityScore: qualityProfile.score };
+}
+
+function parseLearningNumber(value) {
+  const str = String(value ?? "").trim();
+  if (!str) return null;
+  const cleaned = str.replace(/\s+/g, "").replace(/[^0-9,.-]/g, "");
+  if (!cleaned || !/[0-9]/.test(cleaned)) return null;
+  let normalized = cleaned;
+  const comma = cleaned.lastIndexOf(",");
+  const dot = cleaned.lastIndexOf(".");
+  if (comma > -1 && dot > -1) normalized = comma > dot ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned.replace(/,/g, "");
+  else if (comma > -1) normalized = cleaned.replace(",", ".");
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+function extractLearningTimestampKey(row) {
+  const text = String(row || "");
+  const date = text.match(/\b(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})\b/);
+  const time = text.match(/\b([01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/);
+  if (!date && !time) return "";
+  return `${date ? date[1] : "date-from-context"} ${time ? time[0].slice(0,5) : "00:00"}`;
+}
+function countLearningIssueRows(rows, matcher) {
+  return (rows || []).reduce((count, row) => count + (matcher(row) ? 1 : 0), 0);
+}
+function summarizeLearningSheetCompleteness(workbookInfo = {}, granularityProfile = {}) {
+  const profiles = workbookInfo?.sheetProfiles || [];
+  const active = profiles.filter((s) => !s.ignored);
+  const intervalMinutes = granularityProfile?.intervalMinutes || (granularityProfile?.sourceGranularity === "15m" ? 15 : granularityProfile?.sourceGranularity === "60m" ? 60 : null);
+  const dataRows = active.reduce((sum, s) => sum + Math.max(0, (s.rowCount || 0) - Math.max(1, s.headerRow || 1)), 0);
+  const months = new Set(active.filter((s) => s.periodType === "month").map((s) => String(s.periodLabel || s.name))).size;
+  const days = new Set(active.filter((s) => s.periodType === "day").map((s) => String(s.periodLabel || s.name))).size;
+  let expectedAnnual = null;
+  if (intervalMinutes === 15) expectedAnnual = 35040;
+  if (intervalMinutes === 60) expectedAnnual = 8760;
+  const likelyAnnual = expectedAnnual && dataRows > expectedAnnual * 0.35;
+  const missingAnnualIntervals = likelyAnnual ? Math.max(0, expectedAnnual - dataRows) : 0;
+  return { activeSheetCount: active.length, dataRows, months, days, expectedAnnual, missingAnnualIntervals, likelyAnnual };
+}
+function buildLearningDataQuality(raw, fileName, kind, normalizationProfile = {}, layoutProfile = {}, workbookInfo = {}, fileTypeProfile = {}) {
+  const rows = splitLearningRows(raw);
+  const headerRow = Math.max(1, layoutProfile?.headerRow || detectHeaderRow(raw).row || 1);
+  const dataRows = rows.slice(Math.min(rows.length, headerRow));
+  const timestampKeys = dataRows.map(extractLearningTimestampKey).filter(Boolean);
+  const duplicateKeys = timestampKeys.filter((x, i, arr) => arr.indexOf(x) !== i);
+  const totalRows = countLearningIssueRows(dataRows, (r) => /\b(total|subtotal|sumar|total\s+zi|total\s+lun|total\s+general|grand\s+total)\b/i.test(String(r || "")));
+  const noteRows = countLearningIssueRows(rows.slice(0, Math.min(rows.length, headerRow + 8)), (r) => /\b(client|beneficiar|pod|contor|meter|perioad|unitate|distribuitor|locație|locatie|raport)\b/i.test(String(r || "")) && scoreHeaderRow(r) < 3);
+  const invalidTimestampRows = Math.max(0, dataRows.filter((r) => scoreHeaderRow(r) < 3 && !extractLearningTimestampKey(r) && splitLearningCells(r).length >= 2).length - totalRows);
+  let negativeValueRows = 0;
+  let suspiciousValueRows = 0;
+  dataRows.slice(0, 500).forEach((row) => {
+    const nums = splitLearningCells(row).map(parseLearningNumber).filter((n) => n !== null);
+    if (nums.some((n) => n < 0)) negativeValueRows += 1;
+    if (nums.some((n) => Math.abs(n) > 1000000)) suspiciousValueRows += 1;
+  });
+  const completion = summarizeLearningSheetCompleteness(workbookInfo, normalizationProfile);
+  const hasMultipleTables = (layoutProfile?.tableRegions || []).length > 1 || (layoutProfile?.orientation === "multi_table");
+  const incompleteMonths = workbookInfo?.sheetMode === "monthly_sheets" && completion.months > 0 && completion.months < 12;
+  const incompleteDays = workbookInfo?.sheetMode === "daily_sheets" && completion.days > 0 && completion.days < 360;
+  const mixedGranularity = normalizationProfile?.sourceGranularity === "mixed" || normalizationProfile?.normalizedGranularity === "mixed";
+  const unknownGranularity = !normalizationProfile?.sourceGranularity || normalizationProfile.sourceGranularity === "unknown";
+  const unknownUnit = !normalizationProfile?.unitProfile?.unit || normalizationProfile.unitProfile.unit === "unknown";
+  const ambiguousDate = /\b\d{1,2}\/\d{1,2}\/20\d{2}\b/.test(String(raw || "").slice(0, 12000));
+  const futureDateRows = countLearningIssueRows(dataRows, (r) => /\b20(3\d|4\d|5\d)[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(String(r || "")) || /\b\d{1,2}[-/.]\d{1,2}[-/.]20(3\d|4\d|5\d)\b/.test(String(r || "")));
+  const warnings = [];
+  const blockers = [];
+  const addWarn = (cond, msg) => { if (cond) warnings.push(msg); };
+  const addBlock = (cond, msg) => { if (cond) blockers.push(msg); };
+  addWarn(duplicateKeys.length > 0, `${duplicateKeys.length} timestampuri duplicate în preview`);
+  addWarn(totalRows > 0, `${totalRows} rânduri de total detectate · vor trebui ignorate`);
+  addWarn(noteRows > 0, `${noteRows} rânduri de metadate/notițe detectate înaintea datelor`);
+  addWarn(invalidTimestampRows > 0, `${invalidTimestampRows} rânduri fără timestamp clar în zona de date`);
+  addWarn(negativeValueRows > 0 && ["consumption", "production", "pvgis", "combined"].includes(kind), `${negativeValueRows} rânduri cu valori negative · verifică dacă sunt import/export sau dezechilibru`);
+  addWarn(suspiciousValueRows > 0, `${suspiciousValueRows} rânduri cu valori foarte mari · posibilă unitate greșită`);
+  addWarn(mixedGranularity, "granularitate mixtă detectată · necesită confirmare");
+  addWarn(unknownGranularity, "granularitate neconfirmată");
+  addWarn(unknownUnit, "unitate neconfirmată");
+  addWarn(ambiguousDate, "format dată ambiguu DD/MM/YYYY vs MM/DD/YYYY");
+  addWarn(futureDateRows > 0, `${futureDateRows} rânduri cu date în viitor îndepărtat`);
+  addWarn(hasMultipleTables, "mai multe tabele detectate · verifică regiunea corectă de date");
+  addWarn(incompleteMonths, `sheeturi lunare incomplete: ${completion.months}/12 luni detectate`);
+  addWarn(incompleteDays, `sheeturi zilnice incomplete: ${completion.days}/365 zile detectate`);
+  addWarn(completion.missingAnnualIntervals > 0, `${completion.missingAnnualIntervals} intervale lipsă față de un an complet estimat`);
+  addBlock(!rows.length, "fișier fără preview citibil");
+  addBlock(kind === "unknown", "tip energetic necunoscut");
+  addBlock((layoutProfile?.orientation || "unknown") === "unknown", "layout necunoscut");
+  let score = 100;
+  score -= blockers.length * 18;
+  score -= Math.min(20, warnings.length * 4);
+  if (duplicateKeys.length) score -= Math.min(14, duplicateKeys.length * 2);
+  if (invalidTimestampRows) score -= Math.min(16, invalidTimestampRows * 2);
+  if (mixedGranularity) score -= 10;
+  if (unknownGranularity) score -= 9;
+  if (unknownUnit) score -= 6;
+  if (completion.missingAnnualIntervals) score -= Math.min(18, Math.ceil(completion.missingAnnualIntervals / 250));
+  if ((fileTypeProfile?.confidence || 0) >= 85) score += 4;
+  if ((layoutProfile?.confidence || 0) >= 85) score += 4;
+  if ((normalizationProfile?.precision || "") === "high") score += 3;
+  score = Math.max(5, Math.min(99, Math.round(score)));
+  const label = score >= 90 ? "excellent" : score >= 75 ? "good" : score >= 55 ? "review" : "poor";
+  const hasConsumption = ["consumption", "combined", "full_energy_balance", "import_export"].includes(kind) || fileTypeProfile?.dataSignals?.consumption || fileTypeProfile?.dataSignals?.import;
+  const hasProduction = ["production", "combined", "full_energy_balance", "pvgis"].includes(kind) || fileTypeProfile?.dataSignals?.production;
+  const hasFullBalance = kind === "full_energy_balance" || (fileTypeProfile?.dataSignals?.consumption && fileTypeProfile?.dataSignals?.production && fileTypeProfile?.dataSignals?.import && fileTypeProfile?.dataSignals?.export);
+  const allowedAnalyses = {
+    consumption: !!hasConsumption && score >= 45,
+    tariff: !!hasConsumption && score >= 55,
+    bess: !!hasConsumption && score >= 60 && !unknownGranularity,
+    bessDispatch: !!hasConsumption && score >= 78 && normalizationProfile?.sourceGranularity === "15m",
+    production: !!hasProduction && score >= 45,
+    pvSelfConsumption: !!hasConsumption && !!hasProduction && score >= 60,
+    realAutoconsumption: !!hasFullBalance && score >= 70,
+    report: score >= 55
+  };
+  const blockedAnalyses = Object.entries(allowedAnalyses).filter(([, ok]) => !ok).map(([key]) => key);
+  const recommendedNextStep = blockers.length
+    ? "Corectează tipul/layoutul înainte de analiză."
+    : unknownGranularity || unknownUnit
+      ? "Confirmă granularitatea și unitatea în template."
+      : !allowedAnalyses.realAutoconsumption && allowedAnalyses.pvSelfConsumption
+        ? "Adaugă import/export pentru autoconsum real."
+        : !allowedAnalyses.pvSelfConsumption && hasConsumption
+          ? "Adaugă PVGIS sau producție invertor pentru autoconsum PV."
+          : "Datele pot merge mai departe în analiză.";
+  return {
+    score,
+    label,
+    warnings: warnings.slice(0, 10),
+    blockers: blockers.slice(0, 8),
+    allowedAnalyses,
+    blockedAnalyses,
+    issueCounts: {
+      duplicateIntervals: duplicateKeys.length,
+      invalidTimestampRows,
+      totalRows,
+      noteRows,
+      negativeValueRows,
+      suspiciousValueRows,
+      futureDateRows,
+      missingIntervals: completion.missingAnnualIntervals
+    },
+    completeness: completion,
+    recommendedNextStep,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function detectLearningLayout(raw) {
@@ -2685,6 +2846,7 @@ function buildTrainingDetection(file, workbookInfo) {
   const fileTypeConfidence = fileTypeProfile.confidence;
   const mappingDraft = buildLearningMappingDraft(fileName, raw, layoutProfile, fileTypeProfile);
   const metadataDraft = buildLearningMetadataDraft(fileName, raw, layoutProfile, workbookInfo);
+  const qualityProfile = buildLearningDataQuality(raw, fileName, kind, normalizationProfile, layoutProfile, workbookInfo, fileTypeProfile);
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -2717,6 +2879,10 @@ function buildTrainingDetection(file, workbookInfo) {
     canExpandTo15m: normalizationProfile.canExpandTo15m,
     canAggregateTo60m: normalizationProfile.canAggregateTo60m,
     unitProfile: normalizationProfile.unitProfile,
+    qualityProfile,
+    qualityScore: qualityProfile.score,
+    allowedAnalyses: qualityProfile.allowedAnalyses,
+    blockedAnalyses: qualityProfile.blockedAnalyses,
     sheetMode,
     layout,
     layoutProfile,
@@ -2735,6 +2901,7 @@ function buildTrainingDetection(file, workbookInfo) {
       `${LEARNING_FILE_TYPE_LABELS[fileTypeProfile.fileType] || fileTypeProfile.fileType} detectat`,
       `${normalizationProfile.sourceGranularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${normalizationProfile.sourceGranularity}`}`,
       `${GRANULARITY_NORMALIZATION_LABELS[normalizationProfile.normalizationMode] || normalizationProfile.normalizationMode}`,
+      `${qualityProfile.score}% data quality`,
       `${SHEET_MODE_LABELS[sheetMode] || sheetMode}`,
       `${LAYOUT_LABELS[layout] || layout}`,
       ...(fileTypeProfile.reasons || []),
@@ -2816,9 +2983,9 @@ function getLearningSmartParserRuntime(file, templates) {
 }
 
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v438";
+  const storageKey = "servio.dataLearning.v439";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v438") || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   const [templateQuery, setTemplateQuery] = useState("");
@@ -2876,6 +3043,13 @@ function DataLearningCenter({ currentUser }) {
       unit: f.granularityProfile?.unitProfile?.unit || f.unitProfile?.unit || "unknown",
       energyOrPower: f.granularityProfile?.unitProfile?.energyOrPower || f.unitProfile?.energyOrPower || "unknown",
       timezone: "Europe/Bucharest"
+    },
+    qualityRules: {
+      score: f.qualityProfile?.score || f.qualityScore || 0,
+      label: f.qualityProfile?.label || "unknown",
+      allowedAnalyses: f.qualityProfile?.allowedAnalyses || {},
+      warnings: f.qualityProfile?.warnings || [],
+      blockers: f.qualityProfile?.blockers || []
     },
     fingerprint: {
       headerSignature: (f.previewRows || []).slice(0, 3).join(" | ").slice(0, 240),
@@ -2975,8 +3149,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Granularity Normalization</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri și apoi compară automat fișierele noi cu biblioteca de formate învățate și normalizează 15m/60m fără să ascundă estimările.</div>
+          <div className="setname">Data Quality & Validation</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m și validează calitatea datelor înainte de analiză.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2990,6 +3164,7 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
         <Kpi label="Mappings" value={files.filter((f) => f.mappingDraft?.columnMap || f.mappingDraft?.matrixMap).length} sub="coloane / matrice" Icon={Layers} tone="accent" />
         <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
+        <Kpi label="Quality pass" value={files.filter((f) => (f.qualityProfile?.score || 0) >= 75).length} sub="date bune / excelente" Icon={ShieldCheckFallback} tone="green" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Runtime ready" value={smartParserTemplates.length} sub="template-uri active" Icon={Cpu} tone="accent" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
@@ -3080,6 +3255,27 @@ function DataLearningCenter({ currentUser }) {
                     <div><b>{f.granularityProfile.canAggregateTo60m ? "Da" : "Nu"}</b><span>Agregare 15m → 60m</span></div>
                   </div>
                   <div className="dlcreasons layoutreasons">{[...(f.granularityProfile.reasons || []), ...(f.granularityProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
+                </div>
+              )}
+              {f.qualityProfile && (
+                <div className="dlcquality">
+                  <div className="dlcmaphead">
+                    <div><b>Data Quality & Validation</b><span>Verifică intervale lipsă, duplicate, timestampuri, totaluri, unități, granularitate și ce analize sunt permise.</span></div>
+                    <Badge tone={f.qualityProfile.score >= 90 ? "g" : f.qualityProfile.score >= 75 ? "g" : f.qualityProfile.score >= 55 ? "y" : "n"}>{f.qualityProfile.score}% · {DATA_QUALITY_SCORE_LABELS[f.qualityProfile.label] || f.qualityProfile.label}</Badge>
+                  </div>
+                  <div className="dlcqualitygrid">
+                    <div><b>{f.qualityProfile.issueCounts?.missingIntervals || 0}</b><span>intervale lipsă estimate</span></div>
+                    <div><b>{f.qualityProfile.issueCounts?.duplicateIntervals || 0}</b><span>duplicate</span></div>
+                    <div><b>{f.qualityProfile.issueCounts?.invalidTimestampRows || 0}</b><span>timestamp neclar</span></div>
+                    <div><b>{f.qualityProfile.issueCounts?.totalRows || 0}</b><span>rânduri total</span></div>
+                    <div><b>{f.qualityProfile.completeness?.months || 0}</b><span>luni detectate</span></div>
+                    <div><b>{f.qualityProfile.completeness?.days || 0}</b><span>zile detectate</span></div>
+                  </div>
+                  <div className="dlcanalyses">
+                    {Object.entries(f.qualityProfile.allowedAnalyses || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
+                  </div>
+                  <div className="dlcreasons layoutreasons">{[...(f.qualityProfile.blockers || []), ...(f.qualityProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}{!(f.qualityProfile.blockers || []).length && !(f.qualityProfile.warnings || []).length && <span>Nu sunt probleme majore detectate în preview.</span>}</div>
+                  <div className="hint"><AlertTriangle size={13} /> {f.qualityProfile.recommendedNextStep}</div>
                 </div>
               )}
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
@@ -3175,7 +3371,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.38: Granularity Normalization păstrează 15m, păstrează 60m pentru analize orare, extinde 60m→15m doar estimativ și agregă 15m→60m pentru rapoarte.</div>
+      <div className="hint"><Cpu size={13} /> v4.39: Data Quality & Validation verifică lipsuri, duplicate, timestampuri, totaluri, unități și blochează analizele care nu sunt susținute de date.</div>
     </Card>
   );
 }
@@ -3885,10 +4081,11 @@ const CSS = `
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcruntime{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcruntimegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcruntimegrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcruntimegrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcruntimegrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcnormalization{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.045);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcnormgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcnormgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcnormgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcnormgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlcquality{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcqualitygrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcqualitygrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcqualitygrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcanalyses{display:flex;flex-wrap:wrap;gap:6px}.dlcanalyses span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:3px 7px}.dlcanalyses .ok{background:rgba(34,197,94,.08);color:var(--green)}.dlcanalyses .blocked{background:rgba(239,68,68,.06);color:var(--text-faint)}
 .dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
