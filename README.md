@@ -1,5 +1,7 @@
-# SERVIO v4.38 — Granularity Normalization
+# SERVIO v4.40 — Consumption Dataset Analyzer
 
-Build: `servio-grid-map-v4.38-granularity-normalization`
+Build: `servio-grid-map-v4.40-consumption-dataset-analyzer`
 
-Adaugă normalizare 15m / 60m în Data Learning Center, peste Smart Parser Runtime v4.37.
+Adaugă primul analizor de consum în Data Learning Center: profil de consum din IBD/import/consum, indicatori kWh/kW, factor de sarcină, consum de bază, zi/noapte, weekend și readiness pentru contracte, peak shaving și BESS.
+
+Păstrează shell-ul SERVIO/Claude, Auth/Login/UserMenu, Data Learning Center admin-only, Data Quality & Validation, Granularity Normalization, Smart Parser Runtime, Template Registry, Harta Rețea live, Day-Ahead strict și BESS curățat.

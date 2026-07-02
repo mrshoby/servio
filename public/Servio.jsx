@@ -1982,6 +1982,18 @@ const DATA_QUALITY_ANALYSIS_LABELS = {
   realAutoconsumption: "Autoconsum real",
   report: "Raport"
 };
+const CONSUMPTION_PROFILE_LABELS = {
+  ready: "pregătit pentru analiză",
+  preview: "analiză pe preview",
+  estimated: "estimare",
+  blocked: "blocat"
+};
+const CONSUMPTION_PROFILE_MODE_LABELS = {
+  full_year: "profil anual",
+  partial: "profil parțial",
+  preview_only: "preview training",
+  insufficient: "insuficient"
+};
 const LEARNING_COLUMN_MAP_FIELDS = [
   ["timestamp", "Timestamp"],
   ["date", "Dată"],
@@ -2560,8 +2572,10 @@ function ensureLearningMapping(file) {
   const fileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
   const mappingDraft = file?.mappingDraft?.columnMap ? file.mappingDraft : buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
   const metadataDraft = file?.metadataDraft?.metadataMap ? file.metadataDraft : buildLearningMetadataDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [] });
-  const qualityProfile = file?.qualityProfile || buildLearningDataQuality(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [], sheetMode: file?.sheetMode }, { confidence: file?.fileTypeConfidence || 0, dataSignals: file?.dataSignals || {} });
-  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata, qualityProfile, qualityScore: qualityProfile.score };
+  const fileTypeProfile = { confidence: file?.fileTypeConfidence || 0, dataSignals: file?.dataSignals || {}, fileType: file?.detectedFileType };
+  const qualityProfile = file?.qualityProfile || buildLearningDataQuality(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [], sheetMode: file?.sheetMode }, fileTypeProfile);
+  const consumptionProfile = file?.consumptionProfile || buildConsumptionDatasetProfile(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, qualityProfile, file?.layoutProfile || {}, fileTypeProfile);
+  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata, qualityProfile, qualityScore: qualityProfile.score, consumptionProfile };
 }
 
 function parseLearningNumber(value) {
@@ -2708,6 +2722,123 @@ function buildLearningDataQuality(raw, fileName, kind, normalizationProfile = {}
   };
 }
 
+function isLearningConsumptionDataset(kind, fileTypeProfile = {}) {
+  return ["consumption", "combined", "full_energy_balance", "import_export"].includes(kind) || !!fileTypeProfile?.dataSignals?.consumption || !!fileTypeProfile?.dataSignals?.import || ["ibd", "meter", "generic_consumption", "combined_file", "import_export_file", "full_balance_file"].includes(fileTypeProfile?.fileType);
+}
+function shouldIgnoreLearningValueCell(cell) {
+  const text = String(cell ?? "").trim();
+  if (!text) return true;
+  if (/\b([01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?\b/.test(text)) return true;
+  if (/\b(20\d{2}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]20\d{2})\b/.test(text)) return true;
+  if (/\b(total|subtotal|client|beneficiar|pod|contor|meter|perioad|unitate|distribuitor|locație|locatie|raport)\b/i.test(text) && !/[0-9][,.][0-9]/.test(text)) return true;
+  return false;
+}
+function convertLearningEnergyValue(value, unitProfile = {}, intervalMinutes = 60) {
+  const unit = unitProfile?.unit || "kWh";
+  const mode = unitProfile?.energyOrPower || (unit === "kW" || unit === "MW" ? "power" : "energy");
+  if (mode === "power") {
+    const kw = unit === "MW" ? value * 1000 : value;
+    return { kwh: kw * (intervalMinutes || 60) / 60, kw };
+  }
+  const kwh = unit === "MWh" ? value * 1000 : unit === "Wh" ? value / 1000 : value;
+  return { kwh, kw: (intervalMinutes ? kwh / (intervalMinutes / 60) : kwh) };
+}
+function parseLearningTimestampParts(row) {
+  const text = String(row || "");
+  const iso = text.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+  const eu = text.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](20\d{2})\b/);
+  const tm = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\b/);
+  const hour = tm ? Number(tm[1]) : null;
+  let d = null;
+  if (iso) d = new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+  else if (eu) d = new Date(Number(eu[3]), Number(eu[2]) - 1, Number(eu[1]));
+  const weekend = d ? [0, 6].includes(d.getDay()) : null;
+  return { hour, weekend, hasDate: !!d, hasTime: hour !== null };
+}
+function extractLearningConsumptionSamples(raw, layoutProfile = {}, normalizationProfile = {}) {
+  const rows = splitLearningRows(raw);
+  const headerRow = Math.max(1, layoutProfile?.headerRow || detectHeaderRow(raw).row || 1);
+  const dataRows = rows.slice(Math.min(rows.length, headerRow)).filter((r) => !/\b(total|subtotal|grand\s+total|total\s+zi|total\s+lun|total\s+general)\b/i.test(String(r || ""))).slice(0, 800);
+  const intervalMinutes = normalizationProfile?.intervalMinutes || (normalizationProfile?.sourceGranularity === "15m" ? 15 : normalizationProfile?.sourceGranularity === "60m" ? 60 : 60);
+  const unitProfile = normalizationProfile?.unitProfile || { unit: "kWh", energyOrPower: "energy" };
+  const samples = [];
+  dataRows.forEach((row, rowIndex) => {
+    const cells = splitLearningCells(row);
+    const matrix = (layoutProfile?.orientation || "").startsWith("matrix") || cells.length > 8;
+    const usableCells = matrix ? cells.slice(1) : cells;
+    const values = [];
+    usableCells.forEach((cell, cellIndex) => {
+      if (shouldIgnoreLearningValueCell(cell)) return;
+      const n = parseLearningNumber(cell);
+      if (n === null) return;
+      if (Math.abs(n) > 10000000) return;
+      if (n >= 1900 && n <= 2100 && /\b20\d{2}\b/.test(String(cell))) return;
+      values.push({ n, cellIndex });
+    });
+    if (!values.length) return;
+    const picked = matrix ? values : [values[values.length - 1]];
+    const ts = parseLearningTimestampParts(row);
+    picked.forEach((v, idx) => {
+      const converted = convertLearningEnergyValue(v.n, unitProfile, intervalMinutes);
+      samples.push({ rowIndex, value: v.n, kwh: converted.kwh, kw: converted.kw, hour: ts.hour !== null ? ts.hour : (matrix ? Math.floor((idx * intervalMinutes) / 60) % 24 : null), weekend: ts.weekend, source: row });
+    });
+  });
+  return samples.filter((s) => Number.isFinite(s.kwh) && Number.isFinite(s.kw));
+}
+function percentileLearning(values, pct) {
+  const arr = (values || []).filter((n) => Number.isFinite(n)).sort((a,b) => a-b);
+  if (!arr.length) return 0;
+  const i = Math.min(arr.length - 1, Math.max(0, Math.floor((pct / 100) * (arr.length - 1))));
+  return arr[i];
+}
+function buildConsumptionDatasetProfile(raw, fileName, kind, normalizationProfile = {}, qualityProfile = {}, layoutProfile = {}, fileTypeProfile = {}) {
+  const hasConsumption = isLearningConsumptionDataset(kind, fileTypeProfile);
+  if (!hasConsumption) return { available: false, status: "blocked", mode: "insufficient", reason: "Fișierul nu conține semnale de consum/import.", updatedAt: new Date().toISOString() };
+  const samples = extractLearningConsumptionSamples(raw, layoutProfile, normalizationProfile);
+  const warnings = [];
+  if (!samples.length) warnings.push("Nu am găsit valori numerice de consum în preview; verifică maparea coloanei de consum/import.");
+  const intervalMinutes = normalizationProfile?.intervalMinutes || (normalizationProfile?.sourceGranularity === "15m" ? 15 : normalizationProfile?.sourceGranularity === "60m" ? 60 : null);
+  if (!intervalMinutes) warnings.push("Granularitatea trebuie confirmată pentru indicatori kW/kWh corecți.");
+  if ((normalizationProfile?.precision || "unknown") !== "high") warnings.push("Analiza este fezabilitate/preview, nu dispatch fin pe 15 minute.");
+  const kwh = samples.map((s) => s.kwh).filter((n) => Number.isFinite(n));
+  const kw = samples.map((s) => s.kw).filter((n) => Number.isFinite(n));
+  const totalKwh = kwh.reduce((a,b) => a+b, 0);
+  const avgKw = kw.length ? kw.reduce((a,b) => a+b, 0) / kw.length : 0;
+  const peakKw = kw.length ? Math.max(...kw) : 0;
+  const minKw = kw.length ? Math.min(...kw) : 0;
+  const baseLoadKw = percentileLearning(kw, 10);
+  const loadFactor = peakKw > 0 ? (avgKw / peakKw) * 100 : 0;
+  const night = samples.filter((s) => s.hour !== null && (s.hour < 6 || s.hour >= 22));
+  const day = samples.filter((s) => s.hour !== null && s.hour >= 6 && s.hour < 22);
+  const weekend = samples.filter((s) => s.weekend === true);
+  const workday = samples.filter((s) => s.weekend === false);
+  const nightKwh = night.reduce((a,b) => a + b.kwh, 0);
+  const dayKwh = day.reduce((a,b) => a + b.kwh, 0);
+  const weekendKwh = weekend.reduce((a,b) => a + b.kwh, 0);
+  const workdayKwh = workday.reduce((a,b) => a + b.kwh, 0);
+  const variance = kw.length ? kw.reduce((sum, n) => sum + Math.pow(n - avgKw, 2), 0) / kw.length : 0;
+  const sigma = Math.sqrt(variance);
+  const anomalyCount = kw.filter((n) => sigma > 0 && n > avgKw + sigma * 3).length;
+  const zeroCount = kw.filter((n) => n === 0).length;
+  if (anomalyCount) warnings.push(`${anomalyCount} valori cu peak neobișnuit în preview.`);
+  if (zeroCount > Math.max(3, kw.length * 0.25)) warnings.push("Multe valori zero în preview; verifică dacă perioada conține zile fără activitate sau coloane goale.");
+  const qualityScore = qualityProfile?.score || 0;
+  const mode = samples.length >= 500 ? "partial" : samples.length >= 12 ? "preview_only" : "insufficient";
+  const status = !samples.length || qualityScore < 45 ? "blocked" : normalizationProfile?.precision === "high" && qualityScore >= 75 ? "ready" : "preview";
+  return {
+    available: true, status, mode, source: fileName, sampleCount: samples.length, intervalMinutes: intervalMinutes || null, granularity: normalizationProfile?.sourceGranularity || "unknown",
+    totalKwhPreview: Math.round(totalKwh * 100) / 100, avgKw: Math.round(avgKw * 100) / 100, peakKw: Math.round(peakKw * 100) / 100, minKw: Math.round(minKw * 100) / 100, baseLoadKw: Math.round(baseLoadKw * 100) / 100, loadFactorPct: Math.round(loadFactor * 10) / 10,
+    nightKwh: Math.round(nightKwh * 100) / 100, dayKwh: Math.round(dayKwh * 100) / 100, nightSharePct: (nightKwh + dayKwh) > 0 ? Math.round((nightKwh / (nightKwh + dayKwh)) * 1000) / 10 : null,
+    weekendKwh: Math.round(weekendKwh * 100) / 100, workdayKwh: Math.round(workdayKwh * 100) / 100, weekendSharePct: (weekendKwh + workdayKwh) > 0 ? Math.round((weekendKwh / (weekendKwh + workdayKwh)) * 1000) / 10 : null,
+    anomalyCount, zeroCount,
+    readiness: { consumption: !!qualityProfile?.allowedAnalyses?.consumption, tariff: !!qualityProfile?.allowedAnalyses?.tariff, bess: !!qualityProfile?.allowedAnalyses?.bess, bessDispatch: !!qualityProfile?.allowedAnalyses?.bessDispatch },
+    insights: [peakKw > 0 ? `Peak detectat în preview: ${fmt(peakKw, 1)} kW.` : "Peak nedetectat încă.", baseLoadKw > 0 ? `Consum de bază estimat: ${fmt(baseLoadKw, 1)} kW.` : "Consum de bază insuficient pentru estimare.", loadFactor > 0 ? `Factor de sarcină preview: ${fmt(loadFactor, 1)}%.` : "Factor de sarcină indisponibil.", nightKwh + dayKwh > 0 ? `Pondere noapte estimată: ${fmt(((nightKwh / (nightKwh + dayKwh)) * 100), 1)}%.` : "Zi/noapte necesită timestampuri clare."].filter(Boolean),
+    warnings: warnings.slice(0, 8),
+    recommendedNextStep: status === "blocked" ? "Confirmă maparea consum/import și calitatea datelor." : status === "ready" ? "Poate continua către Contract Comparator, Peak Shaving și BESS." : "Poate continua ca analiză preliminară; confirmă 15m/60m pentru rezultate finale.",
+    updatedAt: new Date().toISOString()
+  };
+}
+
 function detectLearningLayout(raw) {
   return analyzeLearningLayout(raw).orientation;
 }
@@ -2847,6 +2978,7 @@ function buildTrainingDetection(file, workbookInfo) {
   const mappingDraft = buildLearningMappingDraft(fileName, raw, layoutProfile, fileTypeProfile);
   const metadataDraft = buildLearningMetadataDraft(fileName, raw, layoutProfile, workbookInfo);
   const qualityProfile = buildLearningDataQuality(raw, fileName, kind, normalizationProfile, layoutProfile, workbookInfo, fileTypeProfile);
+  const consumptionProfile = buildConsumptionDatasetProfile(raw, fileName, kind, normalizationProfile, qualityProfile, layoutProfile, fileTypeProfile);
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -2883,6 +3015,7 @@ function buildTrainingDetection(file, workbookInfo) {
     qualityScore: qualityProfile.score,
     allowedAnalyses: qualityProfile.allowedAnalyses,
     blockedAnalyses: qualityProfile.blockedAnalyses,
+    consumptionProfile,
     sheetMode,
     layout,
     layoutProfile,
@@ -3051,6 +3184,15 @@ function DataLearningCenter({ currentUser }) {
       warnings: f.qualityProfile?.warnings || [],
       blockers: f.qualityProfile?.blockers || []
     },
+    consumptionRules: {
+      status: f.consumptionProfile?.status,
+      mode: f.consumptionProfile?.mode,
+      sampleCount: f.consumptionProfile?.sampleCount,
+      avgKw: f.consumptionProfile?.avgKw,
+      peakKw: f.consumptionProfile?.peakKw,
+      loadFactorPct: f.consumptionProfile?.loadFactorPct,
+      readiness: f.consumptionProfile?.readiness
+    },
     fingerprint: {
       headerSignature: (f.previewRows || []).slice(0, 3).join(" | ").slice(0, 240),
       sheetSignature: (f.sheetProfiles || []).map((x) => x.name).slice(0, 12).join(" | "),
@@ -3149,8 +3291,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Data Quality & Validation</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m și validează calitatea datelor înainte de analiză.</div>
+          <div className="setname">Consumption Dataset Analyzer</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m, validează calitatea datelor și construiește primul profil de consum.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -3165,6 +3307,7 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Mappings" value={files.filter((f) => f.mappingDraft?.columnMap || f.mappingDraft?.matrixMap).length} sub="coloane / matrice" Icon={Layers} tone="accent" />
         <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
         <Kpi label="Quality pass" value={files.filter((f) => (f.qualityProfile?.score || 0) >= 75).length} sub="date bune / excelente" Icon={ShieldCheckFallback} tone="green" />
+        <Kpi label="Consumption ready" value={files.filter((f) => f.consumptionProfile?.status === "ready" || f.consumptionProfile?.status === "preview").length} sub="profil consum construit" Icon={Gauge} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Runtime ready" value={smartParserTemplates.length} sub="template-uri active" Icon={Cpu} tone="accent" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
@@ -3278,6 +3421,29 @@ function DataLearningCenter({ currentUser }) {
                   <div className="hint"><AlertTriangle size={13} /> {f.qualityProfile.recommendedNextStep}</div>
                 </div>
               )}
+              {f.consumptionProfile?.available && (
+                <div className="dlcconsumption">
+                  <div className="dlcmaphead">
+                    <div><b>Consumption Dataset Analyzer</b><span>Construiește profilul de consum din curba IBD/import și îl pregătește pentru costuri, contracte, peak shaving și BESS.</span></div>
+                    <Badge tone={f.consumptionProfile.status === "ready" ? "g" : f.consumptionProfile.status === "preview" ? "y" : "n"}>{CONSUMPTION_PROFILE_LABELS[f.consumptionProfile.status] || f.consumptionProfile.status}</Badge>
+                  </div>
+                  <div className="dlcconsgrid">
+                    <div><b>{fmt(f.consumptionProfile.totalKwhPreview || 0, 1)} kWh</b><span>consum preview</span></div>
+                    <div><b>{fmt(f.consumptionProfile.peakKw || 0, 1)} kW</b><span>putere maximă</span></div>
+                    <div><b>{fmt(f.consumptionProfile.avgKw || 0, 1)} kW</b><span>putere medie</span></div>
+                    <div><b>{fmt(f.consumptionProfile.baseLoadKw || 0, 1)} kW</b><span>consum de bază</span></div>
+                    <div><b>{fmt(f.consumptionProfile.loadFactorPct || 0, 1)}%</b><span>factor sarcină</span></div>
+                    <div><b>{f.consumptionProfile.nightSharePct === null ? "—" : fmt(f.consumptionProfile.nightSharePct, 1) + "%"}</b><span>pondere noapte</span></div>
+                    <div><b>{f.consumptionProfile.weekendSharePct === null ? "—" : fmt(f.consumptionProfile.weekendSharePct, 1) + "%"}</b><span>pondere weekend</span></div>
+                    <div><b>{f.consumptionProfile.anomalyCount || 0}</b><span>peak-uri anormale</span></div>
+                  </div>
+                  <div className="dlcanalyses">
+                    {Object.entries(f.consumptionProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
+                  </div>
+                  <div className="dlcreasons layoutreasons">{[...(f.consumptionProfile.insights || []), ...(f.consumptionProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
+                  <div className="hint"><Activity size={13} /> {f.consumptionProfile.recommendedNextStep}</div>
+                </div>
+              )}
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(() => {
                 const runtime = getLearningSmartParserRuntime(f, smartParserTemplates);
@@ -3371,7 +3537,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.39: Data Quality & Validation verifică lipsuri, duplicate, timestampuri, totaluri, unități și blochează analizele care nu sunt susținute de date.</div>
+      <div className="hint"><Cpu size={13} /> v4.40: Consumption Dataset Analyzer construiește profilul de consum: total kWh, peak kW, factor sarcină, consum de bază, zi/noapte și pregătire pentru contracte/BESS.</div>
     </Card>
   );
 }
@@ -4081,11 +4247,11 @@ const CSS = `
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcruntime{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcruntimegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcruntimegrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcruntimegrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcruntimegrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcnormalization{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.045);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcnormgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcnormgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcnormgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcnormgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dlcquality{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcqualitygrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcqualitygrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcqualitygrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcanalyses{display:flex;flex-wrap:wrap;gap:6px}.dlcanalyses span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:3px 7px}.dlcanalyses .ok{background:rgba(34,197,94,.08);color:var(--green)}.dlcanalyses .blocked{background:rgba(239,68,68,.06);color:var(--text-faint)}
+.dlcquality{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsumption{grid-column:1/-1;border:1px solid rgba(59,130,246,.22);border-radius:11px;background:rgba(37,99,235,.08);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcconsgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcconsgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcconsgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcqualitygrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcqualitygrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcanalyses{display:flex;flex-wrap:wrap;gap:6px}.dlcanalyses span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:3px 7px}.dlcanalyses .ok{background:rgba(34,197,94,.08);color:var(--green)}.dlcanalyses .blocked{background:rgba(239,68,68,.06);color:var(--text-faint)}
 .dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}.dlcconsgrid{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
