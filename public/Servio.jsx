@@ -9,7 +9,7 @@ import {
   Settings, Search, Command, Bell, Sun, Moon, ChevronsLeft, ChevronsRight, Zap,
   TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Circle, Check, AlertTriangle,
   Gauge, Layers, Plug, RefreshCw, ChevronRight, CornerDownLeft, DollarSign, Clock,
-  Cpu, Wind, Sparkles, Download, Plus, Minus,
+  Cpu, Wind, Sparkles, Download, Plus, Minus, Upload, FileSpreadsheet, FileText,
 } from "lucide-react";
 
 /* ============================ data ============================ */
@@ -1880,8 +1880,237 @@ function Sources({ md, apiBase, apiToken }) {
   );
 }
 
+
+/* ============================ Data Learning Center (admin) ============================ */
+const LEARNING_KIND_LABELS = {
+  consumption: "Consum",
+  production: "Producție",
+  combined: "Consum + producție",
+  import_export: "Import / export",
+  full_energy_balance: "Balanță completă",
+  pvgis: "PVGIS",
+  inverter: "Invertor",
+  unknown: "Necunoscut"
+};
+
+function splitLearningRows(raw) {
+  const txt = String(raw || "").replace(/\r/g, "\n").replace(/\n+/g, "\n");
+  return txt.split("\n").map((r) => r.trim()).filter(Boolean).slice(0, 40);
+}
+function splitLearningCells(row) {
+  const sep = row.includes(";") ? ";" : row.includes("\t") ? "\t" : ",";
+  return row.split(sep).map((c) => String(c || "").trim().replace(/^"|"$/g, ""));
+}
+function scoreHeaderRow(row) {
+  const r = String(row || "").toLowerCase();
+  const keys = ["timestamp","data","date","ora","time","interval","consum","consumption","load","productie","producție","production","yield","import","export","kwh","mwh","kw","mw"];
+  return keys.reduce((a, k) => a + (r.includes(k) ? 1 : 0), 0) + (splitLearningCells(row).length >= 2 ? 1 : 0);
+}
+function detectHeaderRow(raw) {
+  const rows = splitLearningRows(raw);
+  let best = { row: 1, score: 0, text: "" };
+  rows.slice(0, 20).forEach((r, i) => {
+    const score = scoreHeaderRow(r);
+    if (score > best.score) best = { row: i + 1, score, text: r };
+  });
+  return best.score ? best : { row: 1, score: 0, text: rows[0] || "" };
+}
+function detectLearningKind(fileName, raw) {
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 6000)}`.toLowerCase();
+  const hasConsum = /(consum|consumption|load|energie activa|energie activă|import kwh|absor[bțt]it|ibd)/i.test(s);
+  const hasProd = /(productie|producție|production|generation|yield|pv|pvgis|inverter|invertor|solar|energie produs)/i.test(s);
+  const hasImport = /(import|grid import|energie importat|energie primită)/i.test(s);
+  const hasExport = /(export|grid export|feed.?in|injec|energie livrat)/i.test(s);
+  const hasPvgis = /(pvgis|photovoltaic geographical|pv estimate)/i.test(s);
+  const hasInverter = /(fusionsolar|solis|fronius|sma|solaredge|huawei|growatt|victron|invertor|inverter)/i.test(s);
+  if (hasConsum && hasProd && hasImport && hasExport) return "full_energy_balance";
+  if (hasConsum && hasProd) return "combined";
+  if (hasImport && hasExport) return "import_export";
+  if (hasPvgis) return "pvgis";
+  if (hasInverter || hasProd) return "production";
+  if (hasConsum) return "consumption";
+  return "unknown";
+}
+function detectLearningVendor(fileName, raw) {
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 3000)}`.toLowerCase();
+  const vendors = [
+    ["DEER", /deer|distributie energie electrica romania|distribuție energie electrică românia/],
+    ["Delgaz", /delgaz/],
+    ["PVGIS", /pvgis/],
+    ["FusionSolar", /fusionsolar|huawei/],
+    ["Solis", /solis/],
+    ["Fronius", /fronius/],
+    ["SMA", /\bsma\b/],
+    ["SolarEdge", /solaredge/],
+    ["Generic", /.*/]
+  ];
+  return (vendors.find(([, rx]) => rx.test(s)) || vendors[vendors.length - 1])[0];
+}
+function detectLearningGranularity(raw, fileName) {
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 10000)}`.toLowerCase();
+  if (/(00:15|00:30|00:45|15\s*min|15m|quarter)/i.test(s)) return "15m";
+  if (/(01:00|02:00|hourly|orar|60\s*min|60m)/i.test(s)) return "60m";
+  return "unknown";
+}
+function detectLearningSheetMode(fileName, raw) {
+  const n = String(fileName || "").toLowerCase();
+  const sample = String(raw || "").slice(0, 3000).toLowerCase();
+  if (/(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|2026-0[1-9]|2026-1[0-2])/.test(n)) return "monthly_sheets";
+  if (/\b(20\d{2}[-.\/][01]\d[-.\/][0-3]\d|[0-3]\d[-.\/][01]\d[-.\/]20\d{2})\b/.test(n)) return "daily_sheets";
+  if (/(summary|total|notes|info)/.test(sample)) return "multi_table_sheet";
+  return "single_sheet";
+}
+function detectLearningLayout(raw) {
+  const rows = splitLearningRows(raw);
+  const header = detectHeaderRow(raw).text;
+  const cells = splitLearningCells(header);
+  const intervalCells = cells.filter((c) => /^([01]\d|2[0-3]):(00|15|30|45)$/.test(c)).length;
+  if (intervalCells >= 8) return "matrix_day_by_interval";
+  if (rows.slice(0, 18).some((r) => /client|pod|perioad|unitate|contor|loca/i.test(r)) && rows.length > 6) return "metadata_plus_table";
+  if (rows.filter((r) => scoreHeaderRow(r) >= 3).length >= 2) return "multi_table";
+  if (/(timestamp|data|date|ora|time)/i.test(header)) return "vertical_table";
+  return "unknown";
+}
+function detectLearningConfidence(kind, granularity, layout, header) {
+  let score = 35;
+  if (kind !== "unknown") score += 22;
+  if (granularity !== "unknown") score += 16;
+  if (layout !== "unknown") score += 14;
+  if ((header?.score || 0) >= 3) score += 13;
+  return Math.min(98, score);
+}
+function buildTrainingDetection(file, raw) {
+  const fileName = file?.name || "training-file";
+  const fileType = fileName.toLowerCase().endsWith(".xlsx") ? "xlsx" : fileName.toLowerCase().endsWith(".xls") ? "xls" : fileName.toLowerCase().endsWith(".html") ? "html" : "csv";
+  const header = detectHeaderRow(raw);
+  const kind = detectLearningKind(fileName, raw);
+  const vendor = detectLearningVendor(fileName, raw);
+  const granularity = detectLearningGranularity(raw, fileName);
+  const sheetMode = detectLearningSheetMode(fileName, raw);
+  const layout = detectLearningLayout(raw);
+  const confidence = detectLearningConfidence(kind, granularity, layout, header);
+  const previewRows = splitLearningRows(raw).slice(0, 8);
+  return {
+    id: `tf_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    fileName,
+    fileType,
+    sizeKb: Math.round((file?.size || 0) / 1024),
+    dataKind: kind,
+    sourceVendor: vendor,
+    sourceType: kind === "pvgis" ? "pvgis" : kind === "production" ? "inverter" : kind === "consumption" ? "ibd" : "unknown",
+    granularity,
+    sheetMode,
+    layout,
+    headerRow: header.row,
+    confidence,
+    reasons: [
+      `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din nume/coloane`,
+      `${granularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${granularity}`}`,
+      `${layout === "unknown" ? "Layout neconfirmat" : `Layout ${layout}`}`
+    ],
+    previewRows,
+    status: confidence >= 90 ? "ready" : confidence >= 70 ? "review" : "manual",
+    uploadedAt: new Date().toISOString()
+  };
+}
+function DataLearningCenter({ currentUser }) {
+  const storageKey = "servio.dataLearning.v430";
+  const [files, setFiles] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; }
+  });
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
+  const onFiles = async (event) => {
+    const list = Array.from(event.target.files || []);
+    if (!list.length) return;
+    setBusy(true);
+    const parsed = [];
+    for (const file of list) {
+      let raw = "";
+      const lower = file.name.toLowerCase();
+      if (lower.endsWith(".csv") || lower.endsWith(".txt") || lower.endsWith(".html")) {
+        try { raw = await file.text(); } catch { raw = ""; }
+      } else {
+        raw = `${file.name}\nXLS/XLSX workbook detected. Detailed sheet parsing starts in the next workbook detection build.`;
+      }
+      parsed.push(buildTrainingDetection(file, raw));
+    }
+    setFiles((prev) => [...parsed, ...prev].slice(0, 24));
+    setBusy(false);
+    event.target.value = "";
+  };
+  const saveTemplate = (id) => setFiles((prev) => prev.map((f) => f.id === id ? { ...f, status: "template_saved", templateName: `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${f.granularity}` } : f));
+  const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
+  const templates = files.filter((f) => f.status === "template_saved");
+  return (
+    <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
+      <div className="dlchead">
+        <div>
+          <div className="setname">Training pentru formate energetice</div>
+          <div className="setsub">Încarcă exemple de consum, producție, PVGIS, IBD sau fișiere combinate. SERVIO detectează structura și salvează tipare reutilizabile.</div>
+        </div>
+        <label className="btn dlcupload">
+          {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
+          Upload training files
+          <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" multiple onChange={onFiles} />
+        </label>
+      </div>
+
+      <div className="kpirow dlckpis">
+        <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
+        <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Database} tone="green" />
+        <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
+        <Kpi label="Admin" value={currentUser?.avatarInitials || "AD"} sub={currentUser?.name || "Admin"} Icon={ShieldCheckFallback} />
+      </div>
+
+      {files.length === 0 ? (
+        <div className="dlcempty">
+          <FileText size={18} />
+          <div><b>Niciun fișier de training încă.</b><span>Începe cu IBD-uri, PVGIS, fișiere de invertor sau fișiere combinate consum + producție.</span></div>
+        </div>
+      ) : (
+        <div className="dlclist">
+          {files.map((f) => (
+            <div className="dlcitem" key={f.id}>
+              <div className="dlcmain">
+                <div className="dlcicon"><FileSpreadsheet size={16} /></div>
+                <div className="dlcmeta">
+                  <div className="dlctitle">{f.fileName}</div>
+                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {f.granularity} · {f.layout}</div>
+                  <div className="dlcreasons">{(f.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
+                </div>
+              </div>
+              <div className="dlcright">
+                <Badge tone={f.confidence >= 90 ? "g" : f.confidence >= 70 ? "y" : "n"}>{f.confidence}%</Badge>
+                <span className="dim small">Header row {f.headerRow}</span>
+                <span className="dim small">{f.sheetMode}</span>
+              </div>
+              <div className="dlcpreview">
+                {(f.previewRows || []).slice(0, 4).map((r, i) => <code key={i}>{r}</code>)}
+                {(!f.previewRows || !f.previewRows.length) && <code>Preview indisponibil pentru acest tip de fișier.</code>}
+              </div>
+              <div className="dlcactions">
+                {f.status === "template_saved" ? <span className="g small"><Check size={12} /> Template salvat: {f.templateName}</span> : <button className="btn" onClick={() => saveTemplate(f.id)}><Check size={14} /> Salvează ca template</button>}
+                <button className="btn ghost" onClick={() => removeFile(f.id)}>Elimină</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="hint"><Cpu size={13} /> Fundație v4.30: upload training, preview, detecție inițială fișier/sheet/layout/header și template-uri locale. Următorul build extinde workbook/sheet detection real pentru XLSX multi-sheet.</div>
+    </Card>
+  );
+}
+function ShieldCheckFallback({ size = 16 }) {
+  return <Check size={size} />;
+}
+
+
 /* ============================ Settings ============================ */
 function SettingsView({ theme, setTheme, apiBase, setApiBase, apiToken, setApiToken, md }) {
+  const auth = useAuth();
+  const currentUser = auth.user || {};
+  const isAdmin = currentUser.role === "admin";
   return (
     <div className="stack">
       <Card title="Aspect">
@@ -1891,6 +2120,7 @@ function SettingsView({ theme, setTheme, apiBase, setApiBase, apiToken, setApiTo
         <div className="setrow"><div><div className="setname">Monedă</div><div className="setsub">Afișarea prețurilor pe piață.</div></div><div className="seg"><button className="segbtn on">Lei / MWh</button><button className="segbtn">EUR / MWh</button></div></div>
         <div className="setrow"><div><div className="setname">Fus orar piață</div><div className="setsub">Sincronizat cu gate-closure OPCOM.</div></div><Badge tone="b">Europe/Bucharest</Badge></div>
       </Card>
+      {isAdmin && <DataLearningCenter currentUser={currentUser} />}
     </div>
   );
 }
@@ -2541,6 +2771,30 @@ const CSS = `
 .logincard{width:min(420px,92vw);border:1px solid var(--border-strong);background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(14px);border-radius:18px;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.52)}
 .loginbrand{display:flex;align-items:center;gap:11px;margin-bottom:24px}.loginlogo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--accent-fg)}.loginname{font-weight:680;font-size:16px}.loginsub{font-size:11.5px;color:var(--text-faint);margin-top:2px}.loginhead h1{font-size:20px;letter-spacing:-.02em;margin:0 0 18px}.loginfield{display:block;margin-top:12px}.loginfield span{display:block;font-size:11.5px;color:var(--text-dim);margin-bottom:6px}.loginfield input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 12px;outline:none}.loginfield input:focus{border-color:color-mix(in srgb,var(--accent) 65%,var(--border-strong));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}.loginremember{display:flex;align-items:center;gap:8px;margin-top:13px;color:var(--text-dim);font-size:12px}.loginremember input{accent-color:var(--accent)}.loginerr{display:flex;align-items:center;gap:7px;margin-top:13px;border:1px solid color-mix(in srgb,var(--red) 35%,transparent);background:color-mix(in srgb,var(--red) 10%,transparent);color:#fecaca;border-radius:10px;padding:9px 10px;font-size:12px}.loginbtn{width:100%;height:40px;margin-top:16px;border:0;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.loginbtn:disabled{opacity:.72;cursor:wait}
 .usermenu{position:relative}.usermenuBtn{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:4px 8px 4px 5px;cursor:pointer}.usermenuBtn:hover{border-color:var(--border-strong);background:var(--hover)}.useravatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-size:11px;font-weight:760;letter-spacing:.02em;flex:none}.useravatar.big{width:40px;height:40px;font-size:13px}.usercopy{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}.usercopy b{font-size:12px;font-weight:620;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.usercopy em{font-style:normal;font-size:10.5px;color:var(--text-faint);margin-top:2px}.userpop{position:absolute;right:0;top:calc(100% + 9px);width:250px;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--panel) 96%,transparent);backdrop-filter:blur(14px);border-radius:13px;padding:8px;box-shadow:0 20px 60px rgba(0,0,0,.46);z-index:70}.userpopHead{display:flex;gap:10px;padding:8px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}.userpopHead b,.userpopHead span,.userpopHead em{display:block;min-width:0}.userpopHead b{font-size:13px}.userpopHead span{font-size:11.5px;color:var(--text-dim);margin-top:2px;word-break:break-all}.userpopHead em{font-size:10.5px;color:var(--text-faint);font-style:normal;margin-top:3px}.userpop button{width:100%;border:0;background:transparent;color:var(--text-dim);text-align:left;border-radius:8px;padding:9px 10px;font-size:12.5px;cursor:pointer}.userpop button:hover{background:var(--hover);color:var(--text)}.userpop button.danger:hover{color:#fecaca;background:color-mix(in srgb,var(--red) 12%,transparent)}
+
+
+/* data learning center */
+.dlchead{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
+.dlcupload{position:relative;overflow:hidden;white-space:nowrap}
+.dlcupload input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.dlckpis{grid-template-columns:repeat(4,minmax(0,1fr));margin:12px 0 14px}
+.dlcempty{border:1px dashed var(--border-strong);border-radius:12px;padding:18px;display:flex;align-items:center;gap:12px;color:var(--text-dim);background:rgba(245,165,36,.04)}
+.dlcempty b{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
+.dlcempty span{display:block;font-size:12px;color:var(--text-faint)}
+.dlclist{display:flex;flex-direction:column;gap:12px}
+.dlcitem{border:1px solid var(--border);border-radius:13px;background:var(--bg);padding:13px;display:grid;grid-template-columns:1fr auto;gap:10px}
+.dlcmain{display:flex;gap:11px;min-width:0}
+.dlcicon{width:34px;height:34px;border-radius:10px;background:rgba(245,165,36,.1);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none;border:1px solid rgba(245,165,36,.18)}
+.dlcmeta{min-width:0}
+.dlctitle{font-weight:650;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlcsub{font-size:11.5px;color:var(--text-faint);margin-top:2px}
+.dlcreasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.dlcreasons span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
+.dlcright{display:flex;align-items:flex-end;flex-direction:column;gap:5px}
+.dlcpreview{grid-column:1/-1;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:8px;display:flex;flex-direction:column;gap:4px;max-height:112px;overflow:auto}
+.dlcpreview code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:var(--text-dim);white-space:nowrap}
+.dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
