@@ -2602,10 +2602,79 @@ function buildTrainingDetection(file, workbookInfo) {
     uploadedAt: new Date().toISOString()
   };
 }
+
+const SMART_PARSER_ACTION_LABELS = {
+  auto_import: "Import automat",
+  confirm_template: "Confirmă template",
+  manual_mapping: "Mapare manuală",
+  no_template: "Fără template activ"
+};
+function tokenizeLearningSignature(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .map((x) => x.trim())
+    .filter((x) => x.length >= 2);
+}
+function overlapLearningTokens(a, b) {
+  const aa = new Set(tokenizeLearningSignature(a));
+  const bb = new Set(tokenizeLearningSignature(b));
+  if (!aa.size || !bb.size) return 0;
+  let hit = 0;
+  aa.forEach((x) => { if (bb.has(x)) hit += 1; });
+  return hit / Math.max(aa.size, bb.size);
+}
+function scoreLearningTemplateMatch(file, template) {
+  if (!file || !template || (template.status || "active") === "disabled") {
+    return { template, score: 0, reasons: ["template inactiv"], action: "no_template" };
+  }
+  const reasons = [];
+  let score = 18;
+  const add = (points, reason) => { score += points; if (reason) reasons.push(reason); };
+  if (template.fileType && file.fileType && template.fileType === file.fileType) add(9, `tip fișier ${file.fileType}`);
+  if (template.dataKind && file.dataKind && template.dataKind === file.dataKind) add(14, `date ${LEARNING_KIND_LABELS[file.dataKind] || file.dataKind}`);
+  if (template.sourceType && file.detectedFileType && template.sourceType === file.detectedFileType) add(13, `sursă ${LEARNING_FILE_TYPE_LABELS[file.detectedFileType] || file.detectedFileType}`);
+  if (template.sourceVendor && file.sourceVendor && template.sourceVendor === file.sourceVendor) add(10, `vendor ${file.sourceVendor}`);
+  if (template.parsingRules?.granularity && file.granularity && template.parsingRules.granularity === file.granularity) add(8, `granularitate ${file.granularity}`);
+  if (template.workbookPattern?.sheetMode && file.sheetMode && template.workbookPattern.sheetMode === file.sheetMode) add(9, `workbook ${SHEET_MODE_LABELS[file.sheetMode] || file.sheetMode}`);
+  if (template.layoutPattern?.orientation && file.layout && template.layoutPattern.orientation === file.layout) add(9, `layout ${LAYOUT_LABELS[file.layout] || file.layout}`);
+  const headerOverlap = overlapLearningTokens(template.fingerprint?.headerSignature, (file.previewRows || []).slice(0, 4).join(" | "));
+  if (headerOverlap >= 0.55) add(10, "header foarte similar");
+  else if (headerOverlap >= 0.28) add(5, "header parțial similar");
+  const tplSheets = template.fingerprint?.sheetSignature || (template.workbookPattern?.activeSheets || []).join(" | ");
+  const fileSheets = (file.sheetProfiles || []).map((x) => x.name).slice(0, 16).join(" | ");
+  const sheetOverlap = overlapLearningTokens(tplSheets, fileSheets);
+  if (sheetOverlap >= 0.5) add(7, "nume sheeturi similare");
+  else if ((template.workbookPattern?.activeSheets || []).length && (file.detectedSheets || []).length) add(3, "ambele au sheeturi relevante");
+  const tplColumns = Object.values(template.columnMap || {}).filter(Boolean).join(" | ");
+  const fileColumns = Object.values(file.mappingDraft?.columnMap || file.columnMap || {}).filter(Boolean).join(" | ");
+  const columnOverlap = overlapLearningTokens(tplColumns, fileColumns);
+  if (columnOverlap >= 0.5) add(8, "mapări coloane similare");
+  else if (columnOverlap >= 0.25) add(4, "mapări coloane parțiale");
+  const tplMeta = Object.keys(template.metadataPatterns?.extractedMetadata || template.metadataMap || {}).join(" | ");
+  const fileMeta = Object.keys(file.extractedMetadata || file.metadataDraft?.extractedMetadata || {}).join(" | ");
+  const metaOverlap = overlapLearningTokens(tplMeta, fileMeta);
+  if (metaOverlap >= 0.35) add(4, "metadate similare");
+  if ((file.confidence || 0) >= 90) add(3, "fișier detectat cu încredere mare");
+  const finalScore = Math.max(0, Math.min(99, Math.round(score)));
+  const action = finalScore >= 90 ? "auto_import" : finalScore >= 70 ? "confirm_template" : finalScore > 0 ? "manual_mapping" : "no_template";
+  return { template, score: finalScore, reasons: reasons.slice(0, 8), action };
+}
+function getLearningSmartParserRuntime(file, templates) {
+  const active = (templates || []).filter((tpl) => (tpl.status || "active") !== "disabled");
+  if (!active.length) return { best: null, matches: [], action: "no_template", score: 0, reasons: ["nu există template-uri active"] };
+  const matches = active.map((tpl) => scoreLearningTemplateMatch(file, tpl)).sort((a, b) => b.score - a.score).slice(0, 3);
+  const best = matches[0] || null;
+  if (!best) return { best: null, matches: [], action: "no_template", score: 0, reasons: ["nu există potrivire"] };
+  return { best, matches, action: best.action, score: best.score, reasons: best.reasons || [] };
+}
+
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v436";
+  const storageKey = "servio.dataLearning.v437";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   const [templateQuery, setTemplateQuery] = useState("");
@@ -2633,6 +2702,9 @@ function DataLearningCenter({ currentUser }) {
       const matchesStatus = templateStatusFilter === "all" || (tpl.status || "active") === templateStatusFilter;
       return matchesQuery && matchesStatus;
     }), [files, templateQuery, templateStatusFilter]);
+  const smartParserTemplates = useMemo(() => files
+    .filter((f) => f.importTemplate && (f.importTemplate.status || "active") !== "disabled")
+    .map((f) => ({ ...f.importTemplate, sourceFileId: f.id, sourceFileName: f.fileName, confidence: f.confidence || f.importTemplate.averageConfidence || 0 })), [files]);
   const buildImportTemplate = (f, templateName, existing = {}) => ({
     id: existing.id || `tpl_${f.id}`,
     name: templateName,
@@ -2719,12 +2791,15 @@ function DataLearningCenter({ currentUser }) {
     updateTemplateRegistryItem(templateId, { status: current?.status === "disabled" ? "active" : "disabled" });
   };
   const testTemplate = (templateId) => {
-    const current = files.find((f) => f.importTemplate?.id === templateId)?.importTemplate;
+    const source = files.find((f) => f.importTemplate?.id === templateId);
+    const current = source?.importTemplate;
+    const runtime = current?.status === "disabled" ? null : getLearningSmartParserRuntime(source, [current]);
     updateTemplateRegistryItem(templateId, {
       lastTestedAt: new Date().toISOString(),
-      lastTestResult: current?.status === "disabled" ? "Template dezactivat · test parser oprit" : "Parser local OK · pregătit pentru Smart Parser Runtime",
+      lastTestResult: current?.status === "disabled" ? "Template dezactivat · test parser oprit" : `${SMART_PARSER_ACTION_LABELS[runtime?.action] || "Parser"} · scor ${runtime?.score || 0}%`,
       lastUsedAt: new Date().toISOString(),
-      usageCount: (current?.usageCount || 0) + 1
+      usageCount: (current?.usageCount || 0) + 1,
+      averageConfidence: Math.round(((current?.averageConfidence || 0) + (runtime?.score || 0)) / (current?.averageConfidence ? 2 : 1))
     });
   };
   const duplicateTemplate = (templateId) => setFiles((prev) => {
@@ -2743,8 +2818,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Template Registry</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări pentru coloane, matrice și metadate, apoi le salvează într-o bibliotecă de template-uri editabile.</div>
+          <div className="setname">Smart Parser Runtime</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri și apoi compară automat fișierele noi cu biblioteca de formate învățate.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2759,6 +2834,7 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Mappings" value={files.filter((f) => f.mappingDraft?.columnMap || f.mappingDraft?.matrixMap).length} sub="coloane / matrice" Icon={Layers} tone="accent" />
         <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
+        <Kpi label="Runtime ready" value={smartParserTemplates.length} sub="template-uri active" Icon={Cpu} tone="accent" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
 
@@ -2766,7 +2842,7 @@ function DataLearningCenter({ currentUser }) {
         <div className="dlcreghead">
           <div>
             <b>Template Registry</b>
-            <span>Biblioteca formatelor învățate. Adminul poate testa, redenumi, duplica, dezactiva sau șterge template-uri fără să afecteze fișierele de training.</span>
+            <span>Biblioteca formatelor învățate. Smart Parser Runtime folosește doar template-urile active: peste 90% import automat, 70–90% confirmare, sub 70% mapare manuală.</span>
           </div>
           <div className="dlcregtools">
             <div className="dlcsearch"><Search size={13} /><input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Caută template, vendor, tip..." /></div>
@@ -2833,6 +2909,25 @@ function DataLearningCenter({ currentUser }) {
                 <div><b>{(f.metadataRegions || []).length}</b><span>regiuni metadate</span></div>
               </div>
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
+              {(() => {
+                const runtime = getLearningSmartParserRuntime(f, smartParserTemplates);
+                const tone = runtime.score >= 90 ? "g" : runtime.score >= 70 ? "y" : "n";
+                return (
+                  <div className="dlcruntime">
+                    <div className="dlcmaphead">
+                      <div><b>Smart Parser Runtime</b><span>Compară fișierul cu template-urile active și decide dacă importul poate fi automat, confirmat sau mapat manual.</span></div>
+                      <Badge tone={tone}>{runtime.score || 0}% runtime</Badge>
+                    </div>
+                    <div className="dlcruntimegrid">
+                      <div><b>{SMART_PARSER_ACTION_LABELS[runtime.action] || runtime.action}</b><span>Decizie parser</span></div>
+                      <div><b>{runtime.best?.template?.name || "Niciun template"}</b><span>Template potrivit</span></div>
+                      <div><b>{runtime.best?.template?.sourceVendor || "—"}</b><span>Vendor</span></div>
+                      <div><b>{runtime.matches?.length || 0}</b><span>potriviri analizate</span></div>
+                    </div>
+                    <div className="dlcreasons layoutreasons">{(runtime.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
+                  </div>
+                );
+              })()}
               {(f.layoutProfile?.reasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.layoutProfile.reasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {f.mappingDraft && (
                 <div className="dlcmapping">
@@ -2906,7 +3001,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.36: Template Registry centralizează formatele învățate, cu filtre, editare rapidă, duplicate, activare/dezactivare, ștergere și test parser local.</div>
+      <div className="hint"><Cpu size={13} /> v4.37: Smart Parser Runtime compară fișierele noi cu template-urile active și decide import automat, confirmare template sau mapare manuală.</div>
     </Card>
   );
 }
@@ -3614,10 +3709,11 @@ const CSS = `
 .layoutreasons{grid-column:1/-1;margin-top:-2px}
 .dlcmapping,.dlcmetadata{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
+.dlcruntime{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcruntimegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcruntimegrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcruntimegrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcruntimegrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
