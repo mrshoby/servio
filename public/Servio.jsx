@@ -1994,6 +1994,18 @@ const CONSUMPTION_PROFILE_MODE_LABELS = {
   preview_only: "preview training",
   insufficient: "insuficient"
 };
+const PRODUCTION_PROFILE_LABELS = {
+  ready: "pregătit pentru analiză PV",
+  preview: "analiză PV pe preview",
+  estimated: "estimare producție",
+  blocked: "blocat"
+};
+const PRODUCTION_PROFILE_MODE_LABELS = {
+  full_year: "profil anual PV",
+  partial: "profil parțial PV",
+  preview_only: "preview training PV",
+  insufficient: "insuficient"
+};
 const LEARNING_COLUMN_MAP_FIELDS = [
   ["timestamp", "Timestamp"],
   ["date", "Dată"],
@@ -2569,13 +2581,14 @@ function buildLearningMetadataDraft(fileName, raw, layoutProfile = {}, workbookI
 }
 function ensureLearningMapping(file) {
   const raw = (file?.previewRows || []).join("\n");
-  const fileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
-  const mappingDraft = file?.mappingDraft?.columnMap ? file.mappingDraft : buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
+  const mappingFileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
+  const mappingDraft = file?.mappingDraft?.columnMap ? file.mappingDraft : buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, mappingFileTypeProfile);
   const metadataDraft = file?.metadataDraft?.metadataMap ? file.metadataDraft : buildLearningMetadataDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [] });
   const fileTypeProfile = { confidence: file?.fileTypeConfidence || 0, dataSignals: file?.dataSignals || {}, fileType: file?.detectedFileType };
   const qualityProfile = file?.qualityProfile || buildLearningDataQuality(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [], sheetMode: file?.sheetMode }, fileTypeProfile);
   const consumptionProfile = file?.consumptionProfile || buildConsumptionDatasetProfile(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, qualityProfile, file?.layoutProfile || {}, fileTypeProfile);
-  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata, qualityProfile, qualityScore: qualityProfile.score, consumptionProfile };
+  const productionProfile = file?.productionProfile || buildProductionDatasetProfile(raw, file?.fileName || "training-file", file?.dataKind || "unknown", file?.granularityProfile || {}, qualityProfile, file?.layoutProfile || {}, fileTypeProfile);
+  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata, qualityProfile, qualityScore: qualityProfile.score, consumptionProfile, productionProfile };
 }
 
 function parseLearningNumber(value) {
@@ -2725,6 +2738,9 @@ function buildLearningDataQuality(raw, fileName, kind, normalizationProfile = {}
 function isLearningConsumptionDataset(kind, fileTypeProfile = {}) {
   return ["consumption", "combined", "full_energy_balance", "import_export"].includes(kind) || !!fileTypeProfile?.dataSignals?.consumption || !!fileTypeProfile?.dataSignals?.import || ["ibd", "meter", "generic_consumption", "combined_file", "import_export_file", "full_balance_file"].includes(fileTypeProfile?.fileType);
 }
+function isLearningProductionDataset(kind, fileTypeProfile = {}) {
+  return ["production", "pvgis", "inverter", "combined", "full_energy_balance", "import_export"].includes(kind) || !!fileTypeProfile?.dataSignals?.production || !!fileTypeProfile?.dataSignals?.export || ["pvgis", "inverter", "generic_production", "combined_file", "import_export_file", "full_balance_file"].includes(fileTypeProfile?.fileType);
+}
 function shouldIgnoreLearningValueCell(cell) {
   const text = String(cell ?? "").trim();
   if (!text) return true;
@@ -2835,6 +2851,98 @@ function buildConsumptionDatasetProfile(raw, fileName, kind, normalizationProfil
     insights: [peakKw > 0 ? `Peak detectat în preview: ${fmt(peakKw, 1)} kW.` : "Peak nedetectat încă.", baseLoadKw > 0 ? `Consum de bază estimat: ${fmt(baseLoadKw, 1)} kW.` : "Consum de bază insuficient pentru estimare.", loadFactor > 0 ? `Factor de sarcină preview: ${fmt(loadFactor, 1)}%.` : "Factor de sarcină indisponibil.", nightKwh + dayKwh > 0 ? `Pondere noapte estimată: ${fmt(((nightKwh / (nightKwh + dayKwh)) * 100), 1)}%.` : "Zi/noapte necesită timestampuri clare."].filter(Boolean),
     warnings: warnings.slice(0, 8),
     recommendedNextStep: status === "blocked" ? "Confirmă maparea consum/import și calitatea datelor." : status === "ready" ? "Poate continua către Contract Comparator, Peak Shaving și BESS." : "Poate continua ca analiză preliminară; confirmă 15m/60m pentru rezultate finale.",
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function extractLearningProductionSamples(raw, layoutProfile = {}, normalizationProfile = {}) {
+  const rows = splitLearningRows(raw);
+  const headerRow = Math.max(1, layoutProfile?.headerRow || detectHeaderRow(raw).row || 1);
+  const dataRows = rows.slice(Math.min(rows.length, headerRow)).filter((r) => !/\b(total|subtotal|grand\s+total|total\s+zi|total\s+lun|total\s+general)\b/i.test(String(r || ""))).slice(0, 800);
+  const intervalMinutes = normalizationProfile?.intervalMinutes || (normalizationProfile?.sourceGranularity === "15m" ? 15 : normalizationProfile?.sourceGranularity === "60m" ? 60 : 60);
+  const unitProfile = normalizationProfile?.unitProfile || { unit: "kWh", energyOrPower: "energy" };
+  const samples = [];
+  dataRows.forEach((row, rowIndex) => {
+    const cells = splitLearningCells(row);
+    const rowText = String(row || "").toLowerCase();
+    const matrix = (layoutProfile?.orientation || "").startsWith("matrix") || cells.length > 8;
+    const headerTokens = /(pvgis|productie|producție|production|generated|generation|yield|pvout|e_m|e_d|export|feed.?in|injec|invertor|inverter|solar)/i;
+    const usableCells = matrix ? cells.slice(1) : cells;
+    const values = [];
+    usableCells.forEach((cell, cellIndex) => {
+      if (shouldIgnoreLearningValueCell(cell)) return;
+      const n = parseLearningNumber(cell);
+      if (n === null) return;
+      if (Math.abs(n) > 10000000) return;
+      if (n >= 1900 && n <= 2100 && /\b20\d{2}\b/.test(String(cell))) return;
+      values.push({ n, cellIndex });
+    });
+    if (!values.length) return;
+    const picked = matrix ? values : [values[values.length - 1]];
+    const ts = parseLearningTimestampParts(row);
+    picked.forEach((v, idx) => {
+      const converted = convertLearningEnergyValue(Math.max(0, v.n), unitProfile, intervalMinutes);
+      samples.push({
+        rowIndex,
+        value: v.n,
+        kwh: converted.kwh,
+        kw: converted.kw,
+        hour: ts.hour !== null ? ts.hour : (matrix ? Math.floor((idx * intervalMinutes) / 60) % 24 : null),
+        weekend: ts.weekend,
+        taggedProduction: headerTokens.test(rowText),
+        source: row
+      });
+    });
+  });
+  return samples.filter((s) => Number.isFinite(s.kwh) && Number.isFinite(s.kw));
+}
+function buildProductionDatasetProfile(raw, fileName, kind, normalizationProfile = {}, qualityProfile = {}, layoutProfile = {}, fileTypeProfile = {}) {
+  const hasProduction = isLearningProductionDataset(kind, fileTypeProfile);
+  if (!hasProduction) return { available: false, status: "blocked", mode: "insufficient", reason: "Fișierul nu conține semnale de producție PV/export.", updatedAt: new Date().toISOString() };
+  const samples = extractLearningProductionSamples(raw, layoutProfile, normalizationProfile);
+  const warnings = [];
+  if (!samples.length) warnings.push("Nu am găsit valori numerice de producție/export în preview; verifică maparea coloanei de producție/export.");
+  const intervalMinutes = normalizationProfile?.intervalMinutes || (normalizationProfile?.sourceGranularity === "15m" ? 15 : normalizationProfile?.sourceGranularity === "60m" ? 60 : null);
+  if (!intervalMinutes) warnings.push("Granularitatea trebuie confirmată pentru energia produsă și puterea medie.");
+  if ((normalizationProfile?.precision || "unknown") === "estimated") warnings.push("Producția 60m → 15m este estimativă; nu folosi pentru dispatch fin fără confirmare.");
+  const kwh = samples.map((s) => s.kwh).filter((n) => Number.isFinite(n));
+  const kw = samples.map((s) => s.kw).filter((n) => Number.isFinite(n));
+  const totalKwh = kwh.reduce((a,b) => a+b, 0);
+  const avgKw = kw.length ? kw.reduce((a,b) => a+b, 0) / kw.length : 0;
+  const peakKw = kw.length ? Math.max(...kw) : 0;
+  const zeroCount = kw.filter((n) => n <= 0.0001).length;
+  const daylight = samples.filter((s) => s.hour !== null && s.hour >= 6 && s.hour < 20);
+  const night = samples.filter((s) => s.hour !== null && (s.hour < 6 || s.hour >= 20));
+  const daylightKwh = daylight.reduce((a,b) => a + b.kwh, 0);
+  const nightKwh = night.reduce((a,b) => a + b.kwh, 0);
+  const daylightSharePct = (daylightKwh + nightKwh) > 0 ? Math.round((daylightKwh / (daylightKwh + nightKwh)) * 1000) / 10 : null;
+  const nightLeakKwh = nightKwh;
+  if (nightKwh > Math.max(1, totalKwh * 0.05)) warnings.push("Există producție semnificativă pe timp de noapte; verifică dacă sunt exporturi/energie cumulată sau coloane greșite.");
+  const positiveKw = kw.filter((n) => n > 0);
+  const p95 = percentileLearning(positiveKw, 95);
+  const clippingCount = positiveKw.filter((n) => p95 > 0 && Math.abs(n - p95) / p95 < 0.015 && n > avgKw * 1.8).length;
+  if (clippingCount >= Math.max(4, positiveKw.length * 0.08)) warnings.push("Profilul are platou de producție; posibil clipping invertor sau limitare export.");
+  const negativeRawRows = splitLearningRows(raw).slice(Math.min(splitLearningRows(raw).length, Math.max(1, layoutProfile?.headerRow || detectHeaderRow(raw).row || 1)), 80).filter((r) => splitLearningCells(r).some((c) => (parseLearningNumber(c) ?? 0) < 0)).length;
+  if (negativeRawRows) warnings.push(`${negativeRawRows} rânduri conțin valori negative; verifică semnul export/producție.`);
+  const qualityScore = qualityProfile?.score || 0;
+  const mode = samples.length >= 500 ? "partial" : samples.length >= 12 ? "preview_only" : "insufficient";
+  const status = !samples.length || qualityScore < 45 ? "blocked" : qualityScore >= 75 ? "ready" : "preview";
+  const capacityFactorPct = peakKw > 0 && samples.length ? Math.round((avgKw / peakKw) * 1000) / 10 : 0;
+  const pvReadiness = {
+    production: !!qualityProfile?.allowedAnalyses?.production,
+    pvSelfConsumption: !!qualityProfile?.allowedAnalyses?.pvSelfConsumption,
+    realAutoconsumption: !!qualityProfile?.allowedAnalyses?.realAutoconsumption,
+    report: !!qualityProfile?.allowedAnalyses?.report
+  };
+  return {
+    available: true, status, mode, source: fileName, sampleCount: samples.length, intervalMinutes: intervalMinutes || null, granularity: normalizationProfile?.sourceGranularity || "unknown",
+    totalKwhPreview: Math.round(totalKwh * 100) / 100, avgGenerationKw: Math.round(avgKw * 100) / 100, peakGenerationKw: Math.round(peakKw * 100) / 100,
+    capacityFactorPct, zeroIntervals: zeroCount, daylightKwh: Math.round(daylightKwh * 100) / 100, nightLeakKwh: Math.round(nightLeakKwh * 100) / 100, daylightSharePct,
+    clippingSuspicionCount: clippingCount, negativeValueRows: negativeRawRows,
+    readiness: pvReadiness,
+    insights: [peakKw > 0 ? `Peak producție detectat: ${fmt(peakKw, 1)} kW.` : "Peak producție nedetectat încă.", totalKwh > 0 ? `Energie produsă în preview: ${fmt(totalKwh, 1)} kWh.` : "Energie produsă indisponibilă.", capacityFactorPct > 0 ? `Factor capacitate preview: ${fmt(capacityFactorPct, 1)}%.` : "Factor capacitate indisponibil.", daylightSharePct !== null ? `Pondere producție zi: ${fmt(daylightSharePct, 1)}%.` : "Zi/noapte necesită timestampuri clare."].filter(Boolean),
+    warnings: warnings.slice(0, 8),
+    recommendedNextStep: status === "blocked" ? "Confirmă maparea producție/export și calitatea datelor." : status === "ready" ? "Poate continua către PVGIS Matcher, autoconsum PV și analiză producție." : "Poate continua ca analiză PV preliminară; confirmă unitatea și granularitatea pentru rezultate finale.",
     updatedAt: new Date().toISOString()
   };
 }
@@ -2979,6 +3087,7 @@ function buildTrainingDetection(file, workbookInfo) {
   const metadataDraft = buildLearningMetadataDraft(fileName, raw, layoutProfile, workbookInfo);
   const qualityProfile = buildLearningDataQuality(raw, fileName, kind, normalizationProfile, layoutProfile, workbookInfo, fileTypeProfile);
   const consumptionProfile = buildConsumptionDatasetProfile(raw, fileName, kind, normalizationProfile, qualityProfile, layoutProfile, fileTypeProfile);
+  const productionProfile = buildProductionDatasetProfile(raw, fileName, kind, normalizationProfile, qualityProfile, layoutProfile, fileTypeProfile);
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -3016,6 +3125,7 @@ function buildTrainingDetection(file, workbookInfo) {
     allowedAnalyses: qualityProfile.allowedAnalyses,
     blockedAnalyses: qualityProfile.blockedAnalyses,
     consumptionProfile,
+    productionProfile,
     sheetMode,
     layout,
     layoutProfile,
@@ -3116,9 +3226,9 @@ function getLearningSmartParserRuntime(file, templates) {
 }
 
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v439";
+  const storageKey = "servio.dataLearning.v441";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v438") || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v440") || localStorage.getItem("servio.dataLearning.v439") || localStorage.getItem("servio.dataLearning.v438") || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   const [templateQuery, setTemplateQuery] = useState("");
@@ -3192,6 +3302,16 @@ function DataLearningCenter({ currentUser }) {
       peakKw: f.consumptionProfile?.peakKw,
       loadFactorPct: f.consumptionProfile?.loadFactorPct,
       readiness: f.consumptionProfile?.readiness
+    },
+    productionRules: {
+      status: f.productionProfile?.status,
+      mode: f.productionProfile?.mode,
+      sampleCount: f.productionProfile?.sampleCount,
+      avgGenerationKw: f.productionProfile?.avgGenerationKw,
+      peakGenerationKw: f.productionProfile?.peakGenerationKw,
+      capacityFactorPct: f.productionProfile?.capacityFactorPct,
+      daylightSharePct: f.productionProfile?.daylightSharePct,
+      readiness: f.productionProfile?.readiness
     },
     fingerprint: {
       headerSignature: (f.previewRows || []).slice(0, 3).join(" | ").slice(0, 240),
@@ -3291,8 +3411,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Consumption Dataset Analyzer</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m, validează calitatea datelor și construiește primul profil de consum.</div>
+          <div className="setname">Production Dataset Analyzer</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m, validează calitatea datelor și construiește profiluri de consum și producție PV.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -3308,6 +3428,7 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
         <Kpi label="Quality pass" value={files.filter((f) => (f.qualityProfile?.score || 0) >= 75).length} sub="date bune / excelente" Icon={ShieldCheckFallback} tone="green" />
         <Kpi label="Consumption ready" value={files.filter((f) => f.consumptionProfile?.status === "ready" || f.consumptionProfile?.status === "preview").length} sub="profil consum construit" Icon={Gauge} tone="accent" />
+        <Kpi label="Production ready" value={files.filter((f) => f.productionProfile?.status === "ready" || f.productionProfile?.status === "preview").length} sub="profil producție PV" Icon={Sun} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Runtime ready" value={smartParserTemplates.length} sub="template-uri active" Icon={Cpu} tone="accent" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
@@ -3444,6 +3565,29 @@ function DataLearningCenter({ currentUser }) {
                   <div className="hint"><Activity size={13} /> {f.consumptionProfile.recommendedNextStep}</div>
                 </div>
               )}
+              {f.productionProfile?.available && (
+                <div className="dlcproduction">
+                  <div className="dlcmaphead">
+                    <div><b>Production Dataset Analyzer</b><span>Construiește profilul producției PV din PVGIS, invertor, export sau fișiere combinate pentru autoconsum și comparație cu consumul.</span></div>
+                    <Badge tone={f.productionProfile.status === "ready" ? "g" : f.productionProfile.status === "preview" ? "y" : "n"}>{PRODUCTION_PROFILE_LABELS[f.productionProfile.status] || f.productionProfile.status}</Badge>
+                  </div>
+                  <div className="dlcprodgrid">
+                    <div><b>{fmt(f.productionProfile.totalKwhPreview || 0, 1)} kWh</b><span>producție preview</span></div>
+                    <div><b>{fmt(f.productionProfile.peakGenerationKw || 0, 1)} kW</b><span>peak producție</span></div>
+                    <div><b>{fmt(f.productionProfile.avgGenerationKw || 0, 1)} kW</b><span>producție medie</span></div>
+                    <div><b>{fmt(f.productionProfile.capacityFactorPct || 0, 1)}%</b><span>factor capacitate</span></div>
+                    <div><b>{f.productionProfile.daylightSharePct === null ? "—" : fmt(f.productionProfile.daylightSharePct, 1) + "%"}</b><span>pondere zi</span></div>
+                    <div><b>{fmt(f.productionProfile.nightLeakKwh || 0, 1)} kWh</b><span>producție noapte</span></div>
+                    <div><b>{f.productionProfile.zeroIntervals || 0}</b><span>intervale zero</span></div>
+                    <div><b>{f.productionProfile.clippingSuspicionCount || 0}</b><span>posibil clipping</span></div>
+                  </div>
+                  <div className="dlcanalyses">
+                    {Object.entries(f.productionProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
+                  </div>
+                  <div className="dlcreasons layoutreasons">{[...(f.productionProfile.insights || []), ...(f.productionProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
+                  <div className="hint"><Sun size={13} /> {f.productionProfile.recommendedNextStep}</div>
+                </div>
+              )}
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(() => {
                 const runtime = getLearningSmartParserRuntime(f, smartParserTemplates);
@@ -3537,7 +3681,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.40: Consumption Dataset Analyzer construiește profilul de consum: total kWh, peak kW, factor sarcină, consum de bază, zi/noapte și pregătire pentru contracte/BESS.</div>
+      <div className="hint"><Cpu size={13} /> v4.41: Production Dataset Analyzer construiește profilul producției PV: kWh produs, peak producție, factor capacitate, pondere zi/noapte, zero intervals, clipping și readiness pentru PVGIS/autoconsum.</div>
     </Card>
   );
 }
@@ -4247,11 +4391,11 @@ const CSS = `
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcruntime{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcruntimegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcruntimegrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcruntimegrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcruntimegrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcnormalization{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.045);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcnormgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcnormgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcnormgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcnormgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dlcquality{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsumption{grid-column:1/-1;border:1px solid rgba(59,130,246,.22);border-radius:11px;background:rgba(37,99,235,.08);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcconsgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcconsgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcconsgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcqualitygrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcqualitygrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcanalyses{display:flex;flex-wrap:wrap;gap:6px}.dlcanalyses span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:3px 7px}.dlcanalyses .ok{background:rgba(34,197,94,.08);color:var(--green)}.dlcanalyses .blocked{background:rgba(239,68,68,.06);color:var(--text-faint)}
+.dlcquality{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsumption{grid-column:1/-1;border:1px solid rgba(59,130,246,.22);border-radius:11px;background:rgba(37,99,235,.08);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcproduction{grid-column:1/-1;border:1px solid rgba(249,115,22,.24);border-radius:11px;background:rgba(249,115,22,.07);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcconsgrid,.dlcprodgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcconsgrid div,.dlcprodgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcconsgrid b,.dlcprodgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcconsgrid span,.dlcprodgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcqualitygrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcqualitygrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcqualitygrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcanalyses{display:flex;flex-wrap:wrap;gap:6px}.dlcanalyses span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:3px 7px}.dlcanalyses .ok{background:rgba(34,197,94,.08);color:var(--green)}.dlcanalyses .blocked{background:rgba(239,68,68,.06);color:var(--text-faint)}
 .dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}.dlcconsgrid{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}.dlcconsgrid,.dlcprodgrid{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}

@@ -1,7 +1,7 @@
-# SERVIO v4.40 — Consumption Dataset Analyzer
+# SERVIO v4.41 — Production Dataset Analyzer
 
-Build: `servio-grid-map-v4.40-consumption-dataset-analyzer`
+Build: `servio-grid-map-v4.41-production-dataset-analyzer`
 
-Adaugă primul analizor de consum în Data Learning Center: profil de consum din IBD/import/consum, indicatori kWh/kW, factor de sarcină, consum de bază, zi/noapte, weekend și readiness pentru contracte, peak shaving și BESS.
+Acest build adaugă Production Dataset Analyzer peste Data Learning Center: profil producție PV din PVGIS/invertor/export, readiness pentru analiză producție și autoconsum, plus salvare `productionRules` în template.
 
-Păstrează shell-ul SERVIO/Claude, Auth/Login/UserMenu, Data Learning Center admin-only, Data Quality & Validation, Granularity Normalization, Smart Parser Runtime, Template Registry, Harta Rețea live, Day-Ahead strict și BESS curățat.
+Rulează `npm run check` pentru validare.
