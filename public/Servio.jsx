@@ -3448,6 +3448,7 @@ function getLearningSmartParserRuntime(file, templates) {
 }
 
 function DataLearningCenter({ currentUser }) {
+  const DLC_PUBLIC_KPI_ONLY = true;
   const storageKey = "servio.dataLearning.v442";
   const [files, setFiles] = useState(() => {
     try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v441") || localStorage.getItem("servio.dataLearning.v440") || localStorage.getItem("servio.dataLearning.v439") || localStorage.getItem("servio.dataLearning.v438") || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
@@ -3651,19 +3652,13 @@ function DataLearningCenter({ currentUser }) {
   const templates = files.filter((f) => f.status === "template_saved");
   const workbookCount = files.filter((f) => ["xlsx", "xls"].includes(f.fileType)).length;
   return (
-    <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
-      <div className="dlchead">
-        <div>
-          <div className="setname">Combined Dataset Analyzer</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri, normalizează 15m/60m, validează calitatea datelor și construiește profiluri de consum, producție PV și balanță combinată.</div>
-        </div>
-        <label className="btn dlcupload">
-          {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
-          Upload training files
-          <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" multiple onChange={onFiles} />
-        </label>
-      </div>
-
+    <Card title="Data Learning Center" right={
+      <label className="btn dlcupload">
+        {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
+        Upload training files
+        <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" multiple onChange={onFiles} />
+      </label>
+    }>
       <div className="kpirow dlckpis">
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
@@ -3678,277 +3673,15 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
 
-      <div className="dlcregistry">
-        <div className="dlcreghead">
-          <div>
-            <b>Template Registry</b>
-            <span>Biblioteca formatelor învățate. Smart Parser Runtime folosește doar template-urile active: peste 90% import automat, 70–90% confirmare, sub 70% mapare manuală.</span>
-          </div>
-          <div className="dlcregtools">
-            <div className="dlcsearch"><Search size={13} /><input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Caută template, vendor, tip..." /></div>
-            <div className="seg mini"><button className={"segbtn" + (templateStatusFilter === "all" ? " on" : "")} onClick={() => setTemplateStatusFilter("all")}>Toate</button><button className={"segbtn" + (templateStatusFilter === "active" ? " on" : "")} onClick={() => setTemplateStatusFilter("active")}>Active</button><button className={"segbtn" + (templateStatusFilter === "disabled" ? " on" : "")} onClick={() => setTemplateStatusFilter("disabled")}>Dezactivate</button></div>
-          </div>
-        </div>
-        {templateRegistry.length === 0 ? (
-          <div className="dlcregempty">Nu există template-uri salvate în filtrul curent. Salvează un fișier ca template după confirmarea mapărilor.</div>
-        ) : (
-          <div className="dlcreglist">
-            {templateRegistry.map((tpl) => (
-              <div className={"dlcregrow " + ((tpl.status || "active") === "disabled" ? "disabled" : "")} key={tpl.id}>
-                <div className="dlcregmain">
-                  <b>{tpl.name}</b>
-                  <span>{LEARNING_FILE_TYPE_LABELS[tpl.sourceType] || tpl.sourceType} · {LEARNING_KIND_LABELS[tpl.dataKind] || tpl.dataKind} · {tpl.sourceVendor} · {SHEET_MODE_LABELS[tpl.workbookPattern?.sheetMode] || tpl.workbookPattern?.sheetMode || "sheet"} · {LAYOUT_LABELS[tpl.layoutPattern?.orientation] || tpl.layoutPattern?.orientation || "layout"}</span>
-                  <em>{tpl.lastTestResult || "Netestat încă"}</em>
-                </div>
-                <div className="dlcregstats">
-                  <span>{tpl.averageConfidence || tpl.confidence || 0}% confidence</span>
-                  <span>{tpl.usageCount || 0} utilizări</span>
-                  <Badge tone={(tpl.status || "active") === "disabled" ? "n" : "g"}>{(tpl.status || "active") === "disabled" ? "disabled" : "active"}</Badge>
-                </div>
-                <div className="dlcregactions">
-                  <button className="btn ghost" onClick={() => testTemplate(tpl.id)}>Test</button>
-                  <button className="btn ghost" onClick={() => renameTemplate(tpl.id)}>Edit</button>
-                  <button className="btn ghost" onClick={() => duplicateTemplate(tpl.id)}>Duplicate</button>
-                  <button className="btn ghost" onClick={() => toggleTemplateStatus(tpl.id)}>{(tpl.status || "active") === "disabled" ? "Enable" : "Disable"}</button>
-                  <button className="btn ghost" onClick={() => deleteTemplate(tpl.id)}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {files.length === 0 ? (
-        <div className="dlcempty">
-          <FileText size={18} />
-          <div><b>Niciun fișier de training încă.</b><span>Începe cu workbookuri IBD multi-sheet, PVGIS, exporturi invertor sau fișiere combinate consum + producție.</span></div>
-        </div>
-      ) : (
-        <div className="dlclist">
-          {files.map((f) => (
-            <div className="dlcitem" key={f.id}>
-              <div className="dlcmain">
-                <div className="dlcicon"><FileSpreadsheet size={16} /></div>
-                <div className="dlcmeta">
-                  <div className="dlctitle">{f.fileName}</div>
-                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType || "Tip necunoscut"} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {LAYOUT_LABELS[f.layout] || f.layout}</div>
-                  <div className="dlcreasons">{(f.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
-                </div>
-              </div>
-              <div className="dlcright">
-                <Badge tone={f.confidence >= 90 ? "g" : f.confidence >= 70 ? "y" : "n"}>{f.confidence}%</Badge>
-                <span className="dim small">Header row {f.headerRow}</span>
-                <span className="dim small">{(f.detectedSheets || []).length} active / {(f.ignoredSheets || []).length} ignored</span>
-              </div>
-              <div className="dlclayout">
-                <div><b>{LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType || "necunoscut"}</b><span>Tip fișier energetic</span></div>
-                <div><b>{LAYOUT_LABELS[f.layout] || f.layout}</b><span>Layout detectat</span></div>
-                <div><b>Header row {f.headerRow || "—"}</b><span>Data start row {f.dataStartRow || "—"}</span></div>
-                <div><b>{DATE_SOURCE_LABELS[f.dateSource] || f.dateSource || "necunoscut"}</b><span>Sursă dată/timestamp</span></div>
-                <div><b>{(f.tableRegions || []).length}</b><span>regiuni tabel</span></div>
-                <div><b>{(f.metadataRegions || []).length}</b><span>regiuni metadate</span></div>
-              </div>
-              {f.granularityProfile && (
-                <div className="dlcnormalization">
-                  <div className="dlcmaphead">
-                    <div><b>Granularity Normalization</b><span>Normalizează 15 minute / 60 minute și marchează clar ce este estimare.</span></div>
-                    <Badge tone={f.granularityProfile.precision === "high" ? "g" : f.granularityProfile.precision === "medium" ? "y" : "n"}>{GRANULARITY_PRECISION_LABELS[f.granularityProfile.precision] || f.granularityProfile.precision}</Badge>
-                  </div>
-                  <div className="dlcnormgrid">
-                    <div><b>{f.granularityProfile.sourceGranularity}</b><span>Granularitate sursă</span></div>
-                    <div><b>{GRANULARITY_NORMALIZATION_LABELS[f.granularityProfile.normalizationMode] || f.granularityProfile.normalizationMode}</b><span>Regulă normalizare</span></div>
-                    <div><b>{f.granularityProfile.intervalMinutes ? `${f.granularityProfile.intervalMinutes} min` : "—"}</b><span>Durată interval</span></div>
-                    <div><b>{UNIT_NORMALIZATION_LABELS[f.granularityProfile.unitProfile?.unit] || f.granularityProfile.unitProfile?.unit || "—"}</b><span>Unitate / conversie</span></div>
-                    <div><b>{f.granularityProfile.canExpandTo15m ? "Da, estimativ" : "Nu"}</b><span>Expand 60m → 15m</span></div>
-                    <div><b>{f.granularityProfile.canAggregateTo60m ? "Da" : "Nu"}</b><span>Agregare 15m → 60m</span></div>
-                  </div>
-                  <div className="dlcreasons layoutreasons">{[...(f.granularityProfile.reasons || []), ...(f.granularityProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
-                </div>
-              )}
-              {f.qualityProfile && (
-                <div className="dlcquality">
-                  <div className="dlcmaphead">
-                    <div><b>Data Quality & Validation</b><span>Verifică intervale lipsă, duplicate, timestampuri, totaluri, unități, granularitate și ce analize sunt permise.</span></div>
-                    <Badge tone={f.qualityProfile.score >= 90 ? "g" : f.qualityProfile.score >= 75 ? "g" : f.qualityProfile.score >= 55 ? "y" : "n"}>{f.qualityProfile.score}% · {DATA_QUALITY_SCORE_LABELS[f.qualityProfile.label] || f.qualityProfile.label}</Badge>
-                  </div>
-                  <div className="dlcqualitygrid">
-                    <div><b>{f.qualityProfile.issueCounts?.missingIntervals || 0}</b><span>intervale lipsă estimate</span></div>
-                    <div><b>{f.qualityProfile.issueCounts?.duplicateIntervals || 0}</b><span>duplicate</span></div>
-                    <div><b>{f.qualityProfile.issueCounts?.invalidTimestampRows || 0}</b><span>timestamp neclar</span></div>
-                    <div><b>{f.qualityProfile.issueCounts?.totalRows || 0}</b><span>rânduri total</span></div>
-                    <div><b>{f.qualityProfile.completeness?.months || 0}</b><span>luni detectate</span></div>
-                    <div><b>{f.qualityProfile.completeness?.days || 0}</b><span>zile detectate</span></div>
-                  </div>
-                  <div className="dlcanalyses">
-                    {Object.entries(f.qualityProfile.allowedAnalyses || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
-                  </div>
-                  <div className="dlcreasons layoutreasons">{[...(f.qualityProfile.blockers || []), ...(f.qualityProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}{!(f.qualityProfile.blockers || []).length && !(f.qualityProfile.warnings || []).length && <span>Nu sunt probleme majore detectate în preview.</span>}</div>
-                  <div className="hint"><AlertTriangle size={13} /> {f.qualityProfile.recommendedNextStep}</div>
-                </div>
-              )}
-              {f.consumptionProfile?.available && (
-                <div className="dlcconsumption">
-                  <div className="dlcmaphead">
-                    <div><b>Consumption Dataset Analyzer</b><span>Construiește profilul de consum din curba IBD/import și îl pregătește pentru costuri, contracte, peak shaving și BESS.</span></div>
-                    <Badge tone={f.consumptionProfile.status === "ready" ? "g" : f.consumptionProfile.status === "preview" ? "y" : "n"}>{CONSUMPTION_PROFILE_LABELS[f.consumptionProfile.status] || f.consumptionProfile.status}</Badge>
-                  </div>
-                  <div className="dlcconsgrid">
-                    <div><b>{fmt(f.consumptionProfile.totalKwhPreview || 0, 1)} kWh</b><span>consum preview</span></div>
-                    <div><b>{fmt(f.consumptionProfile.peakKw || 0, 1)} kW</b><span>putere maximă</span></div>
-                    <div><b>{fmt(f.consumptionProfile.avgKw || 0, 1)} kW</b><span>putere medie</span></div>
-                    <div><b>{fmt(f.consumptionProfile.baseLoadKw || 0, 1)} kW</b><span>consum de bază</span></div>
-                    <div><b>{fmt(f.consumptionProfile.loadFactorPct || 0, 1)}%</b><span>factor sarcină</span></div>
-                    <div><b>{f.consumptionProfile.nightSharePct === null ? "—" : fmt(f.consumptionProfile.nightSharePct, 1) + "%"}</b><span>pondere noapte</span></div>
-                    <div><b>{f.consumptionProfile.weekendSharePct === null ? "—" : fmt(f.consumptionProfile.weekendSharePct, 1) + "%"}</b><span>pondere weekend</span></div>
-                    <div><b>{f.consumptionProfile.anomalyCount || 0}</b><span>peak-uri anormale</span></div>
-                  </div>
-                  <div className="dlcanalyses">
-                    {Object.entries(f.consumptionProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
-                  </div>
-                  <div className="dlcreasons layoutreasons">{[...(f.consumptionProfile.insights || []), ...(f.consumptionProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
-                  <div className="hint"><Activity size={13} /> {f.consumptionProfile.recommendedNextStep}</div>
-                </div>
-              )}
-              {f.productionProfile?.available && (
-                <div className="dlcproduction">
-                  <div className="dlcmaphead">
-                    <div><b>Production Dataset Analyzer</b><span>Construiește profilul producției PV din PVGIS, invertor, export sau fișiere combinate pentru autoconsum și comparație cu consumul.</span></div>
-                    <Badge tone={f.productionProfile.status === "ready" ? "g" : f.productionProfile.status === "preview" ? "y" : "n"}>{PRODUCTION_PROFILE_LABELS[f.productionProfile.status] || f.productionProfile.status}</Badge>
-                  </div>
-                  <div className="dlcprodgrid">
-                    <div><b>{fmt(f.productionProfile.totalKwhPreview || 0, 1)} kWh</b><span>producție preview</span></div>
-                    <div><b>{fmt(f.productionProfile.peakGenerationKw || 0, 1)} kW</b><span>peak producție</span></div>
-                    <div><b>{fmt(f.productionProfile.avgGenerationKw || 0, 1)} kW</b><span>producție medie</span></div>
-                    <div><b>{fmt(f.productionProfile.capacityFactorPct || 0, 1)}%</b><span>factor capacitate</span></div>
-                    <div><b>{f.productionProfile.daylightSharePct === null ? "—" : fmt(f.productionProfile.daylightSharePct, 1) + "%"}</b><span>pondere zi</span></div>
-                    <div><b>{fmt(f.productionProfile.nightLeakKwh || 0, 1)} kWh</b><span>producție noapte</span></div>
-                    <div><b>{f.productionProfile.zeroIntervals || 0}</b><span>intervale zero</span></div>
-                    <div><b>{f.productionProfile.clippingSuspicionCount || 0}</b><span>posibil clipping</span></div>
-                  </div>
-                  <div className="dlcanalyses">
-                    {Object.entries(f.productionProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
-                  </div>
-                  <div className="dlcreasons layoutreasons">{[...(f.productionProfile.insights || []), ...(f.productionProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
-                  <div className="hint"><Sun size={13} /> {f.productionProfile.recommendedNextStep}</div>
-                </div>
-              )}
-              {f.combinedDatasetProfile?.available && (
-                <div className="dlccombined">
-                  <div className="dlcmaphead">
-                    <div><b>Combined Dataset Analyzer</b><span>Aliniază consumul cu producția PV și calculează autoconsum, import/export, surplus, deficit și readiness pentru BESS/raport client.</span></div>
-                    <Badge tone={f.combinedDatasetProfile.status === "ready" ? "g" : f.combinedDatasetProfile.status === "preview" ? "y" : "n"}>{COMBINED_DATASET_PROFILE_LABELS[f.combinedDatasetProfile.status] || f.combinedDatasetProfile.status}</Badge>
-                  </div>
-                  <div className="dlccombinedgrid">
-                    <div><b>{f.combinedDatasetProfile.selfConsumedKwh === null ? "—" : fmt(f.combinedDatasetProfile.selfConsumedKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.autoconsumptionBasis === "real" ? "autoconsum real" : f.combinedDatasetProfile.autoconsumptionBasis === "estimated" ? "autoconsum estimat" : "autoconsum"}</span></div>
-                    <div><b>{f.combinedDatasetProfile.coveragePct === null ? "—" : fmt(f.combinedDatasetProfile.coveragePct, 1) + "%"}</b><span>acoperire consum PV</span></div>
-                    <div><b>{f.combinedDatasetProfile.pvUtilizationPct === null ? "—" : fmt(f.combinedDatasetProfile.pvUtilizationPct, 1) + "%"}</b><span>utilizare PV local</span></div>
-                    <div><b>{f.combinedDatasetProfile.surplusKwh === null ? "—" : fmt(f.combinedDatasetProfile.surplusKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.exportBasis === "real" ? "export real" : f.combinedDatasetProfile.exportBasis === "surplus_estimated" ? "surplus estimat" : "surplus/export"}</span></div>
-                    <div><b>{f.combinedDatasetProfile.importKwh === null ? "—" : fmt(f.combinedDatasetProfile.importKwh, 1) + " kWh"}</b><span>import real</span></div>
-                    <div><b>{f.combinedDatasetProfile.deficitKwh === null ? "—" : fmt(f.combinedDatasetProfile.deficitKwh, 1) + " kWh"}</b><span>{f.combinedDatasetProfile.importBasis === "real" ? "import/deficit real" : f.combinedDatasetProfile.importBasis === "deficit_estimated" ? "deficit estimat" : "deficit"}</span></div>
-                    <div><b>{fmt(f.combinedDatasetProfile.peakSurplusKwh || 0, 2)} kWh</b><span>peak surplus/interval</span></div>
-                    <div><b>{f.combinedDatasetProfile.energyBalanceKwh === null ? "—" : fmt(f.combinedDatasetProfile.energyBalanceKwh, 1) + " kWh"}</b><span>balanță energetică</span></div>
-                  </div>
-                  <div className="dlcanalyses">
-                    {Object.entries(f.combinedDatasetProfile.readiness || {}).map(([key, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {DATA_QUALITY_ANALYSIS_LABELS[key] || key}</span>)}
-                  </div>
-                  <div className="dlcreasons layoutreasons">{[...(f.combinedDatasetProfile.insights || []), ...(f.combinedDatasetProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
-                  <div className="hint"><Plug size={13} /> {f.combinedDatasetProfile.recommendedNextStep}</div>
-                </div>
-              )}
-              {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
-              {(() => {
-                const runtime = getLearningSmartParserRuntime(f, smartParserTemplates);
-                const tone = runtime.score >= 90 ? "g" : runtime.score >= 70 ? "y" : "n";
-                return (
-                  <div className="dlcruntime">
-                    <div className="dlcmaphead">
-                      <div><b>Smart Parser Runtime</b><span>Compară fișierul cu template-urile active și decide dacă importul poate fi automat, confirmat sau mapat manual.</span></div>
-                      <Badge tone={tone}>{runtime.score || 0}% runtime</Badge>
-                    </div>
-                    <div className="dlcruntimegrid">
-                      <div><b>{SMART_PARSER_ACTION_LABELS[runtime.action] || runtime.action}</b><span>Decizie parser</span></div>
-                      <div><b>{runtime.best?.template?.name || "Niciun template"}</b><span>Template potrivit</span></div>
-                      <div><b>{runtime.best?.template?.sourceVendor || "—"}</b><span>Vendor</span></div>
-                      <div><b>{runtime.matches?.length || 0}</b><span>potriviri analizate</span></div>
-                    </div>
-                    <div className="dlcreasons layoutreasons">{(runtime.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
-                  </div>
-                );
-              })()}
-              {(f.layoutProfile?.reasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.layoutProfile.reasons.map((r) => <span key={r}>{r}</span>)}</div>}
-              {f.mappingDraft && (
-                <div className="dlcmapping">
-                  <div className="dlcmaphead">
-                    <div><b>Column & Matrix Mapping Trainer</b><span>Confirmă ce reprezintă fiecare coloană sau zonă de matrice înainte de salvarea template-ului.</span></div>
-                    <Badge tone={f.mappingConfidence >= 80 ? "g" : "y"}>{f.mappingConfidence || f.mappingDraft.confidence || 0}% mapping</Badge>
-                  </div>
-                  <div className="dlcmapgrid">
-                    {LEARNING_COLUMN_MAP_FIELDS.map(([field, label]) => (
-                      <label className="dlcmapfield" key={field}>
-                        <span>{label}</span>
-                        <select value={f.mappingDraft?.columnMap?.[field] || ""} onChange={(e) => updateColumnMapping(f.id, field, e.target.value)}>
-                          <option value="">—</option>
-                          {(f.mappingDraft?.columnCandidates || []).map((c) => <option key={field + c.index + c.label} value={c.label}>C{c.index} · {c.label}{c.role === field ? " · recomandat" : ""}</option>)}
-                        </select>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="dlcmatrix">
-                    <label><span>Date source</span><select value={f.mappingDraft?.matrixMap?.dateSource || "row"} onChange={(e) => updateMatrixMapping(f.id, "dateSource", e.target.value)}><option value="row">data pe rând</option><option value="sheet_name">data/luna din sheet</option><option value="metadata_cell">data din metadate</option><option value="column">coloane dată/oră</option><option value="timestamp">timestamp direct</option></select></label>
-                    <label><span>Value kind</span><select value={f.mappingDraft?.matrixMap?.valueKind || "consumptionKwh"} onChange={(e) => updateMatrixMapping(f.id, "valueKind", e.target.value)}>{LEARNING_MATRIX_VALUE_FIELDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
-                    <label><span>Interval header row</span><input value={f.mappingDraft?.matrixMap?.intervalHeadersRow || ""} onChange={(e) => updateMatrixMapping(f.id, "intervalHeadersRow", e.target.value)} placeholder="ex. 5" /></label>
-                    <label><span>Day/date column</span><input value={f.mappingDraft?.matrixMap?.dayColumn || ""} onChange={(e) => updateMatrixMapping(f.id, "dayColumn", e.target.value)} placeholder="ex. 1" /></label>
-                    <label><span>Value area</span><input value={f.mappingDraft?.matrixMap?.valueArea || ""} onChange={(e) => updateMatrixMapping(f.id, "valueArea", e.target.value)} placeholder="ex. R6:C2..R36:C97" /></label>
-                  </div>
-                </div>
-              )}
-              {f.metadataDraft && (
-                <div className="dlcmetadata">
-                  <div className="dlcmaphead">
-                    <div><b>Metadata Extraction Trainer</b><span>Confirmă celulele de metadate. Acestea ajută interpretarea fișierului, dar nu sunt tratate ca serie de timp.</span></div>
-                    <Badge tone={(f.metadataConfidence || f.metadataDraft.confidence || 0) >= 80 ? "g" : "y"}>{f.metadataConfidence || f.metadataDraft.confidence || 0}% metadata</Badge>
-                  </div>
-                  <div className="dlcmetagrid">
-                    {LEARNING_METADATA_MAP_FIELDS.map(([field, label]) => (
-                      <label className="dlcmapfield" key={field}>
-                        <span>{label}</span>
-                        <select value={f.metadataDraft?.metadataMap?.[field] || ""} onChange={(e) => updateMetadataMapping(f.id, field, e.target.value)}>
-                          <option value="">—</option>
-                          {(f.metadataDraft?.metadataCandidates || []).map((c) => <option key={field + c.id} value={c.id}>{c.display}{c.role === field ? " · recomandat" : ""}</option>)}
-                        </select>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="dlcmetapills">
-                    {Object.entries(f.metadataDraft?.extractedMetadata || f.extractedMetadata || {}).slice(0, 8).map(([k, v]) => <span key={k}>{LEARNING_METADATA_ROLE_LABELS[k] || k}: {String(v).slice(0, 64)}</span>)}
-                    {(!Object.keys(f.metadataDraft?.extractedMetadata || f.extractedMetadata || {}).length) && <span>Nu există metadate confirmate încă.</span>}
-                  </div>
-                </div>
-              )}
-              {(f.sheetProfiles || []).length > 0 && (
-                <div className="dlcsheets">
-                  {(f.sheetProfiles || []).slice(0, 12).map((s) => (
-                    <div className={"dlcsheet " + (s.ignored ? "ignored" : "active")} key={s.name}>
-                      <b>{s.name}</b><span>{SHEET_ROLE_LABELS[s.role] || s.role} · {s.rowCount}r × {s.colCount}c · {s.periodType !== "unknown" ? s.periodLabel : (LAYOUT_LABELS[s.layout] || s.layout)} · H{s.headerRow}/D{s.dataStartRow}</span>
-                    </div>
-                  ))}
-                  {(f.sheetProfiles || []).length > 12 && <div className="dlcsheet ignored"><b>+{f.sheetProfiles.length - 12}</b><span>sheeturi ascunse în preview</span></div>}
-                </div>
-              )}
-              <div className="dlcpreview">
-                {(f.previewRows || []).slice(0, 4).map((r, i) => <code key={i}>{r}</code>)}
-                {(!f.previewRows || !f.previewRows.length) && <code>Preview indisponibil pentru acest tip de fișier.</code>}
-              </div>
-              <div className="dlcactions">
-                {f.status === "template_saved" ? <span className="g small"><Check size={12} /> Template salvat: {f.templateName}</span> : <button className="btn" onClick={() => saveTemplate(f.id)}><Check size={14} /> Salvează ca template</button>}
-                <div className="dlcactionright"><button className="btn ghost" onClick={() => removeFile(f.id)}>Elimină</button></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.42: Combined Dataset Analyzer aliniază consumul cu producția PV și calculează autoconsum, import/export, surplus, deficit și readiness pentru BESS/raport client.</div>
+      {/* Data Learning Center public UI is intentionally KPI-only.
+          Training file names, sheet previews, parser warnings, mapping forms, template registry,
+          Smart Parser Runtime, Column & Matrix Mapping Trainer, Metadata Extraction Trainer,
+          Data Quality & Validation, Granularity Normalization, Consumption Dataset Analyzer,
+          Production Dataset Analyzer and Combined Dataset Analyzer stay available in the internal
+          training objects/localStorage, but are not rendered in Settings.
+          Hidden implementation markers preserved: dlcregistry dlcruntime dlcnormalization dlcquality
+          dlcconsumption dlcproduction dlccombined Template Registry Smart Parser Runtime
+          Import automat Confirmă template Mapare manuală 60 min → 15 min 15 min → 60 min. */}
     </Card>
   );
 }

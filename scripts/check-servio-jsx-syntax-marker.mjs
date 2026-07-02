@@ -5,7 +5,7 @@ const worker = fs.readFileSync("src/worker.js", "utf8");
 const workflow = fs.readFileSync(".github/workflows/opcom-pzu-cache.yml", "utf8");
 
 const checks = [
-  ["build version v4.42 combined final", worker.includes("servio-grid-map-v4.42-combined-dataset-analyzer-final")],
+  ["build version v4.42.3 KPI-only settings cleanup", worker.includes("servio-grid-map-v4.42.3-data-learning-kpi-only")],
   ["xlsx import support", app.includes('import * as XLSX from "xlsx"') && worker.includes('xlsx@0.18.5') && worker.includes('XLSX')],
   ["auth endpoints preserved", worker.includes('path === "/api/servio/auth/login"') && worker.includes('path === "/api/servio/auth/me"') && worker.includes('path === "/api/servio/auth/logout"')],
   ["auth frontend preserved", app.includes("function AuthGate") && app.includes("function LoginView") && app.includes("function UserMenu") && worker.includes("function AuthGate")],
@@ -17,24 +17,24 @@ const checks = [
   ["mapping persisted into templates", app.includes("importTemplate") && app.includes("columnMap: f.mappingDraft?.columnMap") && app.includes("matrixMap: f.mappingDraft?.matrixMap")],
   ["metadata extraction trainer exists", app.includes("LEARNING_METADATA_MAP_FIELDS") && app.includes("buildLearningMetadataDraft") && app.includes("updateMetadataMapping") && app.includes("Metadata Extraction Trainer")],
   ["metadata persisted into templates", app.includes("metadataMap: f.metadataDraft?.metadataMap") && app.includes("metadataPatterns") && app.includes("extractedMetadata")],
-  ["template registry exists", app.includes("Template Registry") && app.includes("templateRegistry") && app.includes("updateTemplateRegistryItem") && app.includes("duplicateTemplate") && app.includes("testTemplate")],
-  ["template registry controls exist", app.includes("templateStatusFilter") && app.includes("templateQuery") && app.includes("dlcregistry") && app.includes("usageCount") && app.includes("averageConfidence")],
+  ["template registry engine preserved hidden", app.includes("Template Registry") && app.includes("templateRegistry") && app.includes("updateTemplateRegistryItem") && app.includes("duplicateTemplate") && app.includes("testTemplate") && app.includes("DLC_PUBLIC_KPI_ONLY = true")],
+  ["template registry controls hidden from Settings", app.includes("templateStatusFilter") && app.includes("templateQuery") && app.includes("dlcregistry") && app.includes("usageCount") && app.includes("averageConfidence") && !app.includes('className="dlcregistry"') && !app.includes('className="dlclist"') && !app.includes('className="dlcpreview"')],
   ["smart parser runtime exists", app.includes("SMART_PARSER_ACTION_LABELS") && app.includes("scoreLearningTemplateMatch") && app.includes("getLearningSmartParserRuntime") && app.includes("Smart Parser Runtime")],
-  ["smart parser runtime UI exists", app.includes("dlcruntime") && app.includes("Import automat") && app.includes("Confirmă template") && app.includes("Mapare manuală")],
+  ["smart parser runtime hidden from Settings", app.includes("dlcruntime") && app.includes("Import automat") && app.includes("Confirmă template") && app.includes("Mapare manuală") && !app.includes('className="dlcruntime"')],
   ["granularity normalization exists", app.includes("buildLearningGranularityNormalization") && app.includes("detectLearningTimeStepMinutes") && app.includes("detectLearningUnitProfile") && app.includes("GRANULARITY_NORMALIZATION_LABELS")],
-  ["granularity normalization UI exists", app.includes("dlcnormalization") && app.includes("Granularity Normalization") && app.includes("60 min → 15 min") && app.includes("15 min → 60 min")],
+  ["granularity normalization hidden from Settings", app.includes("dlcnormalization") && app.includes("Granularity Normalization") && app.includes("60 min → 15 min") && app.includes("15 min → 60 min") && !app.includes('className="dlcnormalization"')],
   ["granularity normalization persisted", app.includes("normalizedGranularity: f.granularityProfile?.normalizedGranularity") && app.includes("canExpandTo15m") && app.includes("canAggregateTo60m") && app.includes("estimated15mRule")],
   ["data quality engine exists", app.includes("buildLearningDataQuality") && app.includes("DATA_QUALITY_ANALYSIS_LABELS") && app.includes("qualityProfile")],
-  ["data quality UI exists", app.includes("Data Quality & Validation") && app.includes("dlcquality") && app.includes("allowedAnalyses")],
+  ["data quality engine hidden from Settings", app.includes("Data Quality & Validation") && app.includes("dlcquality") && app.includes("allowedAnalyses") && !app.includes('className="dlcquality"')],
   ["data quality persisted", app.includes("qualityRules") && app.includes("blockedAnalyses") && app.includes("recommendedNextStep")],
   ["consumption dataset analyzer exists", app.includes("buildConsumptionDatasetProfile") && app.includes("extractLearningConsumptionSamples") && app.includes("CONSUMPTION_PROFILE_LABELS")],
-  ["consumption dataset UI exists", app.includes("Consumption Dataset Analyzer") && app.includes("dlcconsumption") && app.includes("Consumption ready")],
+  ["consumption dataset KPI only", app.includes("Consumption Dataset Analyzer") && app.includes("dlcconsumption") && app.includes("Consumption ready") && !app.includes('className="dlcconsumption"')],
   ["consumption profile persisted", app.includes("consumptionProfile") && app.includes("consumptionRules") && app.includes("loadFactorPct")],
   ["production dataset analyzer exists", app.includes("buildProductionDatasetProfile") && app.includes("extractLearningProductionSamples") && app.includes("PRODUCTION_PROFILE_LABELS")],
-  ["production dataset UI exists", app.includes("Production Dataset Analyzer") && app.includes("dlcproduction") && app.includes("Production ready")],
+  ["production dataset KPI only", app.includes("Production Dataset Analyzer") && app.includes("dlcproduction") && app.includes("Production ready") && !app.includes('className="dlcproduction"')],
   ["production profile persisted", app.includes("productionProfile") && app.includes("productionRules") && app.includes("capacityFactorPct") && app.includes("peakGenerationKw")],
   ["combined dataset analyzer exists", app.includes("buildCombinedDatasetProfile") && app.includes("extractLearningBalanceSamples") && app.includes("COMBINED_DATASET_PROFILE_LABELS")],
-  ["combined dataset UI exists", app.includes("Combined Dataset Analyzer") && app.includes("dlccombined") && app.includes("Combined ready")],
+  ["combined dataset KPI only", app.includes("Combined Dataset Analyzer") && app.includes("dlccombined") && app.includes("Combined ready") && !app.includes('className="dlccombined"')],
   ["combined dataset profile persisted", app.includes("combinedDatasetProfile") && app.includes("combinedDatasetRules") && app.includes("selfConsumedKwh") && app.includes("coveragePct") && app.includes("pvUtilizationPct")],
   ["combined analyzer accepts import/export", app.includes('"import_export_only"') && app.includes('hasImportSignal') && app.includes('hasExportSignal')],
   ["combined analyzer real vs estimated rule", app.includes('autoconsumptionBasis') && app.includes('exportBasis') && app.includes('Nu există import/export: autoconsumul, surplusul și deficitul sunt estimate, nu reale.')],
@@ -53,7 +53,7 @@ const checks = [
   ["old removed sections stay removed", !app.includes("Necesită atenție") && !app.includes("Surse de date · OPCOM & ENTSO-E") && !app.includes("Conformitate") && !app.includes("Price Thresholds · Inowattio old engine")],
   ["no old Inowattio debugging in UI", !app.includes("Inowattio old engine") && !app.includes("Inowattio parity") && !app.includes("DB locked")],
   ["day-ahead strict source preserved", app.includes('strict: dayAheadSource === "opcom" ? "1" : ""') && app.includes("warningToday") && app.includes("warningTomorrow")],
-  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.42-combined-dataset-analyzer")],
+  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.42.3-data-learning-kpi-only")],
   ["live-flow and inspector preserved", app.includes("gridflowgeo") && app.includes("gridhoverflows") && app.includes("gridhoverflowcol") && worker.includes("gridflowgeo")],
   ["mouse wheel zoom preserved", app.includes("handleMapWheel") && app.includes("onWheel={handleMapWheel}") && worker.includes("handleMapWheel")],
   ["OPCOM auto refresh schedule preserved", workflow.includes("*/15 * * * *") && workflow.includes("workflow_dispatch")],
@@ -65,4 +65,4 @@ for (const [name, ok] of checks) {
   else console.log(`OK: ${name}`);
 }
 if (failed) process.exit(1);
-console.log("SERVIO v4.42 combined dataset analyzer final guards OK.");
+console.log("SERVIO v4.42.3 data learning KPI-only guards OK.");

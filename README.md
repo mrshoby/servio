@@ -1,26 +1,19 @@
-# SERVIO v4.42 — Combined Dataset Analyzer FINAL
+# SERVIO v4.42.3 — Data Learning Center KPI-only Settings Cleanup
 
-Build ID: `servio-grid-map-v4.42-combined-dataset-analyzer-final`
+Build ID: `servio-grid-map-v4.42.3-data-learning-kpi-only`
 
-Acest build finalizează corect roadmap-ul v4.42 Combined Dataset Analyzer.
+Curăță Settings · Data Learning Center: fișierele uploadate nu mai apar în pagină. Adminul vede doar upload-ul și KPI-urile de training:
 
-## Ce adaugă
+- Training files
+- Workbooks
+- Mappings
+- Metadata maps
+- Quality pass
+- Consumption ready
+- Production ready
+- Combined ready
+- Templates saved
+- Runtime ready
+- Best confidence
 
-- suport pentru fișiere consum + producție;
-- suport pentru import/export;
-- suport pentru full balance;
-- calcule pentru autoconsum, surplus, import, export, acoperire consum, utilizare PV locală și balanță energetică;
-- separare explicită între rezultat real și estimat.
-
-## Regulă importantă
-
-Dacă fișierul nu conține import/export, SERVIO nu marchează exportul/autoconsumul ca real. În acel caz afișează:
-- autoconsum estimat;
-- surplus estimat;
-- deficit estimat.
-
-Export/import real apar doar când există coloane import/export.
-
-## Nu s-a schimbat
-
-Nu s-a rescris aplicația, nu s-a schimbat shell-ul, nu s-au atins Auth/Login/UserMenu, Day-Ahead strict, Harta Rețea live sau BESS curățat.
+Toate detaliile de training rămân procesate în spate și persistate local, fără junk UI, fără nume de fișiere, fără sheet preview și fără JSON/debugging pe ecran.

@@ -1,6 +1,6 @@
 {
-  "name": "servio-cloudflare-grid-map-v442-combined-dataset-analyzer-final",
-  "version": "4.42",
+  "name": "servio-cloudflare-grid-map-v4423-data-learning-kpi-only",
+  "version": "4.42.3",
   "type": "module",
   "scripts": {
     "check": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
@@ -37,7 +37,8 @@
     "test:v4.40": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
     "test:v4.41": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
     "test:v4.42": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
-    "test:v4.42.2": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
+    "test:v4.42.2": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs",
+    "test:v4.42.3": "node --check src/worker.js && node --check scripts/fetch-opcom-pzu-cache.mjs && node scripts/check-servio-jsx-syntax-marker.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.105.0"
