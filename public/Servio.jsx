@@ -1944,6 +1944,33 @@ const DATE_SOURCE_LABELS = {
   timestamp: "timestamp direct",
   unknown: "necunoscut"
 };
+const LEARNING_COLUMN_MAP_FIELDS = [
+  ["timestamp", "Timestamp"],
+  ["date", "Dată"],
+  ["time", "Oră"],
+  ["intervalStart", "Interval start"],
+  ["intervalEnd", "Interval end"],
+  ["day", "Zi"],
+  ["month", "Lună"],
+  ["year", "An"],
+  ["consumptionKwh", "Consum kWh"],
+  ["productionKwh", "Producție kWh"],
+  ["importKwh", "Import kWh"],
+  ["exportKwh", "Export kWh"],
+  ["powerKw", "Putere kW"],
+  ["energyKwh", "Energie kWh"],
+  ["meterId", "Contor / meter"],
+  ["siteName", "Locație"],
+  ["clientName", "Client"]
+];
+const LEARNING_MATRIX_VALUE_FIELDS = [
+  ["consumptionKwh", "Consum kWh"],
+  ["productionKwh", "Producție kWh"],
+  ["importKwh", "Import kWh"],
+  ["exportKwh", "Export kWh"],
+  ["powerKw", "Putere kW"],
+  ["energyKwh", "Energie kWh"]
+];
 const MONTH_MARKERS = [
   ["01", /(ianuarie|\bian\b|january|\bjan\b|202[0-9][-_. ]?01|01[-_. ]?202[0-9])/i],
   ["02", /(februarie|\bfeb\b|february|202[0-9][-_. ]?02|02[-_. ]?202[0-9])/i],
@@ -2181,6 +2208,103 @@ function analyzeLearningLayout(raw, sheetName = "") {
     reasons: reasons.slice(0, 5)
   };
 }
+function normalizeLearningToken(value) {
+  return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+function inferLearningColumnRole(label, samples = []) {
+  const t = normalizeLearningToken(`${label || ""} ${samples.join(" ")}`);
+  if (!t) return { role: "ignore", confidence: 0 };
+  const tests = [
+    ["timestamp", 96, /\b(timestamp|date time|datetime|data ora|data si ora|interval timestamp)\b/],
+    ["intervalStart", 92, /\b(interval start|start interval|start time|ora start|inceput interval|început interval)\b/],
+    ["intervalEnd", 92, /\b(interval end|end interval|end time|ora end|sfarsit interval|sfârșit interval)\b/],
+    ["date", 88, /\b(data|date|ziua|calendar date)\b/],
+    ["time", 88, /\b(ora|time|hour|hh mm|interval ora)\b/],
+    ["consumptionKwh", 94, /\b(consum|consumption|load|energie activa|active energy|absorbit|absorbtie|curba sarcina|curba de sarcina|demand)\b/],
+    ["productionKwh", 94, /\b(productie|production|generation|generated|yield|pv yield|energie produsa|solar output)\b/],
+    ["importKwh", 92, /\b(import|grid import|from grid|energie importata|energie primita|a\+)\b/],
+    ["exportKwh", 92, /\b(export|grid export|to grid|feed in|injectie|injec|energie livrata|energie injectata|a\-)\b/],
+    ["powerKw", 86, /\b(putere|power|kw|mw|p max|peak|demand kw)\b/],
+    ["energyKwh", 78, /\b(energie|energy|kwh|mwh|wh)\b/],
+    ["meterId", 82, /\b(contor|meter|meter id|serial|serie|obis|pod)\b/],
+    ["siteName", 76, /\b(locatie|locație|site|loc consum|punct consum|address|adresa)\b/],
+    ["clientName", 76, /\b(client|beneficiar|company|companie|customer)\b/],
+    ["day", 76, /\b(zi|day|day no|ziua)\b/],
+    ["month", 72, /\b(luna|month)\b/],
+    ["year", 72, /\b(an|year)\b/]
+  ];
+  const found = tests.find(([, , rx]) => rx.test(t));
+  return found ? { role: found[0], confidence: found[1] } : { role: "ignore", confidence: 30 };
+}
+function buildLearningColumnCandidates(raw, layoutProfile = {}) {
+  const rows = splitLearningRows(raw);
+  const headerIndex = Math.max(0, (layoutProfile?.headerRow || detectHeaderRow(raw).row || 1) - 1);
+  let headerCells = splitLearningCells(rows[headerIndex] || "");
+  let headerRow = headerIndex + 1;
+  if (headerCells.length < 2) {
+    let best = { idx: 0, cells: headerCells, count: headerCells.length };
+    rows.slice(0, 30).forEach((r, i) => {
+      const cells = splitLearningCells(r);
+      if (cells.length > best.count) best = { idx: i, cells, count: cells.length };
+    });
+    headerCells = best.cells;
+    headerRow = best.idx + 1;
+  }
+  const candidates = (headerCells || []).map((label, idx) => {
+    const samples = rows.slice(headerRow, headerRow + 6).map((r) => splitLearningCells(r)[idx]).filter((v) => String(v || "").trim()).slice(0, 4);
+    const inferred = inferLearningColumnRole(label || `Coloana ${idx + 1}`, samples);
+    return { index: idx + 1, label: label || `Coloana ${idx + 1}`, role: inferred.role, confidence: inferred.confidence, sample: samples.join(" · ") };
+  }).filter((c) => c.label || c.sample).slice(0, 36);
+  return { headerRow, candidates };
+}
+function buildDefaultLearningColumnMap(candidates = []) {
+  const map = {};
+  LEARNING_COLUMN_MAP_FIELDS.forEach(([key]) => {
+    const hit = candidates.find((c) => c.role === key && !Object.values(map).includes(c.label));
+    map[key] = hit ? hit.label : "";
+  });
+  return map;
+}
+function defaultLearningValueKind(kind, fileType) {
+  if (kind === "production" || kind === "pvgis" || fileType === "pvgis" || fileType === "inverter" || fileType === "generic_production") return "productionKwh";
+  if (kind === "import_export" || fileType === "import_export_file") return "importKwh";
+  if (kind === "full_energy_balance" || fileType === "full_balance_file") return "consumptionKwh";
+  return "consumptionKwh";
+}
+function buildDefaultLearningMatrixMap(layoutProfile = {}, fileTypeProfile = {}) {
+  const base = layoutProfile?.matrixMap || {};
+  return {
+    dateSource: base.dateSource || layoutProfile?.dateSource || "row",
+    intervalHeadersRow: base.intervalHeadersRow || layoutProfile?.headerRow || "",
+    dayColumn: base.dayColumn || 1,
+    valueArea: base.valueArea || "",
+    valueKind: base.valueKind || defaultLearningValueKind(fileTypeProfile?.kind, fileTypeProfile?.fileType)
+  };
+}
+function buildLearningMappingDraft(fileName, raw, layoutProfile = {}, fileTypeProfile = {}) {
+  const columns = buildLearningColumnCandidates(raw, layoutProfile);
+  const columnMap = buildDefaultLearningColumnMap(columns.candidates);
+  const matrixMap = buildDefaultLearningMatrixMap(layoutProfile, fileTypeProfile);
+  const mappedCount = Object.values(columnMap).filter(Boolean).length + (matrixMap.valueArea ? 1 : 0);
+  const confidence = Math.min(98, Math.max(35, 45 + mappedCount * 6 + (columns.candidates.length ? 8 : 0)));
+  return {
+    mode: (layoutProfile?.orientation || "").includes("matrix") ? "matrix" : "columns",
+    headerRow: columns.headerRow,
+    columnCandidates: columns.candidates,
+    columnMap,
+    matrixMap,
+    confidence,
+    updatedAt: new Date().toISOString()
+  };
+}
+function ensureLearningMapping(file) {
+  if (file?.mappingDraft?.columnMap) return file;
+  const raw = (file?.previewRows || []).join("\n");
+  const fileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
+  const mappingDraft = buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
+  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence };
+}
+
 function detectLearningLayout(raw) {
   return analyzeLearningLayout(raw).orientation;
 }
@@ -2314,6 +2438,9 @@ function buildTrainingDetection(file, workbookInfo) {
   const sheetMode = detectLearningSheetMode(fileName, raw, workbookInfo);
   const layoutProfile = workbookInfo?.layoutSummary || analyzeLearningLayout(raw, fileName);
   const layout = workbookInfo?.layout && workbookInfo.layout !== "unknown" ? workbookInfo.layout : layoutProfile.orientation;
+  const fileTypeProfile = detectLearningFileTypeProfile(fileName, raw, layoutProfile, workbookInfo);
+  const fileTypeConfidence = fileTypeProfile.confidence;
+  const mappingDraft = buildLearningMappingDraft(fileName, raw, layoutProfile, fileTypeProfile);
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -2328,6 +2455,10 @@ function buildTrainingDetection(file, workbookInfo) {
     fileTypeConfidence,
     fileTypeReasons: fileTypeProfile.reasons,
     dataSignals: fileTypeProfile.dataSignals,
+    mappingDraft,
+    columnMap: mappingDraft.columnMap,
+    matrixMap: mappingDraft.matrixMap,
+    mappingConfidence: mappingDraft.confidence,
     sourceVendor: vendor,
     sourceType: fileTypeProfile.fileType,
     granularity,
@@ -2360,9 +2491,9 @@ function buildTrainingDetection(file, workbookInfo) {
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v433";
+  const storageKey = "servio.dataLearning.v434";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
@@ -2379,7 +2510,43 @@ function DataLearningCenter({ currentUser }) {
     setBusy(false);
     event.target.value = "";
   };
-  const saveTemplate = (id) => setFiles((prev) => prev.map((f) => f.id === id ? { ...f, status: "template_saved", templateName: `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${f.granularity}` } : f));
+  const saveTemplate = (id) => setFiles((prev) => prev.map((f) => {
+    if (f.id !== id) return f;
+    const templateName = `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${f.granularity}`;
+    return {
+      ...f,
+      status: "template_saved",
+      templateName,
+      importTemplate: {
+        id: `tpl_${f.id}`,
+        name: templateName,
+        dataKind: f.dataKind,
+        sourceType: f.detectedFileType,
+        sourceVendor: f.sourceVendor,
+        fileType: f.fileType,
+        workbookPattern: { sheetMode: f.sheetMode, activeSheets: f.detectedSheets, ignoredSheets: f.ignoredSheets },
+        layoutPattern: { orientation: f.layout, headerRow: f.headerRow, dataStartRow: f.dataStartRow, tableRegions: f.tableRegions, metadataRegions: f.metadataRegions },
+        columnMap: f.mappingDraft?.columnMap || f.columnMap || {},
+        matrixMap: f.mappingDraft?.matrixMap || f.matrixMap || {},
+        parsingRules: { granularity: f.granularity, timezone: "Europe/Bucharest" },
+        status: "active",
+        createdBy: currentUser?.email || currentUser?.name || "admin",
+        createdAt: new Date().toISOString()
+      }
+    };
+  }));
+  const updateColumnMapping = (id, field, value) => setFiles((prev) => prev.map((f) => f.id === id ? {
+    ...f,
+    mappingDraft: { ...(f.mappingDraft || {}), columnMap: { ...(f.mappingDraft?.columnMap || {}), [field]: value }, updatedAt: new Date().toISOString() },
+    columnMap: { ...(f.columnMap || {}), [field]: value },
+    status: f.status === "template_saved" ? "review" : f.status
+  } : f));
+  const updateMatrixMapping = (id, field, value) => setFiles((prev) => prev.map((f) => f.id === id ? {
+    ...f,
+    mappingDraft: { ...(f.mappingDraft || {}), matrixMap: { ...(f.mappingDraft?.matrixMap || {}), [field]: value }, updatedAt: new Date().toISOString() },
+    matrixMap: { ...(f.matrixMap || {}), [field]: value },
+    status: f.status === "template_saved" ? "review" : f.status
+  } : f));
   const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
   const clearAll = () => setFiles([]);
   const templates = files.filter((f) => f.status === "template_saved");
@@ -2388,8 +2555,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">File Type Detection Engine</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează categoria energetică: IBD/consum, producție, PVGIS, invertor, import/export, full balance, EMS/SCADA, plus workbook/sheet/layout.</div>
+          <div className="setname">Column & Matrix Mapping Trainer</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout și îți propune maparea coloanelor sau a matricelor zi × interval pentru consum, producție, import și export.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2401,7 +2568,7 @@ function DataLearningCenter({ currentUser }) {
       <div className="kpirow dlckpis">
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
-        <Kpi label="File types" value={files.filter((f) => f.detectedFileType && f.detectedFileType !== "unknown").length} sub="tipuri energetice" Icon={Layers} tone="accent" />
+        <Kpi label="Mappings" value={files.filter((f) => f.mappingDraft?.columnMap || f.mappingDraft?.matrixMap).length} sub="coloane / matrice" Icon={Layers} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
@@ -2438,6 +2605,32 @@ function DataLearningCenter({ currentUser }) {
               </div>
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(f.layoutProfile?.reasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.layoutProfile.reasons.map((r) => <span key={r}>{r}</span>)}</div>}
+              {f.mappingDraft && (
+                <div className="dlcmapping">
+                  <div className="dlcmaphead">
+                    <div><b>Column & Matrix Mapping Trainer</b><span>Confirmă ce reprezintă fiecare coloană sau zonă de matrice înainte de salvarea template-ului.</span></div>
+                    <Badge tone={f.mappingConfidence >= 80 ? "g" : "y"}>{f.mappingConfidence || f.mappingDraft.confidence || 0}% mapping</Badge>
+                  </div>
+                  <div className="dlcmapgrid">
+                    {LEARNING_COLUMN_MAP_FIELDS.map(([field, label]) => (
+                      <label className="dlcmapfield" key={field}>
+                        <span>{label}</span>
+                        <select value={f.mappingDraft?.columnMap?.[field] || ""} onChange={(e) => updateColumnMapping(f.id, field, e.target.value)}>
+                          <option value="">—</option>
+                          {(f.mappingDraft?.columnCandidates || []).map((c) => <option key={field + c.index + c.label} value={c.label}>C{c.index} · {c.label}{c.role === field ? " · recomandat" : ""}</option>)}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="dlcmatrix">
+                    <label><span>Date source</span><select value={f.mappingDraft?.matrixMap?.dateSource || "row"} onChange={(e) => updateMatrixMapping(f.id, "dateSource", e.target.value)}><option value="row">data pe rând</option><option value="sheet_name">data/luna din sheet</option><option value="metadata_cell">data din metadate</option><option value="column">coloane dată/oră</option><option value="timestamp">timestamp direct</option></select></label>
+                    <label><span>Value kind</span><select value={f.mappingDraft?.matrixMap?.valueKind || "consumptionKwh"} onChange={(e) => updateMatrixMapping(f.id, "valueKind", e.target.value)}>{LEARNING_MATRIX_VALUE_FIELDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+                    <label><span>Interval header row</span><input value={f.mappingDraft?.matrixMap?.intervalHeadersRow || ""} onChange={(e) => updateMatrixMapping(f.id, "intervalHeadersRow", e.target.value)} placeholder="ex. 5" /></label>
+                    <label><span>Day/date column</span><input value={f.mappingDraft?.matrixMap?.dayColumn || ""} onChange={(e) => updateMatrixMapping(f.id, "dayColumn", e.target.value)} placeholder="ex. 1" /></label>
+                    <label><span>Value area</span><input value={f.mappingDraft?.matrixMap?.valueArea || ""} onChange={(e) => updateMatrixMapping(f.id, "valueArea", e.target.value)} placeholder="ex. R6:C2..R36:C97" /></label>
+                  </div>
+                </div>
+              )}
               {(f.sheetProfiles || []).length > 0 && (
                 <div className="dlcsheets">
                   {(f.sheetProfiles || []).slice(0, 12).map((s) => (
@@ -2461,7 +2654,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.33: File Type Detection Engine separă IBD/consum, producție, PVGIS, invertor, import/export, full balance și EMS/SCADA, păstrând detectarea workbook/sheet/layout din v4.31–v4.32.</div>
+      <div className="hint"><Cpu size={13} /> v4.34: Column & Matrix Mapping Trainer propune și permite corectarea mapării pentru timestamp, dată, oră, consum, producție, import/export, plus matrici zi × interval.</div>
     </Card>
   );
 }
@@ -3167,9 +3360,11 @@ const CSS = `
 .dlclayout b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlclayout span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .layoutreasons{grid-column:1/-1;margin-top:-2px}
+.dlcmapping{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
+.dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}

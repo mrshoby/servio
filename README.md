@@ -1,5 +1,5 @@
-# SERVIO v4.33
+# SERVIO v4.34
 
-Build: `servio-grid-map-v4.33-file-type-detection-engine`
+Build: `servio-grid-map-v4.34-column-matrix-mapping-trainer`
 
-Data Learning Center admin-only extins cu File Type Detection Engine: IBD/consum, contor, PVGIS, invertor, EMS/SCADA, consum + producție, import/export și balanță completă. Păstrează workbook/sheet detection v4.31 și layout detection v4.32.
+Data Learning Center continuă roadmapul cu Column & Matrix Mapping Trainer: adminul poate confirma maparea pentru timestamp, dată, oră, consum, producție, import/export, putere/energie și matrici zi × interval.
