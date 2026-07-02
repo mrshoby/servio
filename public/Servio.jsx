@@ -1893,6 +1893,20 @@ const LEARNING_KIND_LABELS = {
   inverter: "Invertor",
   unknown: "Necunoscut"
 };
+const LEARNING_FILE_TYPE_LABELS = {
+  ibd: "IBD / curbă consum",
+  meter: "Contor / meter export",
+  pvgis: "PVGIS estimat",
+  inverter: "Invertor PV",
+  ems_scada: "EMS / SCADA",
+  combined_file: "Consum + producție",
+  import_export_file: "Import / export",
+  full_balance_file: "Balanță completă",
+  generic_consumption: "Consum generic",
+  generic_production: "Producție generică",
+  manual: "Manual / generic",
+  unknown: "Necunoscut"
+};
 const SHEET_MODE_LABELS = {
   single_sheet: "Un singur sheet",
   monthly_sheets: "Sheeturi lunare",
@@ -1983,17 +1997,54 @@ function detectLearningKind(fileName, raw) {
   if (hasConsum) return "consumption";
   return "unknown";
 }
+function detectLearningFileTypeProfile(fileName, raw, layoutProfile = {}, workbookInfo = {}) {
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 18000)}`.toLowerCase();
+  const reasons = [];
+  let fileType = "unknown";
+  let score = 38;
+  const has = (rx) => rx.test(s);
+  const kind = detectLearningKind(fileName, raw);
+  const vendor = detectLearningVendor(fileName, raw);
+  const layout = layoutProfile?.orientation || "unknown";
+  const sheetMode = workbookInfo?.sheetMode || "unknown";
+  const hasConsum = has(/(consum|consumption|load|energie activa|energie activă|absor[bțt]it|curba de sarcin|curbă de sarcin|kwh\s*consum|demand)/i);
+  const hasProd = has(/(productie|producție|production|generation|yield|pv\s*production|energy generated|energie produs|solar)/i);
+  const hasImport = has(/(import|grid import|energie importat|energie primită|energie primita|from grid|grid in)/i);
+  const hasExport = has(/(export|grid export|feed.?in|injec|energie livrat|energie injectat|to grid|grid out)/i);
+  if (has(/ibd|curba de sarcin|curbă de sarcin|profil de consum|profil consum|distribuitor|deer|delgaz|pod|loc de consum/i)) { fileType = "ibd"; score += 25; reasons.push("indicatori IBD / curbă de consum detectați"); }
+  if (has(/contor|meter|smart meter|index|obis|p\+|p-|a\+|a-/i) && fileType === "unknown") { fileType = "meter"; score += 22; reasons.push("indicatori contor / meter export detectați"); }
+  if (has(/pvgis|photovoltaic geographical|pvcalc|global irradiation|solar radiation|estimated pv/i)) { fileType = "pvgis"; score += 30; reasons.push("indicatori PVGIS detectați"); }
+  if (has(/fusionsolar|huawei|solis|fronius|sma|solaredge|growatt|victron|inverter|invertor|yield|energy generated/i) && kind === "production") { fileType = "inverter"; score += 26; reasons.push("indicatori invertor / producție PV detectați"); }
+  if (has(/ems|scada|modbus|opc\s*ua|telemetry|telemetrie|load profile export/i)) { fileType = "ems_scada"; score += 26; reasons.push("indicatori EMS / SCADA detectați"); }
+  if (kind === "full_energy_balance") { fileType = "full_balance_file"; score += 32; reasons.push("consum + producție + import + export detectate"); }
+  else if (kind === "combined") { fileType = "combined_file"; score += 28; reasons.push("consum și producție în același fișier"); }
+  else if (kind === "import_export") { fileType = "import_export_file"; score += 28; reasons.push("coloane import/export detectate"); }
+  else if (kind === "consumption" && fileType === "unknown") { fileType = "generic_consumption"; score += 18; reasons.push("fișier de consum generic detectat"); }
+  else if (kind === "production" && fileType === "unknown") { fileType = "generic_production"; score += 18; reasons.push("fișier de producție generic detectat"); }
+  if (hasConsum) { score += 5; reasons.push("semnale consum"); }
+  if (hasProd) { score += 5; reasons.push("semnale producție"); }
+  if (hasImport || hasExport) { score += 5; reasons.push("semnale import/export"); }
+  if (vendor && vendor !== "Generic") { score += 7; reasons.push(`vendor ${vendor}`); }
+  if (layout !== "unknown") { score += 5; reasons.push(`layout ${LAYOUT_LABELS[layout] || layout}`); }
+  if (sheetMode !== "unknown") { score += 4; reasons.push(`${SHEET_MODE_LABELS[sheetMode] || sheetMode}`); }
+  if (fileType === "unknown" && kind !== "unknown") fileType = kind === "production" ? "generic_production" : kind === "consumption" ? "generic_consumption" : "manual";
+  const confidence = Math.max(35, Math.min(99, score));
+  return { fileType, confidence, reasons: Array.from(new Set(reasons)).slice(0, 8), dataSignals: { hasConsum, hasProd, hasImport, hasExport }, kind, vendor };
+}
 function detectLearningVendor(fileName, raw) {
-  const s = `${fileName || ""} ${String(raw || "").slice(0, 6000)}`.toLowerCase();
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 9000)}`.toLowerCase();
   const vendors = [
-    ["DEER", /deer|distributie energie electrica romania|distribuție energie electrică românia/],
-    ["Delgaz", /delgaz/],
-    ["PVGIS", /pvgis|photovoltaic geographical/],
-    ["FusionSolar", /fusionsolar|huawei/],
-    ["Solis", /solis/],
-    ["Fronius", /fronius/],
-    ["SMA", /\bsma\b/],
-    ["SolarEdge", /solaredge/],
+    ["DEER", /deer|distributie energie electrica romania|distribuție energie electrică românia|transilvania nord|transilvania sud|muntenia nord/],
+    ["Delgaz", /delgaz|e\.on\s+energie|eon\s+energie/],
+    ["PVGIS", /pvgis|photovoltaic geographical|pvcalc|radiation database/],
+    ["FusionSolar", /fusionsolar|huawei|sun2000|smartlogger/],
+    ["Solis", /solis|ginlong/],
+    ["Fronius", /fronius|solar\.web|solarweb/],
+    ["SMA", /sma|sunny portal|sunnyportal/],
+    ["SolarEdge", /solaredge|solar edge/],
+    ["Growatt", /growatt/],
+    ["Victron", /victron|vrm portal|cerbo/],
+    ["EMS/SCADA", /ems|scada|modbus|opc\s*ua|telemetry|telemetrie/],
     ["Generic", /.*/]
   ];
   return (vendors.find(([, rx]) => rx.test(s)) || vendors[vendors.length - 1])[0];
@@ -2273,8 +2324,12 @@ function buildTrainingDetection(file, workbookInfo) {
     fileType,
     sizeKb: Math.round((file?.size || 0) / 1024),
     dataKind: kind,
+    detectedFileType: fileTypeProfile.fileType,
+    fileTypeConfidence,
+    fileTypeReasons: fileTypeProfile.reasons,
+    dataSignals: fileTypeProfile.dataSignals,
     sourceVendor: vendor,
-    sourceType: kind === "pvgis" ? "pvgis" : kind === "production" || kind === "inverter" ? "inverter" : kind === "consumption" ? "ibd" : "unknown",
+    sourceType: fileTypeProfile.fileType,
     granularity,
     sheetMode,
     layout,
@@ -2291,9 +2346,11 @@ function buildTrainingDetection(file, workbookInfo) {
     sheetProfiles: workbookInfo?.sheetProfiles || [],
     reasons: [
       `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din workbook/sheeturi`,
+      `${LEARNING_FILE_TYPE_LABELS[fileTypeProfile.fileType] || fileTypeProfile.fileType} detectat`,
       `${granularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${granularity}`}`,
       `${SHEET_MODE_LABELS[sheetMode] || sheetMode}`,
       `${LAYOUT_LABELS[layout] || layout}`,
+      ...(fileTypeProfile.reasons || []),
       ...(layoutProfile.reasons || []),
       ...(workbookInfo?.reasons || [])
     ].filter(Boolean).slice(0, 8),
@@ -2303,9 +2360,9 @@ function buildTrainingDetection(file, workbookInfo) {
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v432";
+  const storageKey = "servio.dataLearning.v433";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
@@ -2331,8 +2388,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Layout Detection Engine</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează sheeturi, header row, data start row, orientarea datelor, tabele multiple, metadate și matrice zi × interval.</div>
+          <div className="setname">File Type Detection Engine</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează categoria energetică: IBD/consum, producție, PVGIS, invertor, import/export, full balance, EMS/SCADA, plus workbook/sheet/layout.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2344,7 +2401,7 @@ function DataLearningCenter({ currentUser }) {
       <div className="kpirow dlckpis">
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
-        <Kpi label="Layouts" value={files.filter((f) => f.layout && f.layout !== "unknown").length} sub="orientări detectate" Icon={Layers} tone="accent" />
+        <Kpi label="File types" value={files.filter((f) => f.detectedFileType && f.detectedFileType !== "unknown").length} sub="tipuri energetice" Icon={Layers} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
@@ -2362,7 +2419,7 @@ function DataLearningCenter({ currentUser }) {
                 <div className="dlcicon"><FileSpreadsheet size={16} /></div>
                 <div className="dlcmeta">
                   <div className="dlctitle">{f.fileName}</div>
-                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {LAYOUT_LABELS[f.layout] || f.layout}</div>
+                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType || "Tip necunoscut"} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {LAYOUT_LABELS[f.layout] || f.layout}</div>
                   <div className="dlcreasons">{(f.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
                 </div>
               </div>
@@ -2372,12 +2429,14 @@ function DataLearningCenter({ currentUser }) {
                 <span className="dim small">{(f.detectedSheets || []).length} active / {(f.ignoredSheets || []).length} ignored</span>
               </div>
               <div className="dlclayout">
+                <div><b>{LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType || "necunoscut"}</b><span>Tip fișier energetic</span></div>
                 <div><b>{LAYOUT_LABELS[f.layout] || f.layout}</b><span>Layout detectat</span></div>
                 <div><b>Header row {f.headerRow || "—"}</b><span>Data start row {f.dataStartRow || "—"}</span></div>
                 <div><b>{DATE_SOURCE_LABELS[f.dateSource] || f.dateSource || "necunoscut"}</b><span>Sursă dată/timestamp</span></div>
                 <div><b>{(f.tableRegions || []).length}</b><span>regiuni tabel</span></div>
                 <div><b>{(f.metadataRegions || []).length}</b><span>regiuni metadate</span></div>
               </div>
+              {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(f.layoutProfile?.reasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.layoutProfile.reasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(f.sheetProfiles || []).length > 0 && (
                 <div className="dlcsheets">
@@ -2402,7 +2461,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.32: layout detection engine detectează tabel vertical, matrice zi × interval, matrice interval × zi, metadate + tabel, tabele multiple, header row, data start row, regiuni de tabel și regiuni de metadate.</div>
+      <div className="hint"><Cpu size={13} /> v4.33: File Type Detection Engine separă IBD/consum, producție, PVGIS, invertor, import/export, full balance și EMS/SCADA, păstrând detectarea workbook/sheet/layout din v4.31–v4.32.</div>
     </Card>
   );
 }

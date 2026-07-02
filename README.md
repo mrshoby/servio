@@ -1,5 +1,5 @@
-# SERVIO v4.32
+# SERVIO v4.33
 
-Build: `servio-grid-map-v4.32-layout-detection-engine`
+Build: `servio-grid-map-v4.33-file-type-detection-engine`
 
-Data Learning Center admin-only extins cu Layout Detection Engine: detectare tabel vertical, matrice zi × interval, matrice interval × zi, metadate + tabel, tabele multiple, header row, data start row și regiuni de tabel/metadate.
+Data Learning Center admin-only extins cu File Type Detection Engine: IBD/consum, contor, PVGIS, invertor, EMS/SCADA, consum + producție, import/export și balanță completă. Păstrează workbook/sheet detection v4.31 și layout detection v4.32.
