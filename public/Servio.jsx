@@ -173,7 +173,7 @@ function parseSeries(json) {
 }
 function useMarketData(base, token, dayAheadSource = "opcom") {
   const sourceCfg = DAY_AHEAD_SOURCES[dayAheadSource] || DAY_AHEAD_SOURCES.opcom;
-  const demo = { today: TODAY, tomorrow: TOMORROW, todayH: TODAY_H, tomorrowH: TOMORROW_H, mode: "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode: "fallback-local", error: null, loading: false, lastSync: null };
+  const demo = { today: TODAY, tomorrow: TOMORROW, todayH: TODAY_H, tomorrowH: TOMORROW_H, mode: "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceMode: "fallback-local", sourceModeToday: "fallback-local", sourceModeTomorrow: "fallback-local", warningToday: null, warningTomorrow: null, warning: null, error: null, loading: false, lastSync: null };
   const [state, setState] = useState(demo);
   useEffect(() => {
     let alive = true;
@@ -189,11 +189,16 @@ function useMarketData(base, token, dayAheadSource = "opcom") {
         ]);
         const today = parseSeries(t) || RT;
         const tomorrow = parseSeries(tm) || RTM;
-        const sourceMode = (t && t.sourceMode) || (tm && tm.sourceMode) || "fallback-local";
+        const sourceModeToday = (t && t.sourceMode) || "fallback-local";
+        const sourceModeTomorrow = (tm && tm.sourceMode) || "fallback-local";
+        const sourceMode = sourceModeToday;
         const sourceName = (t && (t.sourceLabel || t.source)) || (tm && (tm.sourceLabel || tm.source)) || sourceCfg.label;
-        const confirmed = ["external-live", "external-live-partial-normalized", "external-cache-github", "github-actions-ingest"].includes(sourceMode);
+        const confirmedModes = ["external-live", "external-live-partial-normalized", "external-cache-github", "external-cache-github-stale", "github-actions-ingest"];
+        const confirmed = confirmedModes.includes(sourceModeToday) || confirmedModes.includes(sourceModeTomorrow);
+        const warningToday = (t && t.warning) || null;
+        const warningTomorrow = (tm && tm.warning) || null;
         if (!alive) return;
-        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceName, sourceMode, warning: (t && t.warning) || (tm && tm.warning) || null, error: null, loading: false, requestId, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
+        setState({ today, tomorrow, todayH: hourly(today), tomorrowH: hourly(tomorrow), mode: confirmed ? "live" : "demo", source: dayAheadSource, sourceLabel: sourceCfg.label, sourceName, sourceMode, sourceModeToday, sourceModeTomorrow, warningToday, warningTomorrow, warning: null, error: null, loading: false, requestId, lastSync: (t && t.updatedAtUtc) || (t && t.generatedAtUtc) || (tm && tm.updatedAtUtc) || (tm && tm.generatedAtUtc) || new Date().toISOString() });
       } catch (e) {
         if (!alive) return;
         setState({ ...demo, mode: "demo", sourceMode: "error-fallback", error: String(e.message || e), loading: false });
@@ -326,7 +331,9 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
   const [day, setDay] = useState("today");
   const curve = day === "today" ? md.today : md.tomorrow;
   const hrs = day === "today" ? md.todayH : md.tomorrowH;
-  const daySourceKey = `${md.source || dayAheadSource}-${md.sourceMode || ""}-${md.requestId || md.lastSync || ""}-${day}`;
+  const activeWarning = day === "today" ? (md.warningToday || null) : (md.warningTomorrow || null);
+  const activeSourceMode = day === "today" ? (md.sourceModeToday || md.sourceMode) : (md.sourceModeTomorrow || md.sourceMode);
+  const daySourceKey = `${md.source || dayAheadSource}-${activeSourceMode || ""}-${md.requestId || md.lastSync || ""}-${day}`;
   const avg = Math.round(curve.reduce((a, b) => a + b.price, 0) / Math.max(1, curve.length));
   const peak = Math.max(...curve.map((p) => p.price));
   const trough = Math.min(...curve.map((p) => p.price));
@@ -348,10 +355,10 @@ function DayAhead({ md, dayAheadSource, setDayAheadSource }) {
         <button className="btn ghost"><Download size={14} /> Export CSV</button>
         <button className="btn"><Plus size={14} /> Ofertă D+1</button>
       </div>
-      {md.warning && <div className="hint" key={`${daySourceKey}-warning`} style={{ marginTop: -2 }}><AlertTriangle size={13} /> {md.warning}</div>}
+      {activeWarning && <div className="hint" key={`${daySourceKey}-warning`} style={{ marginTop: -2 }}><AlertTriangle size={13} /> {activeWarning}</div>}
       <div className="kpirow" key={daySourceKey}>
         <Kpi label="Medie" value={fmtLei(avg)} sub={`${md.sourceLabel || DAY_AHEAD_SOURCES[dayAheadSource]?.label || "PZU"} · ${day === "today" ? "astăzi" : "mâine"}`} Icon={Activity} />
-        <Kpi label="Vârf" value={fmtLei(peak)} sub={`${peakIv.label} · ${md.sourceMode || "source"}`} Icon={TrendingUp} tone="red" />
+        <Kpi label="Vârf" value={fmtLei(peak)} sub={`${peakIv.label} · ${activeSourceMode || "source"}`} Icon={TrendingUp} tone="red" />
         <Kpi label="Minim" value={fmtLei(trough)} sub={`${lowIv.label} · ${md.loading ? "actualizare..." : "actualizat"}`} Icon={TrendingDown} tone="green" />
         <Kpi label="Spread" value={fmtLei(spread)} sub={md.sourceLabel || "oportunitate arbitraj"} Icon={Layers} tone="accent" />
       </div>
