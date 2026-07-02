@@ -1971,6 +1971,31 @@ const LEARNING_MATRIX_VALUE_FIELDS = [
   ["powerKw", "Putere kW"],
   ["energyKwh", "Energie kWh"]
 ];
+const LEARNING_METADATA_MAP_FIELDS = [
+  ["clientNameCell", "Client / beneficiar"],
+  ["siteNameCell", "Locație / site"],
+  ["podCell", "POD / loc consum"],
+  ["meterCell", "Contor / meter"],
+  ["periodCell", "Perioadă"],
+  ["unitCell", "Unitate"],
+  ["distributorCell", "Distribuitor"],
+  ["installedPowerCell", "Putere instalată"],
+  ["reportDateCell", "Data raportului"],
+  ["sourceFileTypeCell", "Tip fișier"],
+];
+const LEARNING_METADATA_ROLE_LABELS = {
+  clientNameCell: "Client",
+  siteNameCell: "Locație",
+  podCell: "POD",
+  meterCell: "Contor",
+  periodCell: "Perioadă",
+  unitCell: "Unitate",
+  distributorCell: "Distribuitor",
+  installedPowerCell: "Putere instalată",
+  reportDateCell: "Data raportului",
+  sourceFileTypeCell: "Tip fișier",
+  ignore: "Ignorat"
+};
 const MONTH_MARKERS = [
   ["01", /(ianuarie|\bian\b|january|\bjan\b|202[0-9][-_. ]?01|01[-_. ]?202[0-9])/i],
   ["02", /(februarie|\bfeb\b|february|202[0-9][-_. ]?02|02[-_. ]?202[0-9])/i],
@@ -2142,7 +2167,7 @@ function findLearningTableRegions(rows) {
   return regions;
 }
 function findLearningMetadataRegions(rows, headerRow) {
-  const markers = /(client|beneficiar|pod|contor|perioad|perioadă|loca|locație|unitate|distribuitor|putere|pvgis|invertor|meter|site)/i;
+  const markers = /(client|beneficiar|pod|contor|meter|perioad|perioadă|loca|locație|site|unitate|distribuitor|operator|putere|kwp|pvgis|invertor|inverter|raport|report|adresa|adresă|companie|company)/i;
   const meta = [];
   let start = null;
   rows.slice(0, Math.max(0, headerRow - 1)).forEach((r, idx) => {
@@ -2297,12 +2322,94 @@ function buildLearningMappingDraft(fileName, raw, layoutProfile = {}, fileTypePr
     updatedAt: new Date().toISOString()
   };
 }
+function inferLearningMetadataRole(label, value = "") {
+  const t = normalizeLearningToken(`${label || ""} ${value || ""}`);
+  if (!t) return { role: "ignore", confidence: 0 };
+  const tests = [
+    ["clientNameCell", 92, /\b(client|beneficiar|customer|companie|company|denumire client|nume beneficiar)\b/],
+    ["siteNameCell", 88, /\b(locatie|locație|site|punct de lucru|loc consum|adresa|adresă|address|facility)\b/],
+    ["podCell", 90, /\b(pod|cod loc consum|loc de consum|ean|pdl)\b/],
+    ["meterCell", 88, /\b(contor|meter|serie contor|serial|meter id|obis)\b/],
+    ["periodCell", 90, /\b(perioada|perioadă|interval raportare|from|to|data inceput|data sfarsit|date range)\b/],
+    ["unitCell", 86, /\b(unitate|unit|uom|kwh|mwh|kw|mw|wh)\b/],
+    ["distributorCell", 84, /\b(distribuitor|operator distributie|operator distribuție|deer|delgaz|eon|e\.on|distribution operator)\b/],
+    ["installedPowerCell", 84, /\b(putere instalata|putere instalată|installed power|kwp|kva|kw ac|kw dc|capacity)\b/],
+    ["reportDateCell", 78, /\b(data raport|data generare|report date|generated at|emis la)\b/],
+    ["sourceFileTypeCell", 74, /\b(tip fisier|tip fișier|raport|report type|pvgis|ibd|curba sarcina|curbă sarcină)\b/],
+  ];
+  const found = tests.find(([, , rx]) => rx.test(t));
+  return found ? { role: found[0], confidence: found[1] } : { role: "ignore", confidence: 25 };
+}
+function splitLearningMetadataPair(row) {
+  const cells = splitLearningCells(row);
+  if (cells.length >= 2) return { label: cells[0], value: cells.slice(1).join(" ").trim() };
+  const m = String(row || "").match(/^\s*([^:=;\t]{2,60})\s*[:=]\s*(.+?)\s*$/);
+  if (m) return { label: m[1].trim(), value: m[2].trim() };
+  return { label: String(row || "").trim(), value: "" };
+}
+function buildLearningMetadataCandidates(raw, layoutProfile = {}, workbookInfo = {}) {
+  const rows = splitLearningRows(raw);
+  const headerRow = Math.max(1, layoutProfile?.headerRow || detectHeaderRow(raw).row || 1);
+  const metadataRegions = layoutProfile?.metadataRegions || findLearningMetadataRegions(rows, headerRow);
+  const regionRows = [];
+  if (metadataRegions.length) {
+    metadataRegions.forEach((r) => {
+      for (let i = Math.max(1, r.startRow); i <= Math.min(rows.length, r.endRow || r.startRow + 8); i++) regionRows.push({ row: i, text: rows[i - 1] || "" });
+    });
+  } else {
+    rows.slice(0, Math.min(rows.length, Math.max(12, headerRow - 1))).forEach((text, idx) => regionRows.push({ row: idx + 1, text }));
+  }
+  const extraSheetRows = (workbookInfo?.sheetProfiles || []).flatMap((sheet) => (sheet.previewRows || []).slice(0, 3).map((text, idx) => ({ row: idx + 1, text, sheet: sheet.name }))).slice(0, 20);
+  const candidates = [...regionRows, ...extraSheetRows].map((entry) => {
+    const pair = splitLearningMetadataPair(entry.text);
+    const inferred = inferLearningMetadataRole(pair.label, pair.value);
+    const label = pair.label || entry.text;
+    return {
+      id: `${entry.sheet || "SHEET"}:R${entry.row}:${label}`.slice(0, 120),
+      sheet: entry.sheet || "active",
+      row: entry.row,
+      label,
+      value: pair.value,
+      role: inferred.role,
+      confidence: inferred.confidence,
+      display: `${entry.sheet ? entry.sheet + " · " : ""}R${entry.row} · ${label}${pair.value ? " = " + pair.value : ""}`
+    };
+  }).filter((c) => c.label && c.role !== "ignore").slice(0, 40);
+  return { metadataRegions, candidates };
+}
+function buildDefaultLearningMetadataMap(candidates = []) {
+  const map = {};
+  LEARNING_METADATA_MAP_FIELDS.forEach(([key]) => {
+    const hit = candidates.find((c) => c.role === key && !Object.values(map).includes(c.id));
+    map[key] = hit ? hit.id : "";
+  });
+  return map;
+}
+function buildLearningMetadataDraft(fileName, raw, layoutProfile = {}, workbookInfo = {}) {
+  const meta = buildLearningMetadataCandidates(raw, layoutProfile, workbookInfo);
+  const metadataMap = buildDefaultLearningMetadataMap(meta.candidates);
+  const mappedCount = Object.values(metadataMap).filter(Boolean).length;
+  const confidence = Math.min(98, Math.max(30, 42 + mappedCount * 7 + Math.min(18, meta.candidates.length * 3) + Math.min(12, (meta.metadataRegions || []).length * 4)));
+  const extracted = {};
+  Object.entries(metadataMap).forEach(([key, candidateId]) => {
+    const hit = meta.candidates.find((c) => c.id === candidateId);
+    if (hit) extracted[key] = hit.value || hit.label;
+  });
+  return {
+    metadataCandidates: meta.candidates,
+    metadataMap,
+    metadataRegions: meta.metadataRegions,
+    extractedMetadata: extracted,
+    confidence,
+    updatedAt: new Date().toISOString()
+  };
+}
 function ensureLearningMapping(file) {
-  if (file?.mappingDraft?.columnMap) return file;
   const raw = (file?.previewRows || []).join("\n");
   const fileTypeProfile = { kind: file?.dataKind, fileType: file?.detectedFileType };
-  const mappingDraft = buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
-  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence };
+  const mappingDraft = file?.mappingDraft?.columnMap ? file.mappingDraft : buildLearningMappingDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, fileTypeProfile);
+  const metadataDraft = file?.metadataDraft?.metadataMap ? file.metadataDraft : buildLearningMetadataDraft(file?.fileName || "training-file", raw, file?.layoutProfile || {}, { sheetProfiles: file?.sheetProfiles || [] });
+  return { ...file, mappingDraft, columnMap: mappingDraft.columnMap, matrixMap: mappingDraft.matrixMap, mappingConfidence: mappingDraft.confidence, metadataDraft, metadataMap: metadataDraft.metadataMap, metadataConfidence: metadataDraft.confidence, extractedMetadata: metadataDraft.extractedMetadata };
 }
 
 function detectLearningLayout(raw) {
@@ -2441,6 +2548,7 @@ function buildTrainingDetection(file, workbookInfo) {
   const fileTypeProfile = detectLearningFileTypeProfile(fileName, raw, layoutProfile, workbookInfo);
   const fileTypeConfidence = fileTypeProfile.confidence;
   const mappingDraft = buildLearningMappingDraft(fileName, raw, layoutProfile, fileTypeProfile);
+  const metadataDraft = buildLearningMetadataDraft(fileName, raw, layoutProfile, workbookInfo);
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -2459,6 +2567,10 @@ function buildTrainingDetection(file, workbookInfo) {
     columnMap: mappingDraft.columnMap,
     matrixMap: mappingDraft.matrixMap,
     mappingConfidence: mappingDraft.confidence,
+    metadataDraft,
+    metadataMap: metadataDraft.metadataMap,
+    metadataConfidence: metadataDraft.confidence,
+    extractedMetadata: metadataDraft.extractedMetadata,
     sourceVendor: vendor,
     sourceType: fileTypeProfile.fileType,
     granularity,
@@ -2491,9 +2603,9 @@ function buildTrainingDetection(file, workbookInfo) {
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v434";
+  const storageKey = "servio.dataLearning.v435";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
@@ -2528,6 +2640,8 @@ function DataLearningCenter({ currentUser }) {
         layoutPattern: { orientation: f.layout, headerRow: f.headerRow, dataStartRow: f.dataStartRow, tableRegions: f.tableRegions, metadataRegions: f.metadataRegions },
         columnMap: f.mappingDraft?.columnMap || f.columnMap || {},
         matrixMap: f.mappingDraft?.matrixMap || f.matrixMap || {},
+        metadataMap: f.metadataDraft?.metadataMap || f.metadataMap || {},
+        metadataPatterns: { metadataRegions: f.metadataDraft?.metadataRegions || f.metadataRegions || [], extractedMetadata: f.metadataDraft?.extractedMetadata || f.extractedMetadata || {} },
         parsingRules: { granularity: f.granularity, timezone: "Europe/Bucharest" },
         status: "active",
         createdBy: currentUser?.email || currentUser?.name || "admin",
@@ -2547,6 +2661,23 @@ function DataLearningCenter({ currentUser }) {
     matrixMap: { ...(f.matrixMap || {}), [field]: value },
     status: f.status === "template_saved" ? "review" : f.status
   } : f));
+  const updateMetadataMapping = (id, field, value) => setFiles((prev) => prev.map((f) => {
+    if (f.id !== id) return f;
+    const candidates = f.metadataDraft?.metadataCandidates || [];
+    const metadataMap = { ...(f.metadataDraft?.metadataMap || f.metadataMap || {}), [field]: value };
+    const extractedMetadata = {};
+    Object.entries(metadataMap).forEach(([key, candidateId]) => {
+      const hit = candidates.find((c) => c.id === candidateId);
+      if (hit) extractedMetadata[key] = hit.value || hit.label;
+    });
+    return {
+      ...f,
+      metadataDraft: { ...(f.metadataDraft || {}), metadataMap, extractedMetadata, updatedAt: new Date().toISOString() },
+      metadataMap,
+      extractedMetadata,
+      status: f.status === "template_saved" ? "review" : f.status
+    };
+  }));
   const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
   const clearAll = () => setFiles([]);
   const templates = files.filter((f) => f.status === "template_saved");
@@ -2555,8 +2686,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Column & Matrix Mapping Trainer</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout și îți propune maparea coloanelor sau a matricelor zi × interval pentru consum, producție, import și export.</div>
+          <div className="setname">Metadata Extraction Trainer</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări pentru coloane/matrici și învață metadatele: client, locație, POD, contor, perioadă, unitate, distribuitor și putere instalată.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2569,6 +2700,7 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
         <Kpi label="Mappings" value={files.filter((f) => f.mappingDraft?.columnMap || f.mappingDraft?.matrixMap).length} sub="coloane / matrice" Icon={Layers} tone="accent" />
+        <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
@@ -2631,6 +2763,29 @@ function DataLearningCenter({ currentUser }) {
                   </div>
                 </div>
               )}
+              {f.metadataDraft && (
+                <div className="dlcmetadata">
+                  <div className="dlcmaphead">
+                    <div><b>Metadata Extraction Trainer</b><span>Confirmă celulele de metadate. Acestea ajută interpretarea fișierului, dar nu sunt tratate ca serie de timp.</span></div>
+                    <Badge tone={(f.metadataConfidence || f.metadataDraft.confidence || 0) >= 80 ? "g" : "y"}>{f.metadataConfidence || f.metadataDraft.confidence || 0}% metadata</Badge>
+                  </div>
+                  <div className="dlcmetagrid">
+                    {LEARNING_METADATA_MAP_FIELDS.map(([field, label]) => (
+                      <label className="dlcmapfield" key={field}>
+                        <span>{label}</span>
+                        <select value={f.metadataDraft?.metadataMap?.[field] || ""} onChange={(e) => updateMetadataMapping(f.id, field, e.target.value)}>
+                          <option value="">—</option>
+                          {(f.metadataDraft?.metadataCandidates || []).map((c) => <option key={field + c.id} value={c.id}>{c.display}{c.role === field ? " · recomandat" : ""}</option>)}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="dlcmetapills">
+                    {Object.entries(f.metadataDraft?.extractedMetadata || f.extractedMetadata || {}).slice(0, 8).map(([k, v]) => <span key={k}>{LEARNING_METADATA_ROLE_LABELS[k] || k}: {String(v).slice(0, 64)}</span>)}
+                    {(!Object.keys(f.metadataDraft?.extractedMetadata || f.extractedMetadata || {}).length) && <span>Nu există metadate confirmate încă.</span>}
+                  </div>
+                </div>
+              )}
               {(f.sheetProfiles || []).length > 0 && (
                 <div className="dlcsheets">
                   {(f.sheetProfiles || []).slice(0, 12).map((s) => (
@@ -2654,7 +2809,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.34: Column & Matrix Mapping Trainer propune și permite corectarea mapării pentru timestamp, dată, oră, consum, producție, import/export, plus matrici zi × interval.</div>
+      <div className="hint"><Cpu size={13} /> v4.35: Metadata Extraction Trainer învață celulele de metadate: client, locație, POD, contor, perioadă, unitate, distribuitor și putere instalată, fără să le confunde cu datele energetice.</div>
     </Card>
   );
 }
@@ -3360,11 +3515,11 @@ const CSS = `
 .dlclayout b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlclayout span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .layoutreasons{grid-column:1/-1;margin-top:-2px}
-.dlcmapping{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
-.dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}
+.dlcmapping,.dlcmetadata{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
+.dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
