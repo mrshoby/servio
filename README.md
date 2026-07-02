@@ -1,5 +1,5 @@
-# SERVIO v4.36 — Template Registry
+# SERVIO v4.38 — Granularity Normalization
 
-Build: `servio-grid-map-v4.36-template-registry`
+Build: `servio-grid-map-v4.38-granularity-normalization`
 
-Continuă roadmapul Energy Data Learning OS peste v4.35. Data Learning Center are acum Template Registry admin-only pentru formatele învățate: listă, filtre, editare rapidă, duplicate, enable/disable, delete și test parser local.
+Adaugă normalizare 15m / 60m în Data Learning Center, peste Smart Parser Runtime v4.37.

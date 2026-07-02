@@ -1944,6 +1944,28 @@ const DATE_SOURCE_LABELS = {
   timestamp: "timestamp direct",
   unknown: "necunoscut"
 };
+const GRANULARITY_PRECISION_LABELS = {
+  high: "precizie ridicată",
+  medium: "precizie medie",
+  estimated: "estimare",
+  unknown: "precizie necunoscută"
+};
+const GRANULARITY_NORMALIZATION_LABELS = {
+  keep_15m: "15 min păstrat",
+  keep_60m: "60 min păstrat",
+  expand_60m_to_15m: "60 min → 15 min estimat",
+  aggregate_15m_to_60m: "15 min → 60 min pentru rapoarte",
+  mixed_review: "Mixt · necesită confirmare",
+  unknown_review: "Necunoscut · confirmare admin"
+};
+const UNIT_NORMALIZATION_LABELS = {
+  kWh: "kWh",
+  MWh: "MWh → kWh",
+  Wh: "Wh → kWh",
+  kW: "kW → kWh după durată",
+  MW: "MW → kWh după durată",
+  unknown: "unitate neconfirmată"
+};
 const LEARNING_COLUMN_MAP_FIELDS = [
   ["timestamp", "Timestamp"],
   ["date", "Dată"],
@@ -2109,6 +2131,119 @@ function detectLearningGranularity(raw, fileName) {
   if (hh >= 8 || /(hourly|orar|60\s*min|60m|o\s*oră|o ora)/i.test(s)) return "60m";
   return "unknown";
 }
+function detectLearningTimeStepMinutes(raw, fileName = "") {
+  const rows = splitLearningRows(`${fileName || ""}\n${raw || ""}`).slice(0, 80);
+  const minutes = [];
+  rows.forEach((r) => splitLearningCells(r).forEach((cell) => {
+    const m = String(cell || "").trim().match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+    if (m) minutes.push(Number(m[1]) * 60 + Number(m[2]));
+  }));
+  const unique = Array.from(new Set(minutes)).sort((a, b) => a - b);
+  const diffs = [];
+  for (let i = 1; i < unique.length; i += 1) {
+    const d = unique[i] - unique[i - 1];
+    if (d > 0 && d <= 180) diffs.push(d);
+  }
+  const q15 = diffs.filter((d) => d === 15).length;
+  const h60 = diffs.filter((d) => d === 60).length;
+  if (q15 >= 2) return { minutes: 15, confidence: Math.min(98, 68 + q15 * 6), evidence: `${q15} pași de 15 minute detectați` };
+  if (h60 >= 2) return { minutes: 60, confidence: Math.min(96, 64 + h60 * 6), evidence: `${h60} pași de 60 minute detectați` };
+  const text = `${fileName || ""} ${String(raw || "").slice(0, 12000)}`;
+  if (/(15\s*min|15m|quarter|sfert|00:15|00:30|00:45)/i.test(text)) return { minutes: 15, confidence: 78, evidence: "indicator textual 15 minute" };
+  if (/(hourly|orar|60\s*min|60m|o\s*oră|o ora)/i.test(text)) return { minutes: 60, confidence: 76, evidence: "indicator textual orar / 60 minute" };
+  return { minutes: null, confidence: 35, evidence: "nu există pași temporali suficient de clari" };
+}
+function detectLearningUnitProfile(raw, fileName = "") {
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 16000)}`;
+  const candidates = [
+    ["MWh", /\bmwh\b|megawatt.?hour/i, 1000, "energie"],
+    ["Wh", /\bwh\b|watt.?hour/i, 0.001, "energie"],
+    ["kWh", /\bkwh\b|kilowatt.?hour|energie/i, 1, "energie"],
+    ["MW", /\bmw\b|megawatt(?!.*hour)/i, 1000, "putere"],
+    ["kW", /\bkw\b|kilowatt|putere|power/i, 1, "putere"],
+  ];
+  const hit = candidates.find(([, rx]) => rx.test(s));
+  if (!hit) return { unit: "unknown", unitLabel: UNIT_NORMALIZATION_LABELS.unknown, conversionFactorToKwh: null, energyOrPower: "unknown", confidence: 35, warning: "Unitatea trebuie confirmată manual." };
+  const [unit, , factor, energyOrPower] = hit;
+  const warning = energyOrPower === "putere" ? "Valori de putere: SERVIO convertește în energie după durata intervalului." : "Valori de energie: conversie directă în kWh.";
+  return { unit, unitLabel: UNIT_NORMALIZATION_LABELS[unit] || unit, conversionFactorToKwh: factor, energyOrPower, confidence: 84, warning };
+}
+function buildLearningGranularityNormalization(raw, fileName, detectedGranularity, layoutProfile = {}, workbookInfo = {}) {
+  const step = detectLearningTimeStepMinutes(raw, fileName);
+  const unitProfile = detectLearningUnitProfile(raw, fileName);
+  let sourceGranularity = detectedGranularity || "unknown";
+  if (step.minutes === 15) sourceGranularity = "15m";
+  else if (step.minutes === 60) sourceGranularity = "60m";
+  const sheetGranularities = (workbookInfo?.sheetProfiles || []).map((s) => s.granularity).filter((x) => x && x !== "unknown");
+  const uniqueSheetGranularities = Array.from(new Set(sheetGranularities));
+  if (uniqueSheetGranularities.length > 1) sourceGranularity = "mixed";
+  let normalizedGranularity = sourceGranularity;
+  let normalizationMode = "unknown_review";
+  let precision = "unknown";
+  let canExpandTo15m = false;
+  let canAggregateTo60m = false;
+  let intervalMinutes = step.minutes || null;
+  const warnings = [];
+  const actions = [];
+  const reasons = [];
+  if (sourceGranularity === "15m") {
+    normalizationMode = "keep_15m";
+    normalizedGranularity = "15m";
+    precision = "high";
+    canAggregateTo60m = true;
+    intervalMinutes = 15;
+    actions.push("păstrează seria la 15 minute pentru BESS, peak shaving și PZU");
+    actions.push("poate agrega la 60 minute pentru rapoarte");
+    reasons.push(step.evidence || "granularitate 15 minute detectată");
+  } else if (sourceGranularity === "60m") {
+    normalizationMode = "keep_60m";
+    normalizedGranularity = "60m";
+    precision = "medium";
+    canExpandTo15m = true;
+    intervalMinutes = 60;
+    actions.push("păstrează seria orară pentru analiză consum/producție/contract");
+    actions.push("poate extinde 60 minute → 15 minute doar estimativ");
+    warnings.push("Simulările BESS și peak shaving pe 60 minute sunt de fezabilitate, nu control fin.");
+    reasons.push(step.evidence || "granularitate 60 minute detectată");
+  } else if (sourceGranularity === "mixed") {
+    normalizationMode = "mixed_review";
+    normalizedGranularity = "mixed";
+    precision = "estimated";
+    canExpandTo15m = true;
+    canAggregateTo60m = true;
+    warnings.push("Workbookul pare să conțină granularități diferite. Adminul trebuie să confirme regula de normalizare.");
+    reasons.push(`sheeturi cu granularitate mixtă: ${uniqueSheetGranularities.join(", ")}`);
+  } else {
+    normalizationMode = "unknown_review";
+    normalizedGranularity = "unknown";
+    precision = "unknown";
+    warnings.push("Granularitatea nu este sigură. Confirmă manual dacă datele sunt la 15 minute sau 60 minute.");
+    reasons.push(step.evidence || "granularitate neconfirmată");
+  }
+  if (unitProfile.warning) warnings.push(unitProfile.warning);
+  if (layoutProfile?.orientation === "matrix_day_by_interval") reasons.push("layout matrice zi × interval poate fi convertit în timestamp + valoare");
+  if (layoutProfile?.orientation === "vertical_table") reasons.push("layout tabel vertical poate fi normalizat direct");
+  const estimated15mRule = sourceGranularity === "60m" || sourceGranularity === "mixed" ? "împărțire controlată pe 4 intervale sau profil standard, marcat ca estimare" : "nu este necesară";
+  const aggregate60mRule = sourceGranularity === "15m" || sourceGranularity === "mixed" ? "sumă pe 4 intervale de 15 minute" : "nu este necesară";
+  const confidence = Math.max(35, Math.min(98, Math.round((step.confidence || 35) * 0.62 + (unitProfile.confidence || 35) * 0.23 + (layoutProfile?.confidence || 35) * 0.15)));
+  return {
+    sourceGranularity,
+    normalizedGranularity,
+    normalizationMode,
+    precision,
+    intervalMinutes,
+    canExpandTo15m,
+    canAggregateTo60m,
+    estimated15mRule,
+    aggregate60mRule,
+    unitProfile,
+    actions,
+    warnings: Array.from(new Set(warnings)).slice(0, 6),
+    reasons: Array.from(new Set(reasons)).slice(0, 8),
+    confidence
+  };
+}
+
 function monthFromText(value) {
   const s = String(value || "");
   const hit = MONTH_MARKERS.find(([, rx]) => rx.test(s));
@@ -2544,6 +2679,7 @@ function buildTrainingDetection(file, workbookInfo) {
   const granularity = detectLearningGranularity(raw, fileName);
   const sheetMode = detectLearningSheetMode(fileName, raw, workbookInfo);
   const layoutProfile = workbookInfo?.layoutSummary || analyzeLearningLayout(raw, fileName);
+  const normalizationProfile = buildLearningGranularityNormalization(raw, fileName, granularity, layoutProfile, workbookInfo);
   const layout = workbookInfo?.layout && workbookInfo.layout !== "unknown" ? workbookInfo.layout : layoutProfile.orientation;
   const fileTypeProfile = detectLearningFileTypeProfile(fileName, raw, layoutProfile, workbookInfo);
   const fileTypeConfidence = fileTypeProfile.confidence;
@@ -2574,6 +2710,13 @@ function buildTrainingDetection(file, workbookInfo) {
     sourceVendor: vendor,
     sourceType: fileTypeProfile.fileType,
     granularity,
+    granularityProfile: normalizationProfile,
+    granularityPrecision: normalizationProfile.precision,
+    normalizedGranularity: normalizationProfile.normalizedGranularity,
+    normalizationMode: normalizationProfile.normalizationMode,
+    canExpandTo15m: normalizationProfile.canExpandTo15m,
+    canAggregateTo60m: normalizationProfile.canAggregateTo60m,
+    unitProfile: normalizationProfile.unitProfile,
     sheetMode,
     layout,
     layoutProfile,
@@ -2590,7 +2733,8 @@ function buildTrainingDetection(file, workbookInfo) {
     reasons: [
       `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din workbook/sheeturi`,
       `${LEARNING_FILE_TYPE_LABELS[fileTypeProfile.fileType] || fileTypeProfile.fileType} detectat`,
-      `${granularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${granularity}`}`,
+      `${normalizationProfile.sourceGranularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${normalizationProfile.sourceGranularity}`}`,
+      `${GRANULARITY_NORMALIZATION_LABELS[normalizationProfile.normalizationMode] || normalizationProfile.normalizationMode}`,
       `${SHEET_MODE_LABELS[sheetMode] || sheetMode}`,
       `${LAYOUT_LABELS[layout] || layout}`,
       ...(fileTypeProfile.reasons || []),
@@ -2672,9 +2816,9 @@ function getLearningSmartParserRuntime(file, templates) {
 }
 
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v437";
+  const storageKey = "servio.dataLearning.v438";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v437") || localStorage.getItem("servio.dataLearning.v436") || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   const [templateQuery, setTemplateQuery] = useState("");
@@ -2719,7 +2863,20 @@ function DataLearningCenter({ currentUser }) {
     matrixMap: f.mappingDraft?.matrixMap || f.matrixMap || {},
     metadataMap: f.metadataDraft?.metadataMap || f.metadataMap || {},
     metadataPatterns: { metadataRegions: f.metadataDraft?.metadataRegions || f.metadataRegions || [], extractedMetadata: f.metadataDraft?.extractedMetadata || f.extractedMetadata || {} },
-    parsingRules: { granularity: f.granularity, timezone: "Europe/Bucharest" },
+    parsingRules: {
+      granularity: f.granularity,
+      normalizedGranularity: f.granularityProfile?.normalizedGranularity || f.normalizedGranularity || f.granularity,
+      normalizationMode: f.granularityProfile?.normalizationMode || f.normalizationMode || "unknown_review",
+      precision: f.granularityProfile?.precision || f.granularityPrecision || "unknown",
+      intervalMinutes: f.granularityProfile?.intervalMinutes || null,
+      canExpandTo15m: !!(f.granularityProfile?.canExpandTo15m || f.canExpandTo15m),
+      canAggregateTo60m: !!(f.granularityProfile?.canAggregateTo60m || f.canAggregateTo60m),
+      estimated15mRule: f.granularityProfile?.estimated15mRule || "",
+      aggregate60mRule: f.granularityProfile?.aggregate60mRule || "",
+      unit: f.granularityProfile?.unitProfile?.unit || f.unitProfile?.unit || "unknown",
+      energyOrPower: f.granularityProfile?.unitProfile?.energyOrPower || f.unitProfile?.energyOrPower || "unknown",
+      timezone: "Europe/Bucharest"
+    },
     fingerprint: {
       headerSignature: (f.previewRows || []).slice(0, 3).join(" | ").slice(0, 240),
       sheetSignature: (f.sheetProfiles || []).map((x) => x.name).slice(0, 12).join(" | "),
@@ -2818,8 +2975,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Smart Parser Runtime</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri și apoi compară automat fișierele noi cu biblioteca de formate învățate.</div>
+          <div className="setname">Granularity Normalization</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări, salvează template-uri și apoi compară automat fișierele noi cu biblioteca de formate învățate și normalizează 15m/60m fără să ascundă estimările.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2908,6 +3065,23 @@ function DataLearningCenter({ currentUser }) {
                 <div><b>{(f.tableRegions || []).length}</b><span>regiuni tabel</span></div>
                 <div><b>{(f.metadataRegions || []).length}</b><span>regiuni metadate</span></div>
               </div>
+              {f.granularityProfile && (
+                <div className="dlcnormalization">
+                  <div className="dlcmaphead">
+                    <div><b>Granularity Normalization</b><span>Normalizează 15 minute / 60 minute și marchează clar ce este estimare.</span></div>
+                    <Badge tone={f.granularityProfile.precision === "high" ? "g" : f.granularityProfile.precision === "medium" ? "y" : "n"}>{GRANULARITY_PRECISION_LABELS[f.granularityProfile.precision] || f.granularityProfile.precision}</Badge>
+                  </div>
+                  <div className="dlcnormgrid">
+                    <div><b>{f.granularityProfile.sourceGranularity}</b><span>Granularitate sursă</span></div>
+                    <div><b>{GRANULARITY_NORMALIZATION_LABELS[f.granularityProfile.normalizationMode] || f.granularityProfile.normalizationMode}</b><span>Regulă normalizare</span></div>
+                    <div><b>{f.granularityProfile.intervalMinutes ? `${f.granularityProfile.intervalMinutes} min` : "—"}</b><span>Durată interval</span></div>
+                    <div><b>{UNIT_NORMALIZATION_LABELS[f.granularityProfile.unitProfile?.unit] || f.granularityProfile.unitProfile?.unit || "—"}</b><span>Unitate / conversie</span></div>
+                    <div><b>{f.granularityProfile.canExpandTo15m ? "Da, estimativ" : "Nu"}</b><span>Expand 60m → 15m</span></div>
+                    <div><b>{f.granularityProfile.canAggregateTo60m ? "Da" : "Nu"}</b><span>Agregare 15m → 60m</span></div>
+                  </div>
+                  <div className="dlcreasons layoutreasons">{[...(f.granularityProfile.reasons || []), ...(f.granularityProfile.warnings || [])].slice(0, 8).map((r) => <span key={r}>{r}</span>)}</div>
+                </div>
+              )}
               {(f.fileTypeReasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.fileTypeReasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(() => {
                 const runtime = getLearningSmartParserRuntime(f, smartParserTemplates);
@@ -3001,7 +3175,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.37: Smart Parser Runtime compară fișierele noi cu template-urile active și decide import automat, confirmare template sau mapare manuală.</div>
+      <div className="hint"><Cpu size={13} /> v4.38: Granularity Normalization păstrează 15m, păstrează 60m pentru analize orare, extinde 60m→15m doar estimativ și agregă 15m→60m pentru rapoarte.</div>
     </Card>
   );
 }
@@ -3710,10 +3884,11 @@ const CSS = `
 .dlcmapping,.dlcmetadata{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcruntime{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(34,197,94,.035);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcruntimegrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.dlcruntimegrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcruntimegrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcruntimegrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlcnormalization{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.045);padding:10px;display:flex;flex-direction:column;gap:9px}.dlcnormgrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.dlcnormgrid div{border:1px solid var(--border);border-radius:9px;background:var(--card);padding:7px 8px;min-width:0}.dlcnormgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcnormgrid span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
