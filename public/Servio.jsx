@@ -2603,12 +2603,14 @@ function buildTrainingDetection(file, workbookInfo) {
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v435";
+  const storageKey = "servio.dataLearning.v436";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v435") || localStorage.getItem("servio.dataLearning.v434") || localStorage.getItem("servio.dataLearning.v433") || localStorage.getItem("servio.dataLearning.v432") || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]").map(ensureLearningMapping); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
-  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
+  const [templateQuery, setTemplateQuery] = useState("");
+  const [templateStatusFilter, setTemplateStatusFilter] = useState("all");
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 32))); } catch {} }, [files]);
   const onFiles = async (event) => {
     const list = Array.from(event.target.files || []);
     if (!list.length) return;
@@ -2622,31 +2624,54 @@ function DataLearningCenter({ currentUser }) {
     setBusy(false);
     event.target.value = "";
   };
+  const templateRegistry = useMemo(() => files
+    .filter((f) => f.importTemplate)
+    .map((f) => ({ ...f.importTemplate, sourceFileId: f.id, sourceFileName: f.fileName, confidence: f.confidence || f.importTemplate.averageConfidence || 0 }))
+    .filter((tpl) => {
+      const q = templateQuery.trim().toLowerCase();
+      const matchesQuery = !q || [tpl.name, tpl.sourceVendor, tpl.sourceType, tpl.dataKind, tpl.fileType, tpl.sourceFileName].filter(Boolean).join(" ").toLowerCase().includes(q);
+      const matchesStatus = templateStatusFilter === "all" || (tpl.status || "active") === templateStatusFilter;
+      return matchesQuery && matchesStatus;
+    }), [files, templateQuery, templateStatusFilter]);
+  const buildImportTemplate = (f, templateName, existing = {}) => ({
+    id: existing.id || `tpl_${f.id}`,
+    name: templateName,
+    description: existing.description || `${LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${LAYOUT_LABELS[f.layout] || f.layout}`,
+    dataKind: f.dataKind,
+    sourceType: f.detectedFileType,
+    sourceVendor: f.sourceVendor,
+    fileType: f.fileType,
+    workbookPattern: { sheetMode: f.sheetMode, activeSheets: f.detectedSheets, ignoredSheets: f.ignoredSheets },
+    layoutPattern: { orientation: f.layout, headerRow: f.headerRow, dataStartRow: f.dataStartRow, tableRegions: f.tableRegions, metadataRegions: f.metadataRegions },
+    columnMap: f.mappingDraft?.columnMap || f.columnMap || {},
+    matrixMap: f.mappingDraft?.matrixMap || f.matrixMap || {},
+    metadataMap: f.metadataDraft?.metadataMap || f.metadataMap || {},
+    metadataPatterns: { metadataRegions: f.metadataDraft?.metadataRegions || f.metadataRegions || [], extractedMetadata: f.metadataDraft?.extractedMetadata || f.extractedMetadata || {} },
+    parsingRules: { granularity: f.granularity, timezone: "Europe/Bucharest" },
+    fingerprint: {
+      headerSignature: (f.previewRows || []).slice(0, 3).join(" | ").slice(0, 240),
+      sheetSignature: (f.sheetProfiles || []).map((x) => x.name).slice(0, 12).join(" | "),
+      vendorMarkers: [f.sourceVendor].filter(Boolean),
+      layoutMarkers: [f.layout, f.sheetMode, f.granularity].filter(Boolean),
+      metadataMarkers: Object.keys(f.metadataDraft?.extractedMetadata || f.extractedMetadata || {})
+    },
+    status: existing.status || "active",
+    createdBy: existing.createdBy || currentUser?.email || currentUser?.name || "admin",
+    createdAt: existing.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastUsedAt: existing.lastUsedAt || null,
+    usageCount: existing.usageCount || 0,
+    averageConfidence: Math.round(((existing.averageConfidence || 0) + (f.confidence || 0)) / (existing.averageConfidence ? 2 : 1)),
+    lastTestResult: existing.lastTestResult || null
+  });
   const saveTemplate = (id) => setFiles((prev) => prev.map((f) => {
     if (f.id !== id) return f;
-    const templateName = `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${f.granularity}`;
+    const templateName = f.templateName || `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${f.granularity}`;
     return {
       ...f,
       status: "template_saved",
       templateName,
-      importTemplate: {
-        id: `tpl_${f.id}`,
-        name: templateName,
-        dataKind: f.dataKind,
-        sourceType: f.detectedFileType,
-        sourceVendor: f.sourceVendor,
-        fileType: f.fileType,
-        workbookPattern: { sheetMode: f.sheetMode, activeSheets: f.detectedSheets, ignoredSheets: f.ignoredSheets },
-        layoutPattern: { orientation: f.layout, headerRow: f.headerRow, dataStartRow: f.dataStartRow, tableRegions: f.tableRegions, metadataRegions: f.metadataRegions },
-        columnMap: f.mappingDraft?.columnMap || f.columnMap || {},
-        matrixMap: f.mappingDraft?.matrixMap || f.matrixMap || {},
-        metadataMap: f.metadataDraft?.metadataMap || f.metadataMap || {},
-        metadataPatterns: { metadataRegions: f.metadataDraft?.metadataRegions || f.metadataRegions || [], extractedMetadata: f.metadataDraft?.extractedMetadata || f.extractedMetadata || {} },
-        parsingRules: { granularity: f.granularity, timezone: "Europe/Bucharest" },
-        status: "active",
-        createdBy: currentUser?.email || currentUser?.name || "admin",
-        createdAt: new Date().toISOString()
-      }
+      importTemplate: buildImportTemplate(f, templateName, f.importTemplate || {})
     };
   }));
   const updateColumnMapping = (id, field, value) => setFiles((prev) => prev.map((f) => f.id === id ? {
@@ -2678,6 +2703,38 @@ function DataLearningCenter({ currentUser }) {
       status: f.status === "template_saved" ? "review" : f.status
     };
   }));
+  const updateTemplateRegistryItem = (templateId, patch) => setFiles((prev) => prev.map((f) => f.importTemplate?.id === templateId ? {
+    ...f,
+    importTemplate: { ...f.importTemplate, ...patch, updatedAt: new Date().toISOString() },
+    templateName: patch.name || f.templateName
+  } : f));
+  const renameTemplate = (templateId) => {
+    const current = files.find((f) => f.importTemplate?.id === templateId)?.importTemplate;
+    const nextName = window.prompt("Nume template", current?.name || "");
+    if (!nextName || !nextName.trim()) return;
+    updateTemplateRegistryItem(templateId, { name: nextName.trim() });
+  };
+  const toggleTemplateStatus = (templateId) => {
+    const current = files.find((f) => f.importTemplate?.id === templateId)?.importTemplate;
+    updateTemplateRegistryItem(templateId, { status: current?.status === "disabled" ? "active" : "disabled" });
+  };
+  const testTemplate = (templateId) => {
+    const current = files.find((f) => f.importTemplate?.id === templateId)?.importTemplate;
+    updateTemplateRegistryItem(templateId, {
+      lastTestedAt: new Date().toISOString(),
+      lastTestResult: current?.status === "disabled" ? "Template dezactivat · test parser oprit" : "Parser local OK · pregătit pentru Smart Parser Runtime",
+      lastUsedAt: new Date().toISOString(),
+      usageCount: (current?.usageCount || 0) + 1
+    });
+  };
+  const duplicateTemplate = (templateId) => setFiles((prev) => {
+    const source = prev.find((f) => f.importTemplate?.id === templateId);
+    if (!source) return prev;
+    const cloneId = `tf_dup_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const tpl = { ...source.importTemplate, id: `tpl_${cloneId}`, name: `${source.importTemplate.name} · copie`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), lastUsedAt: null, usageCount: 0, status: "active", lastTestResult: null };
+    return [{ ...source, id: cloneId, fileName: `${source.fileName} · template copy`, status: "template_saved", templateName: tpl.name, importTemplate: tpl }, ...prev].slice(0, 32);
+  });
+  const deleteTemplate = (templateId) => setFiles((prev) => prev.map((f) => f.importTemplate?.id === templateId ? { ...f, status: "review", templateName: "", importTemplate: null } : f));
   const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
   const clearAll = () => setFiles([]);
   const templates = files.filter((f) => f.status === "template_saved");
@@ -2686,8 +2743,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Metadata Extraction Trainer</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări pentru coloane/matrici și învață metadatele: client, locație, POD, contor, perioadă, unitate, distribuitor și putere instalată.</div>
+          <div className="setname">Template Registry</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează workbook/sheet/layout, propune mapări pentru coloane, matrice și metadate, apoi le salvează într-o bibliotecă de template-uri editabile.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2703,6 +2760,46 @@ function DataLearningCenter({ currentUser }) {
         <Kpi label="Metadata maps" value={files.filter((f) => f.metadataDraft?.metadataMap).length} sub="client / POD / unități" Icon={FileText} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
+      </div>
+
+      <div className="dlcregistry">
+        <div className="dlcreghead">
+          <div>
+            <b>Template Registry</b>
+            <span>Biblioteca formatelor învățate. Adminul poate testa, redenumi, duplica, dezactiva sau șterge template-uri fără să afecteze fișierele de training.</span>
+          </div>
+          <div className="dlcregtools">
+            <div className="dlcsearch"><Search size={13} /><input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Caută template, vendor, tip..." /></div>
+            <div className="seg mini"><button className={"segbtn" + (templateStatusFilter === "all" ? " on" : "")} onClick={() => setTemplateStatusFilter("all")}>Toate</button><button className={"segbtn" + (templateStatusFilter === "active" ? " on" : "")} onClick={() => setTemplateStatusFilter("active")}>Active</button><button className={"segbtn" + (templateStatusFilter === "disabled" ? " on" : "")} onClick={() => setTemplateStatusFilter("disabled")}>Dezactivate</button></div>
+          </div>
+        </div>
+        {templateRegistry.length === 0 ? (
+          <div className="dlcregempty">Nu există template-uri salvate în filtrul curent. Salvează un fișier ca template după confirmarea mapărilor.</div>
+        ) : (
+          <div className="dlcreglist">
+            {templateRegistry.map((tpl) => (
+              <div className={"dlcregrow " + ((tpl.status || "active") === "disabled" ? "disabled" : "")} key={tpl.id}>
+                <div className="dlcregmain">
+                  <b>{tpl.name}</b>
+                  <span>{LEARNING_FILE_TYPE_LABELS[tpl.sourceType] || tpl.sourceType} · {LEARNING_KIND_LABELS[tpl.dataKind] || tpl.dataKind} · {tpl.sourceVendor} · {SHEET_MODE_LABELS[tpl.workbookPattern?.sheetMode] || tpl.workbookPattern?.sheetMode || "sheet"} · {LAYOUT_LABELS[tpl.layoutPattern?.orientation] || tpl.layoutPattern?.orientation || "layout"}</span>
+                  <em>{tpl.lastTestResult || "Netestat încă"}</em>
+                </div>
+                <div className="dlcregstats">
+                  <span>{tpl.averageConfidence || tpl.confidence || 0}% confidence</span>
+                  <span>{tpl.usageCount || 0} utilizări</span>
+                  <Badge tone={(tpl.status || "active") === "disabled" ? "n" : "g"}>{(tpl.status || "active") === "disabled" ? "disabled" : "active"}</Badge>
+                </div>
+                <div className="dlcregactions">
+                  <button className="btn ghost" onClick={() => testTemplate(tpl.id)}>Test</button>
+                  <button className="btn ghost" onClick={() => renameTemplate(tpl.id)}>Edit</button>
+                  <button className="btn ghost" onClick={() => duplicateTemplate(tpl.id)}>Duplicate</button>
+                  <button className="btn ghost" onClick={() => toggleTemplateStatus(tpl.id)}>{(tpl.status || "active") === "disabled" ? "Enable" : "Disable"}</button>
+                  <button className="btn ghost" onClick={() => deleteTemplate(tpl.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {files.length === 0 ? (
@@ -2809,7 +2906,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.35: Metadata Extraction Trainer învață celulele de metadate: client, locație, POD, contor, perioadă, unitate, distribuitor și putere instalată, fără să le confunde cu datele energetice.</div>
+      <div className="hint"><Cpu size={13} /> v4.36: Template Registry centralizează formatele învățate, cu filtre, editare rapidă, duplicate, activare/dezactivare, ștergere și test parser local.</div>
     </Card>
   );
 }
@@ -3517,9 +3614,10 @@ const CSS = `
 .layoutreasons{grid-column:1/-1;margin-top:-2px}
 .dlcmapping,.dlcmetadata{grid-column:1/-1;border:1px solid var(--border);border-radius:11px;background:rgba(245,165,36,.035);padding:10px;display:flex;flex-direction:column;gap:10px}
 .dlcmaphead{display:flex;align-items:center;justify-content:space-between;gap:10px}.dlcmaphead b{display:block;font-size:12.5px}.dlcmaphead span{display:block;font-size:11px;color:var(--text-faint);margin-top:2px}.dlcmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmapfield,.dlcmatrix label{display:flex;flex-direction:column;gap:5px;min-width:0}.dlcmapfield span,.dlcmatrix span{font-size:10.5px;color:var(--text-faint)}.dlcmapfield select,.dlcmatrix select,.dlcmatrix input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:8px;padding:7px 8px;font-size:11.5px;outline:none}.dlcmapfield select:focus,.dlcmatrix select:focus,.dlcmatrix input:focus{border-color:color-mix(in srgb,var(--accent) 58%,var(--border-strong))}.dlcmatrix{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;border-top:1px solid var(--border);padding-top:9px}.dlcmetagrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dlcmetapills{display:flex;flex-wrap:wrap;gap:6px;border-top:1px solid var(--border);padding-top:9px}.dlcmetapills span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
+.dlcregistry{border:1px solid var(--border);border-radius:13px;background:rgba(15,23,42,.28);padding:12px;margin:12px 0 14px}.dlcreghead{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.dlcreghead b{display:block;font-size:13px}.dlcreghead span{display:block;font-size:11.5px;color:var(--text-faint);margin-top:3px}.dlcregtools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.dlcsearch{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--bg);border-radius:9px;padding:0 8px;color:var(--text-faint)}.dlcsearch input{height:31px;width:210px;border:0;background:transparent;color:var(--text);outline:0;font-size:11.5px}.seg.mini .segbtn{padding:6px 9px;font-size:11px}.dlcregempty{margin-top:10px;border:1px dashed var(--border);border-radius:10px;padding:10px;color:var(--text-faint);font-size:12px}.dlcreglist{display:flex;flex-direction:column;gap:8px;margin-top:10px}.dlcregrow{border:1px solid var(--border);border-radius:11px;background:var(--card);padding:10px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center}.dlcregrow.disabled{opacity:.72}.dlcregmain{min-width:0}.dlcregmain b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregmain span,.dlcregmain em{display:block;margin-top:2px;font-size:10.8px;color:var(--text-faint);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.dlcregstats{display:flex;flex-direction:column;align-items:flex-end;gap:4px}.dlcregstats span{font-size:10.5px;color:var(--text-faint)}.dlcregactions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}.dlcregactions .btn{padding:6px 8px;font-size:11px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}

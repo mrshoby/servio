@@ -1,7 +1,5 @@
-# SERVIO v4.35 — Metadata Extraction Trainer
+# SERVIO v4.36 — Template Registry
 
-Build: `servio-grid-map-v4.35-metadata-extraction-trainer`
+Build: `servio-grid-map-v4.36-template-registry`
 
-Data Learning Center rămâne admin-only și poate acum să învețe celule/zone de metadate din fișiere IBD, PVGIS, invertor, EMS/SCADA sau fișiere combinate. Metadatele ajută interpretarea fișierului, dar nu sunt tratate ca serie de timp.
-
-Păstrează strict shell-ul/UI SERVIO existent și modulele live deja stabilizate.
+Continuă roadmapul Energy Data Learning OS peste v4.35. Data Learning Center are acum Template Registry admin-only pentru formatele învățate: listă, filtre, editare rapidă, duplicate, enable/disable, delete și test parser local.
