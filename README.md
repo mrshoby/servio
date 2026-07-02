@@ -1,7 +1,7 @@
-# SERVIO v4.41 — Production Dataset Analyzer
+# SERVIO v4.42 — Combined Dataset Analyzer
 
-Build: `servio-grid-map-v4.41-production-dataset-analyzer`
+Build: `servio-grid-map-v4.42-combined-dataset-analyzer`
 
-Acest build adaugă Production Dataset Analyzer peste Data Learning Center: profil producție PV din PVGIS/invertor/export, readiness pentru analiză producție și autoconsum, plus salvare `productionRules` în template.
+Acest build continuă roadmap-ul Data Learning Center peste v4.41: după Consumption Dataset Analyzer și Production Dataset Analyzer, adaugă Combined Dataset Analyzer pentru alinierea consumului cu producția PV și calculul indicatorilor de autoconsum, import/export, surplus, deficit și readiness pentru BESS/raport client.
 
 Rulează `npm run check` pentru validare.
