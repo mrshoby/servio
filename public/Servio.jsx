@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar, ComposedChart,
   XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, ReferenceLine,
@@ -1892,36 +1893,70 @@ const LEARNING_KIND_LABELS = {
   inverter: "Invertor",
   unknown: "Necunoscut"
 };
-
+const SHEET_MODE_LABELS = {
+  single_sheet: "Un singur sheet",
+  monthly_sheets: "Sheeturi lunare",
+  daily_sheets: "Sheeturi zilnice",
+  multiple_relevant_sheets: "Mai multe sheeturi relevante",
+  multi_table_sheet: "Tabele multiple",
+  unknown: "Necunoscut"
+};
+const SHEET_ROLE_LABELS = {
+  active: "Relevant",
+  ignored: "Ignorat",
+  consumption: "Consum",
+  production: "Producție",
+  combined: "Consum + producție",
+  pvgis: "PVGIS",
+  import_export: "Import/export",
+  full_energy_balance: "Balanță completă",
+  metadata: "Metadate",
+  summary: "Sumar"
+};
+const MONTH_MARKERS = [
+  ["01", /(ianuarie|\bian\b|january|\bjan\b|202[0-9][-_. ]?01|01[-_. ]?202[0-9])/i],
+  ["02", /(februarie|\bfeb\b|february|202[0-9][-_. ]?02|02[-_. ]?202[0-9])/i],
+  ["03", /(martie|\bmar\b|march|202[0-9][-_. ]?03|03[-_. ]?202[0-9])/i],
+  ["04", /(aprilie|\bapr\b|april|202[0-9][-_. ]?04|04[-_. ]?202[0-9])/i],
+  ["05", /(\bmai\b|\bmay\b|202[0-9][-_. ]?05|05[-_. ]?202[0-9])/i],
+  ["06", /(iunie|\biun\b|june|\bjun\b|202[0-9][-_. ]?06|06[-_. ]?202[0-9])/i],
+  ["07", /(iulie|\biul\b|july|\bjul\b|202[0-9][-_. ]?07|07[-_. ]?202[0-9])/i],
+  ["08", /(august|\baug\b|202[0-9][-_. ]?08|08[-_. ]?202[0-9])/i],
+  ["09", /(septembrie|\bsep\b|september|202[0-9][-_. ]?09|09[-_. ]?202[0-9])/i],
+  ["10", /(octombrie|\boct\b|october|202[0-9][-_. ]?10|10[-_. ]?202[0-9])/i],
+  ["11", /(noiembrie|\bnoi\b|\bnov\b|november|202[0-9][-_. ]?11|11[-_. ]?202[0-9])/i],
+  ["12", /(decembrie|\bdec\b|december|202[0-9][-_. ]?12|12[-_. ]?202[0-9])/i]
+];
 function splitLearningRows(raw) {
   const txt = String(raw || "").replace(/\r/g, "\n").replace(/\n+/g, "\n");
-  return txt.split("\n").map((r) => r.trim()).filter(Boolean).slice(0, 40);
+  return txt.split("\n").map((r) => r.trim()).filter(Boolean).slice(0, 80);
 }
 function splitLearningCells(row) {
-  const sep = row.includes(";") ? ";" : row.includes("\t") ? "\t" : ",";
-  return row.split(sep).map((c) => String(c || "").trim().replace(/^"|"$/g, ""));
+  const s = String(row || "");
+  const sep = s.includes(";") ? ";" : s.includes("\t") ? "\t" : s.includes("|") ? "|" : ",";
+  return s.split(sep).map((c) => String(c || "").trim().replace(/^"|"$/g, ""));
 }
 function scoreHeaderRow(row) {
   const r = String(row || "").toLowerCase();
-  const keys = ["timestamp","data","date","ora","time","interval","consum","consumption","load","productie","producție","production","yield","import","export","kwh","mwh","kw","mw"];
+  const keys = ["timestamp","data","date","ora","time","interval","consum","consumption","load","productie","producție","production","yield","import","export","kwh","mwh","kw","mw","putere","energie"];
   return keys.reduce((a, k) => a + (r.includes(k) ? 1 : 0), 0) + (splitLearningCells(row).length >= 2 ? 1 : 0);
 }
 function detectHeaderRow(raw) {
   const rows = splitLearningRows(raw);
   let best = { row: 1, score: 0, text: "" };
-  rows.slice(0, 20).forEach((r, i) => {
+  rows.slice(0, 28).forEach((r, i) => {
     const score = scoreHeaderRow(r);
     if (score > best.score) best = { row: i + 1, score, text: r };
   });
   return best.score ? best : { row: 1, score: 0, text: rows[0] || "" };
 }
 function detectLearningKind(fileName, raw) {
-  const s = `${fileName || ""} ${String(raw || "").slice(0, 6000)}`.toLowerCase();
-  const hasConsum = /(consum|consumption|load|energie activa|energie activă|import kwh|absor[bțt]it|ibd)/i.test(s);
-  const hasProd = /(productie|producție|production|generation|yield|pv|pvgis|inverter|invertor|solar|energie produs)/i.test(s);
-  const hasImport = /(import|grid import|energie importat|energie primită)/i.test(s);
-  const hasExport = /(export|grid export|feed.?in|injec|energie livrat)/i.test(s);
-  const hasPvgis = /(pvgis|photovoltaic geographical|pv estimate)/i.test(s);
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 10000)}`.toLowerCase();
+  const hasConsum = /(consum|consumption|load|energie activa|energie activă|import kwh|absor[bțt]it|ibd|curba de sarcin|curbă de sarcin)/i.test(s);
+  const hasProd = /(productie|producție|production|generation|yield|pv|pvgis|inverter|invertor|solar|energie produs|generated)/i.test(s);
+  const hasImport = /(import|grid import|energie importat|energie primită|energie primita)/i.test(s);
+  const hasExport = /(export|grid export|feed.?in|injec|energie livrat|energie injectat)/i.test(s);
+  const hasPvgis = /(pvgis|photovoltaic geographical|pv estimate|global irradiation|solar radiation)/i.test(s);
   const hasInverter = /(fusionsolar|solis|fronius|sma|solaredge|huawei|growatt|victron|invertor|inverter)/i.test(s);
   if (hasConsum && hasProd && hasImport && hasExport) return "full_energy_balance";
   if (hasConsum && hasProd) return "combined";
@@ -1932,11 +1967,11 @@ function detectLearningKind(fileName, raw) {
   return "unknown";
 }
 function detectLearningVendor(fileName, raw) {
-  const s = `${fileName || ""} ${String(raw || "").slice(0, 3000)}`.toLowerCase();
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 6000)}`.toLowerCase();
   const vendors = [
     ["DEER", /deer|distributie energie electrica romania|distribuție energie electrică românia/],
     ["Delgaz", /delgaz/],
-    ["PVGIS", /pvgis/],
+    ["PVGIS", /pvgis|photovoltaic geographical/],
     ["FusionSolar", /fusionsolar|huawei/],
     ["Solis", /solis/],
     ["Fronius", /fronius/],
@@ -1947,18 +1982,33 @@ function detectLearningVendor(fileName, raw) {
   return (vendors.find(([, rx]) => rx.test(s)) || vendors[vendors.length - 1])[0];
 }
 function detectLearningGranularity(raw, fileName) {
-  const s = `${fileName || ""} ${String(raw || "").slice(0, 10000)}`.toLowerCase();
-  if (/(00:15|00:30|00:45|15\s*min|15m|quarter)/i.test(s)) return "15m";
-  if (/(01:00|02:00|hourly|orar|60\s*min|60m)/i.test(s)) return "60m";
+  const s = `${fileName || ""} ${String(raw || "").slice(0, 15000)}`.toLowerCase();
+  const qh = (s.match(/\b([01]\d|2[0-3]):(15|30|45)\b/g) || []).length;
+  const hh = (s.match(/\b([01]\d|2[0-3]):00\b/g) || []).length;
+  if (qh >= 3 || /(15\s*min|15m|quarter|sfert|00:15|00:30|00:45)/i.test(s)) return "15m";
+  if (hh >= 8 || /(hourly|orar|60\s*min|60m|o\s*oră|o ora)/i.test(s)) return "60m";
   return "unknown";
 }
-function detectLearningSheetMode(fileName, raw) {
-  const n = String(fileName || "").toLowerCase();
-  const sample = String(raw || "").slice(0, 3000).toLowerCase();
-  if (/(ianuarie|februarie|martie|aprilie|mai|iunie|iulie|august|septembrie|octombrie|noiembrie|decembrie|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|2026-0[1-9]|2026-1[0-2])/.test(n)) return "monthly_sheets";
-  if (/\b(20\d{2}[-.\/][01]\d[-.\/][0-3]\d|[0-3]\d[-.\/][01]\d[-.\/]20\d{2})\b/.test(n)) return "daily_sheets";
-  if (/(summary|total|notes|info)/.test(sample)) return "multi_table_sheet";
-  return "single_sheet";
+function monthFromText(value) {
+  const s = String(value || "");
+  const hit = MONTH_MARKERS.find(([, rx]) => rx.test(s));
+  return hit ? hit[0] : null;
+}
+function dateFromText(value) {
+  const s = String(value || "");
+  const m = s.match(/\b(20\d{2})[-.\/](0?[1-9]|1[0-2])[-.\/](0?[1-9]|[12]\d|3[01])\b/) || s.match(/\b(0?[1-9]|[12]\d|3[01])[-.\/](0?[1-9]|1[0-2])[-.\/](20\d{2})\b/);
+  return m ? m[0] : null;
+}
+function detectSheetRole(sheetName, raw) {
+  const n = String(sheetName || "").toLowerCase();
+  const s = `${n} ${String(raw || "").slice(0, 3500).toLowerCase()}`;
+  const kind = detectLearningKind(sheetName, s);
+  if (/(summary|sumar|total|totals|notes|note|readme|info|legend|metadata|metadate|instruc)/i.test(n) && kind === "unknown") return "ignored";
+  if (/(summary|sumar|total)/i.test(n) && !/(timestamp|data|ora|consum|production|productie|kwh)/i.test(s)) return "summary";
+  if (kind === "pvgis") return "pvgis";
+  if (kind === "combined" || kind === "full_energy_balance" || kind === "import_export" || kind === "production" || kind === "consumption") return kind;
+  if (/(client|pod|contor|locatie|locație|perioad|unitate)/i.test(s) && splitLearningRows(raw).length < 8) return "metadata";
+  return "active";
 }
 function detectLearningLayout(raw) {
   const rows = splitLearningRows(raw);
@@ -1966,30 +2016,123 @@ function detectLearningLayout(raw) {
   const cells = splitLearningCells(header);
   const intervalCells = cells.filter((c) => /^([01]\d|2[0-3]):(00|15|30|45)$/.test(c)).length;
   if (intervalCells >= 8) return "matrix_day_by_interval";
-  if (rows.slice(0, 18).some((r) => /client|pod|perioad|unitate|contor|loca/i.test(r)) && rows.length > 6) return "metadata_plus_table";
+  const firstColTime = rows.slice(0, 20).filter((r) => /^([01]\d|2[0-3]):(00|15|30|45)/.test(splitLearningCells(r)[0] || "")).length;
+  if (firstColTime >= 6 && rows.slice(0, 8).some((r) => /data|date|zi|day/i.test(r))) return "matrix_interval_by_day";
+  if (rows.slice(0, 20).some((r) => /client|pod|perioad|unitate|contor|loca/i.test(r)) && rows.length > 6) return "metadata_plus_table";
   if (rows.filter((r) => scoreHeaderRow(r) >= 3).length >= 2) return "multi_table";
-  if (/(timestamp|data|date|ora|time)/i.test(header)) return "vertical_table";
+  if (/(timestamp|data|date|ora|time|interval)/i.test(header)) return "vertical_table";
   return "unknown";
 }
-function detectLearningConfidence(kind, granularity, layout, header) {
-  let score = 35;
-  if (kind !== "unknown") score += 22;
-  if (granularity !== "unknown") score += 16;
-  if (layout !== "unknown") score += 14;
-  if ((header?.score || 0) >= 3) score += 13;
+function rowsToLearningRaw(rows, limit = 80) {
+  return (rows || []).slice(0, limit).map((r) => (r || []).map((c) => String(c ?? "").trim()).join(";")).join("\n");
+}
+function worksheetToRows(sheet) {
+  try { return XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false, defval: "" }); }
+  catch { return []; }
+}
+function buildSheetProfile(name, rows) {
+  const raw = rowsToLearningRaw(rows, 80);
+  const role = detectSheetRole(name, raw);
+  const kind = detectLearningKind(name, raw);
+  const vendor = detectLearningVendor(name, raw);
+  const granularity = detectLearningGranularity(raw, name);
+  const layout = detectLearningLayout(raw);
+  const header = detectHeaderRow(raw);
+  const month = monthFromText(name);
+  const date = dateFromText(name);
+  const colCount = rows.reduce((m, r) => Math.max(m, (r || []).length), 0);
+  const ignored = role === "ignored" || role === "summary" || (role === "metadata" && kind === "unknown");
+  return {
+    name,
+    role,
+    kind,
+    vendor,
+    granularity,
+    layout,
+    headerRow: header.row,
+    rowCount: rows.length,
+    colCount,
+    periodType: date ? "day" : month ? "month" : "unknown",
+    periodLabel: date || month || "—",
+    ignored,
+    previewRows: rowsToLearningRaw(rows, 5).split("\n").filter(Boolean),
+  };
+}
+function detectWorkbookSheetMode(fileName, sheetProfiles, fallbackLayout) {
+  const active = sheetProfiles.filter((s) => !s.ignored);
+  const monthly = active.filter((s) => s.periodType === "month").length;
+  const daily = active.filter((s) => s.periodType === "day").length;
+  if (!active.length) return "unknown";
+  if (active.length === 1 && fallbackLayout === "multi_table") return "multi_table_sheet";
+  if (monthly >= 2 && monthly / active.length >= 0.55) return "monthly_sheets";
+  if (daily >= 2 && daily / active.length >= 0.55) return "daily_sheets";
+  if (active.length > 1) return "multiple_relevant_sheets";
+  return "single_sheet";
+}
+function buildWorkbookInfoFromSheets(fileName, sheetProfiles) {
+  const active = sheetProfiles.filter((s) => !s.ignored);
+  const raw = active.length ? active.map((s) => `SHEET: ${s.name}\n${(s.previewRows || []).join("\n")}`).join("\n") : sheetProfiles.map((s) => `SHEET: ${s.name}\n${(s.previewRows || []).join("\n")}`).join("\n");
+  const layout = active.length > 1 ? "multi_sheet_workbook" : detectLearningLayout(raw);
+  const sheetMode = detectWorkbookSheetMode(fileName, sheetProfiles, layout);
+  const ignoredSheets = sheetProfiles.filter((s) => s.ignored).map((s) => s.name);
+  const detectedSheets = sheetProfiles.filter((s) => !s.ignored).map((s) => s.name);
+  const reasons = [
+    `${detectedSheets.length} sheeturi relevante`,
+    `${ignoredSheets.length} sheeturi ignorate`,
+    SHEET_MODE_LABELS[sheetMode] || sheetMode
+  ];
+  return { raw, layout, sheetMode, sheetProfiles, detectedSheets, ignoredSheets, reasons };
+}
+async function readWorkbookInfo(file) {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false, cellText: true, raw: false });
+      const profiles = (wb.SheetNames || []).map((name) => buildSheetProfile(name, worksheetToRows(wb.Sheets[name])));
+      return buildWorkbookInfoFromSheets(file.name, profiles);
+    } catch (e) {
+      const raw = `${file.name}\nWorkbook citit parțial. SERVIO nu a putut extrage sheeturile: ${e?.message || "eroare necunoscută"}`;
+      return { raw, layout: "unknown", sheetMode: "unknown", sheetProfiles: [], detectedSheets: [], ignoredSheets: [], reasons: ["Workbook parsing indisponibil"] };
+    }
+  }
+  const raw = await file.text();
+  const profile = buildSheetProfile("Text/CSV", splitLearningRows(raw).map((r) => splitLearningCells(r)));
+  return buildWorkbookInfoFromSheets(file.name, [profile]);
+}
+function detectLearningSheetMode(fileName, raw, workbookInfo) {
+  if (workbookInfo?.sheetMode) return workbookInfo.sheetMode;
+  const n = String(fileName || "").toLowerCase();
+  const sample = String(raw || "").slice(0, 3000).toLowerCase();
+  if (monthFromText(n)) return "monthly_sheets";
+  if (dateFromText(n)) return "daily_sheets";
+  if (/(summary|total|notes|info)/.test(sample)) return "multi_table_sheet";
+  return "single_sheet";
+}
+function detectLearningConfidence(kind, granularity, layout, header, workbookInfo) {
+  let score = 34;
+  if (kind !== "unknown") score += 20;
+  if (granularity !== "unknown") score += 14;
+  if (layout !== "unknown") score += 12;
+  if ((header?.score || 0) >= 3) score += 10;
+  if ((workbookInfo?.detectedSheets || []).length >= 1) score += 6;
+  if (workbookInfo?.sheetMode && workbookInfo.sheetMode !== "unknown") score += 4;
   return Math.min(98, score);
 }
-function buildTrainingDetection(file, raw) {
+function buildTrainingDetection(file, workbookInfo) {
   const fileName = file?.name || "training-file";
-  const fileType = fileName.toLowerCase().endsWith(".xlsx") ? "xlsx" : fileName.toLowerCase().endsWith(".xls") ? "xls" : fileName.toLowerCase().endsWith(".html") ? "html" : "csv";
+  const lower = fileName.toLowerCase();
+  const fileType = lower.endsWith(".xlsx") ? "xlsx" : lower.endsWith(".xls") ? "xls" : lower.endsWith(".html") ? "html" : lower.endsWith(".txt") ? "txt" : "csv";
+  const raw = workbookInfo?.raw || "";
   const header = detectHeaderRow(raw);
   const kind = detectLearningKind(fileName, raw);
   const vendor = detectLearningVendor(fileName, raw);
   const granularity = detectLearningGranularity(raw, fileName);
-  const sheetMode = detectLearningSheetMode(fileName, raw);
-  const layout = detectLearningLayout(raw);
-  const confidence = detectLearningConfidence(kind, granularity, layout, header);
+  const sheetMode = detectLearningSheetMode(fileName, raw, workbookInfo);
+  const layout = workbookInfo?.layout && workbookInfo.layout !== "unknown" ? workbookInfo.layout : detectLearningLayout(raw);
+  const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
+  const activeSheets = workbookInfo?.detectedSheets || [];
+  const ignoredSheets = workbookInfo?.ignoredSheets || [];
   return {
     id: `tf_${Date.now()}_${Math.random().toString(16).slice(2)}`,
     fileName,
@@ -1997,26 +2140,30 @@ function buildTrainingDetection(file, raw) {
     sizeKb: Math.round((file?.size || 0) / 1024),
     dataKind: kind,
     sourceVendor: vendor,
-    sourceType: kind === "pvgis" ? "pvgis" : kind === "production" ? "inverter" : kind === "consumption" ? "ibd" : "unknown",
+    sourceType: kind === "pvgis" ? "pvgis" : kind === "production" || kind === "inverter" ? "inverter" : kind === "consumption" ? "ibd" : "unknown",
     granularity,
     sheetMode,
     layout,
     headerRow: header.row,
     confidence,
+    detectedSheets: activeSheets,
+    ignoredSheets,
+    sheetProfiles: workbookInfo?.sheetProfiles || [],
     reasons: [
-      `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din nume/coloane`,
+      `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din workbook/sheeturi`,
       `${granularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${granularity}`}`,
-      `${layout === "unknown" ? "Layout neconfirmat" : `Layout ${layout}`}`
-    ],
+      `${SHEET_MODE_LABELS[sheetMode] || sheetMode}`,
+      ...(workbookInfo?.reasons || [])
+    ].filter(Boolean).slice(0, 6),
     previewRows,
     status: confidence >= 90 ? "ready" : confidence >= 70 ? "review" : "manual",
     uploadedAt: new Date().toISOString()
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v430";
+  const storageKey = "servio.dataLearning.v431";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
@@ -2026,28 +2173,24 @@ function DataLearningCenter({ currentUser }) {
     setBusy(true);
     const parsed = [];
     for (const file of list) {
-      let raw = "";
-      const lower = file.name.toLowerCase();
-      if (lower.endsWith(".csv") || lower.endsWith(".txt") || lower.endsWith(".html")) {
-        try { raw = await file.text(); } catch { raw = ""; }
-      } else {
-        raw = `${file.name}\nXLS/XLSX workbook detected. Detailed sheet parsing starts in the next workbook detection build.`;
-      }
-      parsed.push(buildTrainingDetection(file, raw));
+      const workbookInfo = await readWorkbookInfo(file);
+      parsed.push(buildTrainingDetection(file, workbookInfo));
     }
     setFiles((prev) => [...parsed, ...prev].slice(0, 24));
     setBusy(false);
     event.target.value = "";
   };
-  const saveTemplate = (id) => setFiles((prev) => prev.map((f) => f.id === id ? { ...f, status: "template_saved", templateName: `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${f.granularity}` } : f));
+  const saveTemplate = (id) => setFiles((prev) => prev.map((f) => f.id === id ? { ...f, status: "template_saved", templateName: `${f.sourceVendor} · ${LEARNING_KIND_LABELS[f.dataKind] || "Format"} · ${SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · ${f.granularity}` } : f));
   const removeFile = (id) => setFiles((prev) => prev.filter((f) => f.id !== id));
+  const clearAll = () => setFiles([]);
   const templates = files.filter((f) => f.status === "template_saved");
+  const workbookCount = files.filter((f) => ["xlsx", "xls"].includes(f.fileType)).length;
   return (
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Training pentru formate energetice</div>
-          <div className="setsub">Încarcă exemple de consum, producție, PVGIS, IBD sau fișiere combinate. SERVIO detectează structura și salvează tipare reutilizabile.</div>
+          <div className="setname">Workbook & Sheet Detection Engine</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează sheeturi lunare/zilnice, sheeturi relevante, sheeturi ignorate și structura workbookului.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2058,15 +2201,15 @@ function DataLearningCenter({ currentUser }) {
 
       <div className="kpirow dlckpis">
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
-        <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Database} tone="green" />
+        <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
+        <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
-        <Kpi label="Admin" value={currentUser?.avatarInitials || "AD"} sub={currentUser?.name || "Admin"} Icon={ShieldCheckFallback} />
       </div>
 
       {files.length === 0 ? (
         <div className="dlcempty">
           <FileText size={18} />
-          <div><b>Niciun fișier de training încă.</b><span>Începe cu IBD-uri, PVGIS, fișiere de invertor sau fișiere combinate consum + producție.</span></div>
+          <div><b>Niciun fișier de training încă.</b><span>Începe cu workbookuri IBD multi-sheet, PVGIS, exporturi invertor sau fișiere combinate consum + producție.</span></div>
         </div>
       ) : (
         <div className="dlclist">
@@ -2076,28 +2219,39 @@ function DataLearningCenter({ currentUser }) {
                 <div className="dlcicon"><FileSpreadsheet size={16} /></div>
                 <div className="dlcmeta">
                   <div className="dlctitle">{f.fileName}</div>
-                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {f.granularity} · {f.layout}</div>
+                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {f.layout}</div>
                   <div className="dlcreasons">{(f.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
                 </div>
               </div>
               <div className="dlcright">
                 <Badge tone={f.confidence >= 90 ? "g" : f.confidence >= 70 ? "y" : "n"}>{f.confidence}%</Badge>
                 <span className="dim small">Header row {f.headerRow}</span>
-                <span className="dim small">{f.sheetMode}</span>
+                <span className="dim small">{(f.detectedSheets || []).length} active / {(f.ignoredSheets || []).length} ignored</span>
               </div>
+              {(f.sheetProfiles || []).length > 0 && (
+                <div className="dlcsheets">
+                  {(f.sheetProfiles || []).slice(0, 12).map((s) => (
+                    <div className={"dlcsheet " + (s.ignored ? "ignored" : "active")} key={s.name}>
+                      <b>{s.name}</b><span>{SHEET_ROLE_LABELS[s.role] || s.role} · {s.rowCount}r × {s.colCount}c · {s.periodType !== "unknown" ? s.periodLabel : s.layout}</span>
+                    </div>
+                  ))}
+                  {(f.sheetProfiles || []).length > 12 && <div className="dlcsheet ignored"><b>+{f.sheetProfiles.length - 12}</b><span>sheeturi ascunse în preview</span></div>}
+                </div>
+              )}
               <div className="dlcpreview">
                 {(f.previewRows || []).slice(0, 4).map((r, i) => <code key={i}>{r}</code>)}
                 {(!f.previewRows || !f.previewRows.length) && <code>Preview indisponibil pentru acest tip de fișier.</code>}
               </div>
               <div className="dlcactions">
                 {f.status === "template_saved" ? <span className="g small"><Check size={12} /> Template salvat: {f.templateName}</span> : <button className="btn" onClick={() => saveTemplate(f.id)}><Check size={14} /> Salvează ca template</button>}
-                <button className="btn ghost" onClick={() => removeFile(f.id)}>Elimină</button>
+                <div className="dlcactionright"><button className="btn ghost" onClick={() => removeFile(f.id)}>Elimină</button></div>
               </div>
             </div>
           ))}
         </div>
       )}
-      <div className="hint"><Cpu size={13} /> Fundație v4.30: upload training, preview, detecție inițială fișier/sheet/layout/header și template-uri locale. Următorul build extinde workbook/sheet detection real pentru XLSX multi-sheet.</div>
+      {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
+      <div className="hint"><Cpu size={13} /> v4.31: workbook & sheet detection pentru XLS/XLSX cu SheetJS, detectare sheeturi lunare/zilnice, sheeturi relevante/ignorate și mod workbook. Următorul build intră în layout detection pe regiuni/tabele.</div>
     </Card>
   );
 }
@@ -2791,10 +2945,16 @@ const CSS = `
 .dlcreasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .dlcreasons span{font-size:10.5px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 7px;color:var(--text-dim)}
 .dlcright{display:flex;align-items:flex-end;flex-direction:column;gap:5px}
+.dlcsheets{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.dlcsheet{border:1px solid var(--border);border-radius:9px;background:rgba(245,165,36,.035);padding:7px 8px;min-width:0}
+.dlcsheet.ignored{opacity:.66;background:var(--card)}
+.dlcsheet b{display:block;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlcsheet span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcpreview{grid-column:1/-1;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:8px;display:flex;flex-direction:column;gap:4px;max-height:112px;overflow:auto}
 .dlcpreview code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:var(--text-dim);white-space:nowrap}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}}
+.dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}

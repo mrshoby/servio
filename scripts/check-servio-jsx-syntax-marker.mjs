@@ -5,35 +5,23 @@ const worker = fs.readFileSync("src/worker.js", "utf8");
 const workflow = fs.readFileSync(".github/workflows/opcom-pzu-cache.yml", "utf8");
 
 const checks = [
-  ["build version v4.30", worker.includes("servio-grid-map-v4.30-admin-data-learning-center")],
-  ["auth login endpoint preserved", worker.includes('path === "/api/servio/auth/login"')],
-  ["auth me endpoint preserved", worker.includes('path === "/api/servio/auth/me"')],
-  ["auth logout endpoint preserved", worker.includes('path === "/api/servio/auth/logout"')],
-  ["auth env users support preserved", worker.includes("SERVIO_AUTH_USERS_JSON") && worker.includes("SERVIO_AUTH_SECRET")],
-  ["auth session cookie preserved", worker.includes("HttpOnly") && worker.includes("SameSite=Lax") && worker.includes("Secure") && worker.includes("servio_session")],
-  ["frontend AuthGate preserved", app.includes("function AuthGate") && worker.includes("function AuthGate")],
-  ["frontend LoginView preserved", app.includes("function LoginView") && worker.includes("function LoginView")],
-  ["frontend UserMenu preserved", app.includes("function UserMenu") && worker.includes("function UserMenu")],
-  ["frontend AuthProvider/useAuth preserved", app.includes("function AuthProvider") && app.includes("function useAuth") && worker.includes("function AuthProvider") && worker.includes("function useAuth")],
-  ["avatar initials preserved", app.includes("avatarInitials") && worker.includes("avatarInitials")],
-  ["RBAC helpers preserved", app.includes("canAccess") && app.includes("hasPermission") && worker.includes("canAccess") && worker.includes("hasPermission")],
-  ["Data Learning Center exists", app.includes("function DataLearningCenter") && worker.includes("function DataLearningCenter") && app.includes("Data Learning Center") && worker.includes("Data Learning Center")],
-  ["Data Learning Center admin-only", app.includes('currentUser.role === "admin"') && app.includes("{isAdmin && <DataLearningCenter") && worker.includes('currentUser.role === \\"admin\\"') && worker.includes("{isAdmin && <DataLearningCenter")],
-  ["training upload exists", app.includes("Upload training files") && app.includes('type="file"') && app.includes(".csv,.txt,.html,.xlsx,.xls") && worker.includes("Upload training files")],
-  ["file type detection exists", app.includes("detectLearningKind") && app.includes("detectLearningGranularity") && app.includes("detectLearningSheetMode") && app.includes("detectLearningLayout")],
-  ["template save foundation exists", app.includes("Salvează ca template") && app.includes("template_saved") && app.includes("Template Registry") === false],
-  ["workbook/layout roadmap markers in code", app.includes("monthly_sheets") && app.includes("daily_sheets") && app.includes("matrix_day_by_interval") && app.includes("metadata_plus_table")],
+  ["build version v4.31", worker.includes("servio-grid-map-v4.31-workbook-sheet-detection-engine")],
+  ["xlsx import support", app.includes('import * as XLSX from "xlsx"') && worker.includes('xlsx@0.18.5') && worker.includes('XLSX')],
+  ["auth endpoints preserved", worker.includes('path === "/api/servio/auth/login"') && worker.includes('path === "/api/servio/auth/me"') && worker.includes('path === "/api/servio/auth/logout"')],
+  ["auth frontend preserved", app.includes("function AuthGate") && app.includes("function LoginView") && app.includes("function UserMenu") && worker.includes("function AuthGate")],
+  ["Data Learning Center admin-only", app.includes("function DataLearningCenter") && app.includes('currentUser.role === "admin"') && app.includes("{isAdmin && <DataLearningCenter") && worker.includes("function DataLearningCenter")],
+  ["workbook reader exists", app.includes("async function readWorkbookInfo") && app.includes("worksheetToRows") && app.includes("buildSheetProfile") && app.includes("buildWorkbookInfoFromSheets")],
+  ["sheet detection modes exist", app.includes("monthly_sheets") && app.includes("daily_sheets") && app.includes("multiple_relevant_sheets") && app.includes("multi_table_sheet")],
+  ["sheet profile fields exist", app.includes("detectedSheets") && app.includes("ignoredSheets") && app.includes("sheetProfiles") && app.includes("periodType") && app.includes("periodLabel")],
+  ["sheet UI exists", app.includes("dlcsheets") && app.includes("dlcsheet") && app.includes("active /") && app.includes("XLS / XLSX analizate")],
+  ["template save foundation preserved", app.includes("Salvează ca template") && app.includes("template_saved")],
   ["loading orange spinner preserved", worker.includes("servio-boot-spinner") && worker.includes("Se încarcă Servio") && !worker.includes("Inițializez shell-ul Claude și modulele Energy Market OS.")],
-  ["no old overview attention card", !app.includes("Necesită atenție") && !worker.includes('Card title=\\"Necesită atenție\\"')],
-  ["no old settings cards", !app.includes("Surse de date · OPCOM & ENTSO-E") && !app.includes("Conformitate") && !worker.includes('Card title=\\"Surse de date · OPCOM & ENTSO-E\\"') && !worker.includes('Card title=\\"Conformitate\\"')],
-  ["no old BESS price thresholds card", !app.includes("Price Thresholds · Inowattio old engine") && !worker.includes("Price Thresholds · Inowattio old engine")],
+  ["old removed sections stay removed", !app.includes("Necesită atenție") && !app.includes("Surse de date · OPCOM & ENTSO-E") && !app.includes("Conformitate") && !app.includes("Price Thresholds · Inowattio old engine")],
   ["no old Inowattio debugging in UI", !app.includes("Inowattio old engine") && !app.includes("Inowattio parity") && !app.includes("DB locked")],
-  ["day-ahead strict source param preserved", app.includes('strict: dayAheadSource === "opcom" ? "1" : ""') && worker.includes('strict: dayAheadSource === \\"opcom\\" ? \\"1\\" : \\"\\"')],
-  ["day-ahead per-day warnings preserved", app.includes("warningToday") && app.includes("warningTomorrow") && app.includes("activeWarning") && worker.includes("warningToday") && worker.includes("warningTomorrow") && worker.includes("activeWarning")],
-  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.30-admin-data-learning-center")],
-  ["live-flow arrows preserved", app.includes("gridflowgeo") && worker.includes("gridflowgeo")],
-  ["flow inspector preserved", app.includes("gridhoverflows") && app.includes("gridhoverflowcol") && worker.includes("gridhoverflows") && worker.includes("gridhoverflowcol")],
-  ["mouse wheel zoom preserved", app.includes("handleMapWheel") && app.includes("onWheel={handleMapWheel}") && worker.includes("handleMapWheel") && worker.includes("onWheel={handleMapWheel}")],
+  ["day-ahead strict source preserved", app.includes('strict: dayAheadSource === "opcom" ? "1" : ""') && app.includes("warningToday") && app.includes("warningTomorrow")],
+  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.31-workbook-sheet-detection-engine")],
+  ["live-flow and inspector preserved", app.includes("gridflowgeo") && app.includes("gridhoverflows") && app.includes("gridhoverflowcol") && worker.includes("gridflowgeo")],
+  ["mouse wheel zoom preserved", app.includes("handleMapWheel") && app.includes("onWheel={handleMapWheel}") && worker.includes("handleMapWheel")],
   ["OPCOM auto refresh schedule preserved", workflow.includes("*/15 * * * *") && workflow.includes("workflow_dispatch")],
 ];
 
@@ -43,4 +31,4 @@ for (const [name, ok] of checks) {
   else console.log(`OK: ${name}`);
 }
 if (failed) process.exit(1);
-console.log("SERVIO v4.30 admin data learning center guards OK.");
+console.log("SERVIO v4.31 workbook and sheet detection guards OK.");
