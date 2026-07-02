@@ -1,5 +1,5 @@
-# SERVIO v4.28
+# SERVIO v4.29
 
-Build: `servio-grid-map-v4.28-bess-clean-dispatch-period`
+Build: `servio-grid-map-v4.29-auth-login-shell-integration`
 
-BESS cleanup: elimină cardul `Price Thresholds · Inowattio old engine`, elimină cardul separat `Custom Simulation Period` și mută `Custom simulation period` cu `Start date` / `End date` pe același rând în headerul `Dispatch Strategy`.
+Auth Login Shell Integration peste v4.28: login screen în tema SERVIO, sesiune prin cookie HttpOnly, avatar/user menu în topbar și structură RBAC pregătită pentru roluri admin/operator/viewer.

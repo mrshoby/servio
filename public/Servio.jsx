@@ -1924,6 +1924,164 @@ function Palette({ open, setOpen, go }) {
   );
 }
 
+
+/* ============================ Auth ============================ */
+const AuthContext = React.createContext(null);
+const ROLE_LABELS = { admin: "Admin", operator: "Operator", viewer: "Viewer" };
+function avatarInitials(name = "") {
+  const parts = String(name || "Servio User").trim().split(/\s+/).filter(Boolean);
+  return (parts.length ? parts.slice(0, 2).map((p) => p[0]).join("") : "SU").toUpperCase();
+}
+function useAuth() {
+  const ctx = React.useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
+}
+function AuthLoading() {
+  return (
+    <div className="srv" data-theme="dark">
+      <style>{CSS}</style>
+      <div className="authscreen authloading">
+        <div className="servio-boot-card authbootcard">
+          <div className="servio-boot-spinner" aria-hidden="true" />
+          <div className="servio-boot-label">Se încarcă Servio</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState("");
+  const normalizeUser = (u) => u ? { ...u, avatarInitials: u.avatarInitials || avatarInitials(u.name || u.email) } : null;
+  const refresh = async () => {
+    setLoading(true);
+    setSessionError("");
+    try {
+      const res = await fetch("/api/servio/auth/me", { method: "GET", credentials: "include", cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data && data.ok && data.user) setUser(normalizeUser(data.user));
+      else setUser(null);
+    } catch (e) {
+      setUser(null);
+      setSessionError("Nu se poate valida sesiunea. Încearcă din nou.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { refresh(); }, []);
+  const login = async ({ email, password, remember }) => {
+    setSessionError("");
+    const res = await fetch("/api/servio/auth/login", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password, remember })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok || !data.user) return { ok: false, error: data.error || "Email sau parolă incorectă." };
+    setUser(normalizeUser(data.user));
+    return { ok: true };
+  };
+  const logout = async () => {
+    try { await fetch("/api/servio/auth/logout", { method: "POST", credentials: "include", cache: "no-store" }); } catch {}
+    setUser(null);
+  };
+  const hasPermission = (permission) => {
+    if (!user) return false;
+    if (user.role === "admin") return true;
+    const perms = Array.isArray(user.permissions) ? user.permissions : [];
+    return perms.includes("*") || perms.includes(permission);
+  };
+  const canAccess = (moduleId) => {
+    if (!user) return false;
+    if (user.role === "admin" || user.role === "operator") return true;
+    return hasPermission(`module:${moduleId}`);
+  };
+  const value = useMemo(() => ({ user, loading, sessionError, login, logout, refresh, hasPermission, canAccess }), [user, loading, sessionError]);
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+function LoginView() {
+  const { login, sessionError } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await login({ email: email.trim(), password, remember });
+      if (!result.ok) setError(result.error || "Email sau parolă incorectă.");
+    } catch (err) {
+      setError("Nu se poate valida sesiunea. Încearcă din nou.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="srv" data-theme="dark">
+      <style>{CSS}</style>
+      <div className="authscreen">
+        <form className="logincard" onSubmit={submit}>
+          <div className="loginbrand">
+            <div className="loginlogo"><Zap size={18} /></div>
+            <div><div className="loginname">Servio</div><div className="loginsub">Energy Market OS</div></div>
+          </div>
+          <div className="loginhead">
+            <h1>Autentificare platformă</h1>
+          </div>
+          <label className="loginfield"><span>Email</span><input autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@servio.ro" /></label>
+          <label className="loginfield"><span>Parolă</span><input autoComplete="current-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" /></label>
+          <label className="loginremember"><input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} /><span>Ține-mă conectat</span></label>
+          {(error || sessionError) && <div className="loginerr"><AlertTriangle size={13} /> {error || sessionError}</div>}
+          <button className="loginbtn" type="submit" disabled={busy}>{busy ? <RefreshCw size={15} className="spin" /> : <Zap size={15} />} Autentificare</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+function UserMenu({ go }) {
+  const { user, logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, []);
+  if (!user) return null;
+  const roleLabel = ROLE_LABELS[user.role] || user.role || "User";
+  const initials = user.avatarInitials || avatarInitials(user.name || user.email);
+  return (
+    <div className="usermenu" ref={ref}>
+      <button className="usermenuBtn" onClick={() => setOpen((v) => !v)}>
+        <span className="useravatar">{initials}</span>
+        <span className="usercopy"><b>{user.name || user.email}</b><em>{roleLabel}</em></span>
+      </button>
+      {open && <div className="userpop">
+        <div className="userpopHead"><span className="useravatar big">{initials}</span><div><b>{user.name || user.email}</b><span>{user.email}</span><em>{roleLabel}</em></div></div>
+        <button onClick={() => { setOpen(false); go("settings"); }}>Setări cont</button>
+        <button className="danger" onClick={() => { setOpen(false); logout(); }}>Deconectare</button>
+      </div>}
+    </div>
+  );
+}
+function AuthGate({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <AuthLoading />;
+  if (!user) return <LoginView />;
+  return children;
+}
+function App() {
+  return <AuthProvider><AuthGate><AppShell /></AuthGate></AuthProvider>;
+}
+
 /* ============================ App shell ============================ */
 
 function viewFromPath(pathname) {
@@ -1939,7 +2097,9 @@ function pathForView(view) {
   return view === "map" ? "/harta-retea" : view === "dayahead" ? "/day-ahead" : view === "forecast" ? "/forecast" : view === "battery" ? "/bess" : view === "settings" ? "/settings" : "/";
 }
 
-function App() {
+function AppShell() {
+  const auth = useAuth();
+  const currentUser = auth.user || { name: "Servio User", role: "viewer", avatarInitials: "SU" };
   const [view, setView] = useState(() => viewFromPath(typeof window !== "undefined" ? window.location.pathname : "/"));
   const [collapsed, setCollapsed] = useState(false);
   const [theme, setTheme] = useState("dark");
@@ -1989,7 +2149,7 @@ function App() {
         </nav>
 
         <div className="sidefoot">
-          <div className="userrow"><div className="uavatar">AE</div>{!collapsed && <div className="umeta"><div className="uname">Andrei E.</div><div className="urole">Manager energetic</div></div>}</div>
+          <div className="userrow"><div className="uavatar">{currentUser.avatarInitials || avatarInitials(currentUser.name)}</div>{!collapsed && <div className="umeta"><div className="uname">{currentUser.name}</div><div className="urole">{ROLE_LABELS[currentUser.role] || currentUser.role}</div></div>}</div>
           <button className="collapsebtn" onClick={() => setCollapsed((c) => !c)} title={collapsed ? "Extinde" : "Restrânge"}>{collapsed ? <ChevronsRight size={15} /> : <ChevronsLeft size={15} />}</button>
         </div>
       </aside>
@@ -2003,7 +2163,7 @@ function App() {
           <button className="cmdk" onClick={() => setPaletteOpen(true)}><Search size={13} /> <span className="cmdklabel">Caută</span> <kbd className="kbd2"><Command size={10} />K</kbd></button>
           <button className="ticon" title="Notificări"><Bell size={16} /><span className="tdot" /></button>
           <button className="ticon" title="Temă" onClick={() => setTheme((t) => t === "dark" ? "light" : "dark")}>{theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}</button>
-          <div className="tavatar">AE</div>
+          <UserMenu go={go} />
         </header>
 
         <main className="content">
@@ -2370,9 +2530,21 @@ const CSS = `
 .palenter{color:var(--text-faint);opacity:0}
 .palrow:hover .palenter{opacity:1}
 
+
+/* auth */
+.authscreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:28px;background:radial-gradient(circle at 50% 35%,color-mix(in srgb,var(--blue) 18%,transparent),transparent 30%),var(--bg)}
+.authloading .authbootcard{min-width:260px}
+.servio-boot-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-width:260px;padding:28px 34px;border:1px solid color-mix(in srgb,var(--text-faint) 22%,transparent);background:color-mix(in srgb,var(--panel) 78%,transparent);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.42)}
+.servio-boot-spinner{width:44px;height:44px;border-radius:50%;border:3px solid color-mix(in srgb,var(--accent-2) 22%,transparent);border-top-color:var(--accent-2);border-right-color:var(--accent);animation:servio-spin .9s linear infinite;box-shadow:0 0 24px color-mix(in srgb,var(--accent-2) 18%,transparent)}
+.servio-boot-label{font-size:15px;font-weight:600;letter-spacing:.01em;color:var(--text)}
+@keyframes servio-spin{to{transform:rotate(360deg)}}
+.logincard{width:min(420px,92vw);border:1px solid var(--border-strong);background:color-mix(in srgb,var(--panel) 88%,transparent);backdrop-filter:blur(14px);border-radius:18px;padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.52)}
+.loginbrand{display:flex;align-items:center;gap:11px;margin-bottom:24px}.loginlogo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--accent-fg)}.loginname{font-weight:680;font-size:16px}.loginsub{font-size:11.5px;color:var(--text-faint);margin-top:2px}.loginhead h1{font-size:20px;letter-spacing:-.02em;margin:0 0 18px}.loginfield{display:block;margin-top:12px}.loginfield span{display:block;font-size:11.5px;color:var(--text-dim);margin-bottom:6px}.loginfield input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 12px;outline:none}.loginfield input:focus{border-color:color-mix(in srgb,var(--accent) 65%,var(--border-strong));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}.loginremember{display:flex;align-items:center;gap:8px;margin-top:13px;color:var(--text-dim);font-size:12px}.loginremember input{accent-color:var(--accent)}.loginerr{display:flex;align-items:center;gap:7px;margin-top:13px;border:1px solid color-mix(in srgb,var(--red) 35%,transparent);background:color-mix(in srgb,var(--red) 10%,transparent);color:#fecaca;border-radius:10px;padding:9px 10px;font-size:12px}.loginbtn{width:100%;height:40px;margin-top:16px;border:0;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.loginbtn:disabled{opacity:.72;cursor:wait}
+.usermenu{position:relative}.usermenuBtn{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:4px 8px 4px 5px;cursor:pointer}.usermenuBtn:hover{border-color:var(--border-strong);background:var(--hover)}.useravatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-size:11px;font-weight:760;letter-spacing:.02em;flex:none}.useravatar.big{width:40px;height:40px;font-size:13px}.usercopy{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}.usercopy b{font-size:12px;font-weight:620;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.usercopy em{font-style:normal;font-size:10.5px;color:var(--text-faint);margin-top:2px}.userpop{position:absolute;right:0;top:calc(100% + 9px);width:250px;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--panel) 96%,transparent);backdrop-filter:blur(14px);border-radius:13px;padding:8px;box-shadow:0 20px 60px rgba(0,0,0,.46);z-index:70}.userpopHead{display:flex;gap:10px;padding:8px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}.userpopHead b,.userpopHead span,.userpopHead em{display:block;min-width:0}.userpopHead b{font-size:13px}.userpopHead span{font-size:11.5px;color:var(--text-dim);margin-top:2px;word-break:break-all}.userpopHead em{font-size:10.5px;color:var(--text-faint);font-style:normal;margin-top:3px}.userpop button{width:100%;border:0;background:transparent;color:var(--text-dim);text-align:left;border-radius:8px;padding:9px 10px;font-size:12.5px;cursor:pointer}.userpop button:hover{background:var(--hover);color:var(--text)}.userpop button.danger:hover{color:#fecaca;background:color-mix(in srgb,var(--red) 12%,transparent)}
+
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
-@media(max-width:820px){.side{position:fixed;z-index:50;height:100vh;box-shadow:0 0 40px rgba(0,0,0,.5)}.content{padding:20px 16px 50px}.marketclock{display:none}.cmdklabel{display:none}}
+@media(max-width:820px){.side{position:fixed;z-index:50;height:100vh;box-shadow:0 0 40px rgba(0,0,0,.5)}.content{padding:20px 16px 50px}.marketclock{display:none}.cmdklabel{display:none}.usercopy{display:none}.usermenuBtn{padding:4px}.userpop{right:-4px}}
 `;
 
 
