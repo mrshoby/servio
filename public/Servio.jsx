@@ -1913,6 +1913,23 @@ const SHEET_ROLE_LABELS = {
   metadata: "Metadate",
   summary: "Sumar"
 };
+const LAYOUT_LABELS = {
+  vertical_table: "Tabel vertical",
+  matrix_day_by_interval: "Matrice zi × interval",
+  matrix_interval_by_day: "Matrice interval × zi",
+  metadata_plus_table: "Metadate + tabel",
+  multi_table: "Tabele multiple",
+  multi_sheet_workbook: "Workbook multi-sheet",
+  unknown: "Necunoscut"
+};
+const DATE_SOURCE_LABELS = {
+  row: "data pe rând",
+  column: "coloane dată/oră",
+  sheet_name: "data din sheet",
+  metadata_cell: "data din metadate",
+  timestamp: "timestamp direct",
+  unknown: "necunoscut"
+};
 const MONTH_MARKERS = [
   ["01", /(ianuarie|\bian\b|january|\bjan\b|202[0-9][-_. ]?01|01[-_. ]?202[0-9])/i],
   ["02", /(februarie|\bfeb\b|february|202[0-9][-_. ]?02|02[-_. ]?202[0-9])/i],
@@ -2010,18 +2027,111 @@ function detectSheetRole(sheetName, raw) {
   if (/(client|pod|contor|locatie|locație|perioad|unitate)/i.test(s) && splitLearningRows(raw).length < 8) return "metadata";
   return "active";
 }
-function detectLearningLayout(raw) {
+function isLearningTimeCell(value) {
+  return /^([01]\d|2[0-3]):(00|15|30|45)$/.test(String(value || "").trim());
+}
+function isLearningDayCell(value) {
+  return /^(0?[1-9]|[12]\d|3[01])$/.test(String(value || "").trim()) || /^\d{4}[-.\/]\d{1,2}[-.\/]\d{1,2}$/.test(String(value || "").trim()) || /^\d{1,2}[-.\/]\d{1,2}[-.\/]\d{4}$/.test(String(value || "").trim());
+}
+function looksNumericCell(value) {
+  const s = String(value ?? "").trim().replace(/\s/g, "");
+  if (!s || /[a-zA-ZăâîșțĂÂÎȘȚ]/.test(s)) return false;
+  return /^-?[0-9.,]+$/.test(s);
+}
+function findLearningTableRegions(rows) {
+  const regions = [];
+  const headerRows = [];
+  rows.forEach((r, idx) => {
+    const score = scoreHeaderRow(r);
+    const timeCount = splitLearningCells(r).filter(isLearningTimeCell).length;
+    if (score >= 3 || timeCount >= 8) headerRows.push({ row: idx + 1, score: score + Math.min(6, timeCount), text: r });
+  });
+  headerRows.slice(0, 5).forEach((h, i) => {
+    const next = headerRows[i + 1]?.row || Math.min(rows.length + 1, h.row + 48);
+    const dataStartRow = h.row + 1;
+    let dataEndRow = dataStartRow;
+    for (let r = dataStartRow; r < next && r <= rows.length; r++) {
+      const text = rows[r - 1] || "";
+      if (/^\s*(total|sumar|subtotal|total\s+zi|total\s+luna|total\s+lună|grand\s+total)\b/i.test(text)) break;
+      const cells = splitLearningCells(text);
+      const numeric = cells.filter(looksNumericCell).length;
+      const hasTime = cells.some(isLearningTimeCell);
+      const hasDate = cells.some((c) => !!dateFromText(c));
+      if (numeric || hasTime || hasDate) dataEndRow = r;
+    }
+    regions.push({ id: `R${i + 1}`, headerRow: h.row, dataStartRow, dataEndRow, confidence: Math.min(98, 58 + h.score * 7) });
+  });
+  return regions;
+}
+function findLearningMetadataRegions(rows, headerRow) {
+  const markers = /(client|beneficiar|pod|contor|perioad|perioadă|loca|locație|unitate|distribuitor|putere|pvgis|invertor|meter|site)/i;
+  const meta = [];
+  let start = null;
+  rows.slice(0, Math.max(0, headerRow - 1)).forEach((r, idx) => {
+    if (markers.test(r)) { if (start === null) start = idx + 1; }
+    else if (start !== null) { meta.push({ startRow: start, endRow: idx }); start = null; }
+  });
+  if (start !== null) meta.push({ startRow: start, endRow: Math.max(start, headerRow - 1) });
+  return meta.slice(0, 4);
+}
+function analyzeLearningLayout(raw, sheetName = "") {
   const rows = splitLearningRows(raw);
-  const header = detectHeaderRow(raw).text;
-  const cells = splitLearningCells(header);
-  const intervalCells = cells.filter((c) => /^([01]\d|2[0-3]):(00|15|30|45)$/.test(c)).length;
-  if (intervalCells >= 8) return "matrix_day_by_interval";
-  const firstColTime = rows.slice(0, 20).filter((r) => /^([01]\d|2[0-3]):(00|15|30|45)/.test(splitLearningCells(r)[0] || "")).length;
-  if (firstColTime >= 6 && rows.slice(0, 8).some((r) => /data|date|zi|day/i.test(r))) return "matrix_interval_by_day";
-  if (rows.slice(0, 20).some((r) => /client|pod|perioad|unitate|contor|loca/i.test(r)) && rows.length > 6) return "metadata_plus_table";
-  if (rows.filter((r) => scoreHeaderRow(r) >= 3).length >= 2) return "multi_table";
-  if (/(timestamp|data|date|ora|time|interval)/i.test(header)) return "vertical_table";
-  return "unknown";
+  const header = detectHeaderRow(raw);
+  const headerCells = splitLearningCells(header.text);
+  const timeHeaderCount = headerCells.filter(isLearningTimeCell).length;
+  const headerScoreRows = rows.filter((r) => scoreHeaderRow(r) >= 3).length;
+  const firstColTime = rows.slice(0, 36).filter((r) => isLearningTimeCell(splitLearningCells(r)[0])).length;
+  const tableRegions = findLearningTableRegions(rows);
+  const metadataRegions = findLearningMetadataRegions(rows, header.row);
+  const totalRows = rows.map((r, i) => (/^\s*(total|sumar|subtotal|grand\s+total|total\s+general|total\s+zi|total\s+luna|total\s+lună)\b/i.test(r) ? i + 1 : null)).filter(Boolean).slice(0, 8);
+  let orientation = "unknown";
+  let dateSource = "unknown";
+  let dataStartRow = tableRegions[0]?.dataStartRow || header.row + 1;
+  let dataEndRule = tableRegions[0] ? `până la rândul ${tableRegions[0].dataEndRow}` : "până la primul total / final date";
+  let matrixMap = null;
+  const reasons = [];
+  if (timeHeaderCount >= 8) {
+    orientation = "matrix_day_by_interval";
+    dateSource = monthFromText(sheetName) ? "sheet_name" : "row";
+    matrixMap = { dateSource, intervalHeadersRow: header.row, dayColumn: 1, valueArea: `R${header.row + 1}:C2..`, valueKind: detectLearningKind(sheetName, raw) };
+    reasons.push(`${timeHeaderCount} coloane de interval detectate în header`);
+  } else if (firstColTime >= 6) {
+    orientation = "matrix_interval_by_day";
+    dateSource = monthFromText(sheetName) || dateFromText(sheetName) ? "sheet_name" : "metadata_cell";
+    matrixMap = { dateSource, intervalHeadersRow: dataStartRow, dayColumn: 1, valueArea: `R${dataStartRow}:C2..`, valueKind: detectLearningKind(sheetName, raw) };
+    reasons.push(`${firstColTime} intervale detectate pe prima coloană`);
+  } else if (headerScoreRows >= 2 || tableRegions.length >= 2) {
+    orientation = "multi_table";
+    dateSource = /timestamp/i.test(header.text) ? "timestamp" : /(data|date).*?(ora|time)|ora.*?(data|date)/i.test(header.text) ? "column" : "unknown";
+    reasons.push(`${Math.max(headerScoreRows, tableRegions.length)} regiuni/tabele posibile`);
+  } else if (metadataRegions.length && rows.length > 6) {
+    orientation = "metadata_plus_table";
+    dateSource = /timestamp/i.test(header.text) ? "timestamp" : /(data|date)/i.test(header.text) ? "column" : "metadata_cell";
+    reasons.push(`${metadataRegions.length} regiuni de metadate înainte de tabel`);
+  } else if (/(timestamp|data|date|ora|time|interval)/i.test(header.text)) {
+    orientation = "vertical_table";
+    dateSource = /timestamp/i.test(header.text) ? "timestamp" : "column";
+    reasons.push("header vertical cu timestamp/datā/oră detectat");
+  }
+  const confidence = Math.min(98, 35 + (orientation !== "unknown" ? 25 : 0) + Math.min(20, timeHeaderCount * 2) + Math.min(16, header.score * 4) + Math.min(12, tableRegions.length * 4) + Math.min(8, metadataRegions.length * 3));
+  return {
+    orientation,
+    headerRow: header.row,
+    headerText: header.text,
+    dataStartRow,
+    dataEndRule,
+    tableRegions,
+    metadataRegions,
+    totalRowsPattern: totalRows.length ? totalRows.join(", ") : "nedetectat",
+    ignoredRowsPattern: totalRows.length ? "total/subtotal/sumar" : "nedetectat",
+    dateSource,
+    matrixMap,
+    confidence,
+    reasons: reasons.slice(0, 5)
+  };
+}
+function detectLearningLayout(raw) {
+  return analyzeLearningLayout(raw).orientation;
 }
 function rowsToLearningRaw(rows, limit = 80) {
   return (rows || []).slice(0, limit).map((r) => (r || []).map((c) => String(c ?? "").trim()).join(";")).join("\n");
@@ -2031,12 +2141,13 @@ function worksheetToRows(sheet) {
   catch { return []; }
 }
 function buildSheetProfile(name, rows) {
-  const raw = rowsToLearningRaw(rows, 80);
+  const raw = rowsToLearningRaw(rows, 120);
   const role = detectSheetRole(name, raw);
   const kind = detectLearningKind(name, raw);
   const vendor = detectLearningVendor(name, raw);
   const granularity = detectLearningGranularity(raw, name);
-  const layout = detectLearningLayout(raw);
+  const layoutProfile = analyzeLearningLayout(raw, name);
+  const layout = layoutProfile.orientation;
   const header = detectHeaderRow(raw);
   const month = monthFromText(name);
   const date = dateFromText(name);
@@ -2049,7 +2160,13 @@ function buildSheetProfile(name, rows) {
     vendor,
     granularity,
     layout,
-    headerRow: header.row,
+    layoutProfile,
+    headerRow: layoutProfile.headerRow || header.row,
+    dataStartRow: layoutProfile.dataStartRow,
+    dataEndRule: layoutProfile.dataEndRule,
+    tableRegions: layoutProfile.tableRegions || [],
+    metadataRegions: layoutProfile.metadataRegions || [],
+    dateSource: layoutProfile.dateSource,
     rowCount: rows.length,
     colCount,
     periodType: date ? "day" : month ? "month" : "unknown",
@@ -2072,16 +2189,29 @@ function detectWorkbookSheetMode(fileName, sheetProfiles, fallbackLayout) {
 function buildWorkbookInfoFromSheets(fileName, sheetProfiles) {
   const active = sheetProfiles.filter((s) => !s.ignored);
   const raw = active.length ? active.map((s) => `SHEET: ${s.name}\n${(s.previewRows || []).join("\n")}`).join("\n") : sheetProfiles.map((s) => `SHEET: ${s.name}\n${(s.previewRows || []).join("\n")}`).join("\n");
-  const layout = active.length > 1 ? "multi_sheet_workbook" : detectLearningLayout(raw);
+  const dominant = active[0]?.layoutProfile || analyzeLearningLayout(raw, fileName);
+  const layout = active.length > 1 ? "multi_sheet_workbook" : dominant.orientation;
   const sheetMode = detectWorkbookSheetMode(fileName, sheetProfiles, layout);
   const ignoredSheets = sheetProfiles.filter((s) => s.ignored).map((s) => s.name);
   const detectedSheets = sheetProfiles.filter((s) => !s.ignored).map((s) => s.name);
+  const layoutSummary = {
+    orientation: layout,
+    headerRow: dominant.headerRow,
+    dataStartRow: dominant.dataStartRow,
+    dataEndRule: dominant.dataEndRule,
+    tableRegions: active.flatMap((s) => (s.tableRegions || []).map((r) => ({ ...r, sheet: s.name }))).slice(0, 12),
+    metadataRegions: active.flatMap((s) => (s.metadataRegions || []).map((r) => ({ ...r, sheet: s.name }))).slice(0, 12),
+    dateSource: dominant.dateSource,
+    confidence: Math.max(...active.map((s) => s.layoutProfile?.confidence || 0), dominant.confidence || 0),
+    reasons: [...new Set(active.flatMap((s) => s.layoutProfile?.reasons || []))].slice(0, 5)
+  };
   const reasons = [
     `${detectedSheets.length} sheeturi relevante`,
     `${ignoredSheets.length} sheeturi ignorate`,
-    SHEET_MODE_LABELS[sheetMode] || sheetMode
+    SHEET_MODE_LABELS[sheetMode] || sheetMode,
+    `${LAYOUT_LABELS[layout] || layout}`
   ];
-  return { raw, layout, sheetMode, sheetProfiles, detectedSheets, ignoredSheets, reasons };
+  return { raw, layout, layoutSummary, sheetMode, sheetProfiles, detectedSheets, ignoredSheets, reasons };
 }
 async function readWorkbookInfo(file) {
   const lower = file.name.toLowerCase();
@@ -2109,13 +2239,16 @@ function detectLearningSheetMode(fileName, raw, workbookInfo) {
   return "single_sheet";
 }
 function detectLearningConfidence(kind, granularity, layout, header, workbookInfo) {
-  let score = 34;
-  if (kind !== "unknown") score += 20;
-  if (granularity !== "unknown") score += 14;
-  if (layout !== "unknown") score += 12;
-  if ((header?.score || 0) >= 3) score += 10;
-  if ((workbookInfo?.detectedSheets || []).length >= 1) score += 6;
+  let score = 32;
+  if (kind !== "unknown") score += 18;
+  if (granularity !== "unknown") score += 12;
+  if (layout !== "unknown") score += 10;
+  if ((header?.score || 0) >= 3) score += 8;
+  if ((workbookInfo?.detectedSheets || []).length >= 1) score += 5;
   if (workbookInfo?.sheetMode && workbookInfo.sheetMode !== "unknown") score += 4;
+  if ((workbookInfo?.layoutSummary?.tableRegions || []).length) score += 5;
+  if ((workbookInfo?.layoutSummary?.metadataRegions || []).length) score += 3;
+  if ((workbookInfo?.layoutSummary?.confidence || 0) >= 80) score += 6;
   return Math.min(98, score);
 }
 function buildTrainingDetection(file, workbookInfo) {
@@ -2128,7 +2261,8 @@ function buildTrainingDetection(file, workbookInfo) {
   const vendor = detectLearningVendor(fileName, raw);
   const granularity = detectLearningGranularity(raw, fileName);
   const sheetMode = detectLearningSheetMode(fileName, raw, workbookInfo);
-  const layout = workbookInfo?.layout && workbookInfo.layout !== "unknown" ? workbookInfo.layout : detectLearningLayout(raw);
+  const layoutProfile = workbookInfo?.layoutSummary || analyzeLearningLayout(raw, fileName);
+  const layout = workbookInfo?.layout && workbookInfo.layout !== "unknown" ? workbookInfo.layout : layoutProfile.orientation;
   const confidence = detectLearningConfidence(kind, granularity, layout, header, workbookInfo);
   const previewRows = splitLearningRows(raw).slice(0, 8);
   const activeSheets = workbookInfo?.detectedSheets || [];
@@ -2144,7 +2278,13 @@ function buildTrainingDetection(file, workbookInfo) {
     granularity,
     sheetMode,
     layout,
-    headerRow: header.row,
+    layoutProfile,
+    headerRow: layoutProfile.headerRow || header.row,
+    dataStartRow: layoutProfile.dataStartRow,
+    dataEndRule: layoutProfile.dataEndRule,
+    tableRegions: layoutProfile.tableRegions || [],
+    metadataRegions: layoutProfile.metadataRegions || [],
+    dateSource: layoutProfile.dateSource,
     confidence,
     detectedSheets: activeSheets,
     ignoredSheets,
@@ -2153,17 +2293,19 @@ function buildTrainingDetection(file, workbookInfo) {
       `${LEARNING_KIND_LABELS[kind] || "Tip"} detectat din workbook/sheeturi`,
       `${granularity === "unknown" ? "Granularitate neconfirmată" : `Granularitate ${granularity}`}`,
       `${SHEET_MODE_LABELS[sheetMode] || sheetMode}`,
+      `${LAYOUT_LABELS[layout] || layout}`,
+      ...(layoutProfile.reasons || []),
       ...(workbookInfo?.reasons || [])
-    ].filter(Boolean).slice(0, 6),
+    ].filter(Boolean).slice(0, 8),
     previewRows,
     status: confidence >= 90 ? "ready" : confidence >= 70 ? "review" : "manual",
     uploadedAt: new Date().toISOString()
   };
 }
 function DataLearningCenter({ currentUser }) {
-  const storageKey = "servio.dataLearning.v431";
+  const storageKey = "servio.dataLearning.v432";
   const [files, setFiles] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem("servio.dataLearning.v431") || localStorage.getItem("servio.dataLearning.v430") || "[]"); } catch { return []; }
   });
   const [busy, setBusy] = useState(false);
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 24))); } catch {} }, [files]);
@@ -2189,8 +2331,8 @@ function DataLearningCenter({ currentUser }) {
     <Card title="Data Learning Center" right={<Badge tone="b">Admin only</Badge>}>
       <div className="dlchead">
         <div>
-          <div className="setname">Workbook & Sheet Detection Engine</div>
-          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează sheeturi lunare/zilnice, sheeturi relevante, sheeturi ignorate și structura workbookului.</div>
+          <div className="setname">Layout Detection Engine</div>
+          <div className="setsub">Încarcă exemple IBD, PVGIS, invertor sau fișiere combinate. SERVIO detectează sheeturi, header row, data start row, orientarea datelor, tabele multiple, metadate și matrice zi × interval.</div>
         </div>
         <label className="btn dlcupload">
           {busy ? <RefreshCw size={14} className="spin" /> : <Upload size={14} />}
@@ -2202,6 +2344,7 @@ function DataLearningCenter({ currentUser }) {
       <div className="kpirow dlckpis">
         <Kpi label="Training files" value={files.length} sub="încărcate local" Icon={FileSpreadsheet} />
         <Kpi label="Workbooks" value={workbookCount} sub="XLS / XLSX analizate" Icon={Database} tone="accent" />
+        <Kpi label="Layouts" value={files.filter((f) => f.layout && f.layout !== "unknown").length} sub="orientări detectate" Icon={Layers} tone="accent" />
         <Kpi label="Templates saved" value={templates.length} sub="tipare confirmate" Icon={Check} tone="green" />
         <Kpi label="Best confidence" value={(files.length ? Math.max(...files.map((f) => f.confidence || 0)) : 0) + "%"} sub="detecție automată" Icon={Activity} tone="accent" />
       </div>
@@ -2219,7 +2362,7 @@ function DataLearningCenter({ currentUser }) {
                 <div className="dlcicon"><FileSpreadsheet size={16} /></div>
                 <div className="dlcmeta">
                   <div className="dlctitle">{f.fileName}</div>
-                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {f.layout}</div>
+                  <div className="dlcsub">{f.fileType.toUpperCase()} · {LEARNING_KIND_LABELS[f.dataKind]} · {f.sourceVendor} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {f.granularity} · {LAYOUT_LABELS[f.layout] || f.layout}</div>
                   <div className="dlcreasons">{(f.reasons || []).map((r) => <span key={r}>{r}</span>)}</div>
                 </div>
               </div>
@@ -2228,11 +2371,19 @@ function DataLearningCenter({ currentUser }) {
                 <span className="dim small">Header row {f.headerRow}</span>
                 <span className="dim small">{(f.detectedSheets || []).length} active / {(f.ignoredSheets || []).length} ignored</span>
               </div>
+              <div className="dlclayout">
+                <div><b>{LAYOUT_LABELS[f.layout] || f.layout}</b><span>Layout detectat</span></div>
+                <div><b>Header row {f.headerRow || "—"}</b><span>Data start row {f.dataStartRow || "—"}</span></div>
+                <div><b>{DATE_SOURCE_LABELS[f.dateSource] || f.dateSource || "necunoscut"}</b><span>Sursă dată/timestamp</span></div>
+                <div><b>{(f.tableRegions || []).length}</b><span>regiuni tabel</span></div>
+                <div><b>{(f.metadataRegions || []).length}</b><span>regiuni metadate</span></div>
+              </div>
+              {(f.layoutProfile?.reasons || []).length > 0 && <div className="dlcreasons layoutreasons">{f.layoutProfile.reasons.map((r) => <span key={r}>{r}</span>)}</div>}
               {(f.sheetProfiles || []).length > 0 && (
                 <div className="dlcsheets">
                   {(f.sheetProfiles || []).slice(0, 12).map((s) => (
                     <div className={"dlcsheet " + (s.ignored ? "ignored" : "active")} key={s.name}>
-                      <b>{s.name}</b><span>{SHEET_ROLE_LABELS[s.role] || s.role} · {s.rowCount}r × {s.colCount}c · {s.periodType !== "unknown" ? s.periodLabel : s.layout}</span>
+                      <b>{s.name}</b><span>{SHEET_ROLE_LABELS[s.role] || s.role} · {s.rowCount}r × {s.colCount}c · {s.periodType !== "unknown" ? s.periodLabel : (LAYOUT_LABELS[s.layout] || s.layout)} · H{s.headerRow}/D{s.dataStartRow}</span>
                     </div>
                   ))}
                   {(f.sheetProfiles || []).length > 12 && <div className="dlcsheet ignored"><b>+{f.sheetProfiles.length - 12}</b><span>sheeturi ascunse în preview</span></div>}
@@ -2251,7 +2402,7 @@ function DataLearningCenter({ currentUser }) {
         </div>
       )}
       {files.length > 0 && <div className="dlcfooter"><button className="btn ghost" onClick={clearAll}>Curăță lista locală</button></div>}
-      <div className="hint"><Cpu size={13} /> v4.31: workbook & sheet detection pentru XLS/XLSX cu SheetJS, detectare sheeturi lunare/zilnice, sheeturi relevante/ignorate și mod workbook. Următorul build intră în layout detection pe regiuni/tabele.</div>
+      <div className="hint"><Cpu size={13} /> v4.32: layout detection engine detectează tabel vertical, matrice zi × interval, matrice interval × zi, metadate + tabel, tabele multiple, header row, data start row, regiuni de tabel și regiuni de metadate.</div>
     </Card>
   );
 }
@@ -2952,9 +3103,14 @@ const CSS = `
 .dlcsheet span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlcpreview{grid-column:1/-1;border:1px solid var(--border);border-radius:10px;background:var(--card);padding:8px;display:flex;flex-direction:column;gap:4px;max-height:112px;overflow:auto}
 .dlcpreview code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10.5px;color:var(--text-dim);white-space:nowrap}
+.dlclayout{grid-column:1/-1;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.dlclayout div{border:1px solid var(--border);border-radius:9px;background:rgba(15,23,42,.35);padding:7px 8px;min-width:0}
+.dlclayout b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlclayout span{display:block;margin-top:2px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.layoutreasons{grid-column:1/-1;margin-top:-2px}
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
-@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}}
+@media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
