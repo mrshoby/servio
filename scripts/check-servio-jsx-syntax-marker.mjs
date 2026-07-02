@@ -5,7 +5,7 @@ const worker = fs.readFileSync("src/worker.js", "utf8");
 const workflow = fs.readFileSync(".github/workflows/opcom-pzu-cache.yml", "utf8");
 
 const checks = [
-  ["build version v4.42", worker.includes("servio-grid-map-v4.42-combined-dataset-analyzer")],
+  ["build version v4.42.1", worker.includes("servio-grid-map-v4.42.1-energy-lab-upload-workspace")],
   ["xlsx import support", app.includes('import * as XLSX from "xlsx"') && worker.includes('xlsx@0.18.5') && worker.includes('XLSX')],
   ["auth endpoints preserved", worker.includes('path === "/api/servio/auth/login"') && worker.includes('path === "/api/servio/auth/me"') && worker.includes('path === "/api/servio/auth/logout"')],
   ["auth frontend preserved", app.includes("function AuthGate") && app.includes("function LoginView") && app.includes("function UserMenu") && worker.includes("function AuthGate")],
@@ -36,6 +36,11 @@ const checks = [
   ["combined dataset analyzer exists", app.includes("buildCombinedDatasetProfile") && app.includes("extractLearningBalanceSamples") && app.includes("COMBINED_DATASET_PROFILE_LABELS")],
   ["combined dataset UI exists", app.includes("Combined Dataset Analyzer") && app.includes("dlccombined") && app.includes("Combined ready")],
   ["combined dataset profile persisted", app.includes("combinedDatasetProfile") && app.includes("combinedDatasetRules") && app.includes("selfConsumedKwh") && app.includes("coveragePct") && app.includes("pvUtilizationPct")],
+
+  ["energy lab navigation exists", app.includes('id: "energyLab"') && app.includes('label: "Energy Lab"') && app.includes('view === "energyLab"') && app.includes('/energy-lab')],
+  ["energy lab upload workspace exists", app.includes('function EnergyLabView') && app.includes('Upload fișiere pentru analiză') && app.includes('curbă de sarcină') && app.includes('curbă de producție')],
+  ["energy lab result panels exist", app.includes('elresultgrid') && app.includes('autoconsum') && app.includes('acoperire consum') && app.includes('peak surplus') && app.includes('peak deficit')],
+  ["energy lab uses learned templates", app.includes('readStoredLearningTemplates') && app.includes('getLearningSmartParserRuntime(f, templates)') && app.includes('servio.energyLab.v4421')],
   ["storage migrated to v4.42", app.includes("servio.dataLearning.v442") && app.includes("servio.dataLearning.v441") && app.includes("servio.dataLearning.v440")],
   ["file type categories preserved", app.includes("ibd") && app.includes("meter") && app.includes("pvgis") && app.includes("inverter") && app.includes("ems_scada") && app.includes("full_balance_file")],
   ["sheet detection modes preserved", app.includes("monthly_sheets") && app.includes("daily_sheets") && app.includes("multiple_relevant_sheets") && app.includes("multi_table_sheet")],
@@ -56,4 +61,4 @@ for (const [name, ok] of checks) {
   else console.log(`OK: ${name}`);
 }
 if (failed) process.exit(1);
-console.log("SERVIO v4.42 combined dataset analyzer guards OK.");
+console.log("SERVIO v4.42.1 energy lab upload workspace guards OK.");

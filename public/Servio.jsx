@@ -224,6 +224,8 @@ const NEIGHBORS = [
 const NAV = [
   { sec: "Prezentare" },
   { id: "overview", label: "Overview", Icon: LayoutGrid },
+  { sec: "Analiză" },
+  { id: "energyLab", label: "Energy Lab", Icon: FileSpreadsheet },
   { sec: "Piețe" },
   { id: "dayahead", label: "Day-Ahead · PZU", Icon: Activity, badge: "live" },
   { id: "forecast", label: "Prognoză", Icon: LineIcon },
@@ -233,7 +235,7 @@ const NAV = [
   { sec: "Sistem" },
   { id: "settings", label: "Setări", Icon: Settings },
 ];
-const TITLES = { overview: "Overview", dayahead: "Day-Ahead · PZU", forecast: "Prognoză", battery: "Baterie · BESS", map: "Harta Rețea", settings: "Setări" };
+const TITLES = { overview: "Overview", energyLab: "Energy Lab", dayahead: "Day-Ahead · PZU", forecast: "Prognoză", battery: "Baterie · BESS", map: "Harta Rețea", settings: "Setări" };
 
 /* ============================ small UI ============================ */
 function Dot({ status }) {
@@ -3848,6 +3850,181 @@ function ShieldCheckFallback({ size = 16 }) {
   return <Check size={size} />;
 }
 
+function readStoredLearningTemplates() {
+  if (typeof localStorage === "undefined") return [];
+  const keys = ["servio.dataLearning.v442", "servio.dataLearning.v441", "servio.dataLearning.v440", "servio.dataLearning.v439", "servio.dataLearning.v438", "servio.dataLearning.v437", "servio.dataLearning.v436", "servio.dataLearning.v435", "servio.dataLearning.v434", "servio.dataLearning.v433", "servio.dataLearning.v432", "servio.dataLearning.v431", "servio.dataLearning.v430"];
+  for (const key of keys) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+      const templates = (Array.isArray(parsed) ? parsed : []).map(ensureLearningMapping).filter((f) => f.importTemplate).map((f) => ({ ...f.importTemplate, sourceFileId: f.id, sourceFileName: f.fileName, confidence: f.confidence || f.importTemplate?.averageConfidence || 0 }));
+      if (templates.length) return templates;
+    } catch {}
+  }
+  return [];
+}
+function forceEnergyLabMode(profile, mode) {
+  if (!profile || mode === "auto") return profile;
+  const forcedKind = mode === "consumption" ? "consumption" : mode === "production" ? "production" : mode === "combined" ? "combined" : mode === "full_energy_balance" ? "full_energy_balance" : profile.dataKind;
+  const raw = (profile.previewRows || []).join("\n");
+  const forcedFileType = mode === "consumption" ? "generic_consumption" : mode === "production" ? "generic_production" : mode === "combined" ? "combined_file" : mode === "full_energy_balance" ? "full_balance_file" : profile.detectedFileType;
+  const fileTypeProfile = { confidence: profile.fileTypeConfidence || profile.confidence || 65, dataSignals: profile.dataSignals || {}, fileType: forcedFileType };
+  const qualityProfile = buildLearningDataQuality(raw, profile.fileName || "energy-lab-file", forcedKind, profile.granularityProfile || {}, profile.layoutProfile || {}, { sheetProfiles: profile.sheetProfiles || [], sheetMode: profile.sheetMode }, fileTypeProfile);
+  const consumptionProfile = buildConsumptionDatasetProfile(raw, profile.fileName || "energy-lab-file", forcedKind, profile.granularityProfile || {}, qualityProfile, profile.layoutProfile || {}, fileTypeProfile);
+  const productionProfile = buildProductionDatasetProfile(raw, profile.fileName || "energy-lab-file", forcedKind, profile.granularityProfile || {}, qualityProfile, profile.layoutProfile || {}, fileTypeProfile);
+  const combinedDatasetProfile = buildCombinedDatasetProfile(raw, profile.fileName || "energy-lab-file", forcedKind, profile.granularityProfile || {}, qualityProfile, profile.layoutProfile || {}, fileTypeProfile, profile.mappingDraft || {}, consumptionProfile, productionProfile);
+  return {
+    ...profile,
+    dataKind: forcedKind,
+    detectedFileType: forcedFileType,
+    fileTypeReasons: [...(profile.fileTypeReasons || []), `Mod de analiză ales manual: ${LEARNING_KIND_LABELS[forcedKind] || forcedKind}`],
+    qualityProfile,
+    qualityScore: qualityProfile.score,
+    consumptionProfile,
+    productionProfile,
+    combinedDatasetProfile,
+    status: profile.status === "manual" ? "review" : profile.status
+  };
+}
+function capabilityListForEnergyLab(file) {
+  const q = file?.qualityProfile?.allowedAnalyses || {};
+  const combined = file?.combinedDatasetProfile?.readiness || {};
+  const items = [
+    ["consumption", "Consum", !!q.consumption || !!file?.consumptionProfile?.sampleCount],
+    ["production", "Producție PV", !!q.production || !!file?.productionProfile?.sampleCount],
+    ["pvSelfConsumption", "Autoconsum PV", !!q.pvSelfConsumption || !!combined.pvSelfConsumption],
+    ["realAutoconsumption", "Autoconsum real", !!q.realAutoconsumption || !!combined.realAutoconsumption],
+    ["bess", "BESS / peak shaving", !!q.bess || !!combined.bess],
+    ["tariff", "Contract / tarif", !!q.tariff],
+    ["report", "Raport client", !!q.report || !!combined.report]
+  ];
+  return items;
+}
+function EnergyLabView({ currentUser }) {
+  const storageKey = "servio.energyLab.v4421";
+  const [files, setFiles] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || "[]").map(ensureLearningMapping); } catch { return []; }
+  });
+  const [busy, setBusy] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState("auto");
+  const [templateQuery, setTemplateQuery] = useState("");
+  const templates = useMemo(() => readStoredLearningTemplates().filter((tpl) => (tpl.status || "active") !== "disabled"), [files.length]);
+  useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(files.slice(0, 20))); } catch {} }, [files]);
+  const onFiles = async (event) => {
+    const list = Array.from(event.target.files || []);
+    if (!list.length) return;
+    setBusy(true);
+    const parsed = [];
+    for (const file of list) {
+      const workbookInfo = await readWorkbookInfo(file);
+      const detected = buildTrainingDetection(file, workbookInfo);
+      parsed.push({ ...forceEnergyLabMode(detected, analysisMode), labUploadedAt: new Date().toISOString(), labMode: analysisMode });
+    }
+    setFiles((prev) => [...parsed, ...prev].slice(0, 20));
+    setBusy(false);
+    event.target.value = "";
+  };
+  const filteredFiles = useMemo(() => {
+    const q = templateQuery.trim().toLowerCase();
+    if (!q) return files;
+    return files.filter((f) => [f.fileName, f.sourceVendor, f.detectedFileType, f.dataKind, f.sheetMode, f.layout].filter(Boolean).join(" ").toLowerCase().includes(q));
+  }, [files, templateQuery]);
+  const avgQuality = files.length ? Math.round(files.reduce((sum, f) => sum + (f.qualityProfile?.score || f.qualityScore || 0), 0) / files.length) : 0;
+  const combinedReady = files.filter((f) => ["ready", "preview", "estimated"].includes(f.combinedDatasetProfile?.status)).length;
+  const bestRuntime = files.length ? Math.max(...files.map((f) => getLearningSmartParserRuntime(f, templates).score || 0)) : 0;
+  const clearAll = () => setFiles([]);
+  return (
+    <div className="energylab">
+      <Card className="elhero" title="Energy Lab" right={<Badge tone="b">Operator workspace</Badge>}>
+        <div className="elherogrid">
+          <div>
+            <div className="setname">Upload curbe energetice și vezi rezultatele</div>
+            <div className="setsub">Încarcă o curbă de sarcină, o curbă de producție PV sau un fișier combinat. SERVIO folosește detectarea din Data Learning Center, verifică granularitatea și calitatea datelor, apoi afișează ce analize pot fi calculate.</div>
+            <div className="elpills"><span>CSV</span><span>XLSX</span><span>XLS</span><span>15 min</span><span>60 min</span><span>single / multi-sheet</span><span>matrice zi × interval</span></div>
+          </div>
+          <div className="eluploadpanel">
+            <div className="elsegtitle">Tip fișier</div>
+            <div className="seg elmode">
+              <button className={"segbtn" + (analysisMode === "auto" ? " on" : "")} onClick={() => setAnalysisMode("auto")}>Auto</button>
+              <button className={"segbtn" + (analysisMode === "consumption" ? " on" : "")} onClick={() => setAnalysisMode("consumption")}>Consum</button>
+              <button className={"segbtn" + (analysisMode === "production" ? " on" : "")} onClick={() => setAnalysisMode("production")}>Producție</button>
+              <button className={"segbtn" + (analysisMode === "combined" ? " on" : "")} onClick={() => setAnalysisMode("combined")}>Consum + PV</button>
+              <button className={"segbtn" + (analysisMode === "full_energy_balance" ? " on" : "")} onClick={() => setAnalysisMode("full_energy_balance")}>Full balance</button>
+            </div>
+            <label className="btn eluploadbtn">
+              {busy ? <RefreshCw size={15} className="spin" /> : <Upload size={15} />}
+              Upload fișiere pentru analiză
+              <input type="file" accept=".csv,.txt,.html,.xlsx,.xls" multiple onChange={onFiles} />
+            </label>
+            <div className="hint"><FileSpreadsheet size={13} /> Fișierele sunt analizate local în workspace. Template-urile globale rămân administrate separat în Settings · Data Learning Center.</div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="kpirow elkpis">
+        <Kpi label="Fișiere analizate" value={files.length} sub="în Energy Lab" Icon={FileSpreadsheet} />
+        <Kpi label="Data quality" value={avgQuality + "%"} sub="scor mediu" Icon={ShieldCheckFallback} tone={avgQuality >= 75 ? "green" : "accent"} />
+        <Kpi label="Template match" value={bestRuntime + "%"} sub="cel mai bun scor" Icon={Cpu} tone="accent" />
+        <Kpi label="Consum ready" value={files.filter((f) => ["ready", "preview"].includes(f.consumptionProfile?.status)).length} sub="profil sarcină" Icon={Gauge} tone="accent" />
+        <Kpi label="Producție ready" value={files.filter((f) => ["ready", "preview"].includes(f.productionProfile?.status)).length} sub="profil PV" Icon={Sun} tone="accent" />
+        <Kpi label="Combined ready" value={combinedReady} sub="balanță / autoconsum" Icon={Plug} tone="green" />
+      </div>
+
+      <Card title="Analize încărcate" right={<div className="eltools"><div className="dlcsearch"><Search size={13} /><input value={templateQuery} onChange={(e) => setTemplateQuery(e.target.value)} placeholder="Caută fișier, vendor, layout..." /></div>{files.length > 0 && <button className="btn ghost" onClick={clearAll}>Curăță</button>}</div>}>
+        {filteredFiles.length === 0 ? (
+          <div className="elempty">
+            <FileSpreadsheet size={22} />
+            <b>Nicio curbă încărcată</b>
+            <span>Încarcă fișier de consum, producție PV, import/export sau full balance pentru a vedea aici calitatea datelor, capabilitățile și rezultatele combinate.</span>
+          </div>
+        ) : (
+          <div className="ellist">
+            {filteredFiles.map((f) => {
+              const runtime = getLearningSmartParserRuntime(f, templates);
+              const q = f.qualityProfile || {};
+              const c = f.consumptionProfile || {};
+              const p = f.productionProfile || {};
+              const b = f.combinedDatasetProfile || {};
+              const caps = capabilityListForEnergyLab(f);
+              const runtimeTone = runtime.score >= 90 ? "g" : runtime.score >= 70 ? "y" : "n";
+              return (
+                <div className="elitem" key={f.id}>
+                  <div className="elitemhead">
+                    <div className="elicn"><FileSpreadsheet size={16} /></div>
+                    <div className="elmeta"><b>{f.fileName}</b><span>{LEARNING_KIND_LABELS[f.dataKind] || f.dataKind} · {LEARNING_FILE_TYPE_LABELS[f.detectedFileType] || f.detectedFileType} · {SHEET_MODE_LABELS[f.sheetMode] || f.sheetMode} · {LAYOUT_LABELS[f.layout] || f.layout}</span></div>
+                    <div className="elbadges"><Badge tone={q.score >= 80 ? "g" : q.score >= 60 ? "y" : "r"}>{q.score || 0}% quality</Badge><Badge tone={runtimeTone}>{runtime.score || 0}% template</Badge></div>
+                  </div>
+                  <div className="elgrid">
+                    <div><b>{GRANULARITY_NORMALIZATION_LABELS[f.granularityProfile?.normalizationMode] || f.normalizationMode || f.granularity || "—"}</b><span>granularitate</span></div>
+                    <div><b>{q.missingIntervals || 0}</b><span>intervale lipsă</span></div>
+                    <div><b>{q.duplicateTimestamps || 0}</b><span>duplicate</span></div>
+                    <div><b>{SMART_PARSER_ACTION_LABELS[runtime.action] || runtime.action}</b><span>parser runtime</span></div>
+                  </div>
+                  <div className="elresultgrid">
+                    <div><b>{fmt(c.totalKwh || 0, 1)} kWh</b><span>consum detectat</span></div>
+                    <div><b>{fmt(p.totalKwh || 0, 1)} kWh</b><span>producție detectată</span></div>
+                    <div><b>{b.selfConsumedKwh == null ? "—" : fmt(b.selfConsumedKwh || 0, 1) + " kWh"}</b><span>autoconsum</span></div>
+                    <div><b>{b.coveragePct == null ? "—" : fmt(b.coveragePct, 1) + "%"}</b><span>acoperire consum</span></div>
+                    <div><b>{fmt(b.importKwh || 0, 1)} kWh</b><span>import</span></div>
+                    <div><b>{fmt(b.exportKwh || 0, 1)} kWh</b><span>export</span></div>
+                    <div><b>{fmt(b.peakSurplusKwh || 0, 2)} kWh</b><span>peak surplus</span></div>
+                    <div><b>{fmt(b.peakDeficitKwh || 0, 2)} kWh</b><span>peak deficit</span></div>
+                  </div>
+                  <div className="elcaps">{caps.map(([key, label, ok]) => <span className={ok ? "ok" : "blocked"} key={key}>{ok ? "✓" : "×"} {label}</span>)}</div>
+                  <div className="eldetails">
+                    <div className="dlcreasons">{[...(b.insights || []), ...(q.warnings || []), ...(runtime.reasons || [])].slice(0, 9).map((r) => <span key={r}>{r}</span>)}</div>
+                    <div className="hint"><Plug size={13} /> {b.recommendedNextStep || q.recommendedNextStep || "Încarcă date complementare pentru scenarii PV+BESS și raport client."}</div>
+                  </div>
+                  <div className="dlcpreview">{(f.previewRows || []).slice(0, 4).map((r, i) => <code key={i}>{r}</code>)}</div>
+                  <div className="elactions"><button className="btn ghost" onClick={() => setFiles((prev) => prev.filter((x) => x.id !== f.id))}>Elimină</button></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
 
 /* ============================ Settings ============================ */
 function SettingsView({ theme, setTheme, apiBase, setApiBase, apiToken, setApiToken, md }) {
@@ -4059,6 +4236,7 @@ function App() {
 
 function viewFromPath(pathname) {
   const p = String(pathname || "").toLowerCase();
+  if (p.includes("energy-lab") || p.includes("analiza-energie")) return "energyLab";
   if (p.includes("harta-retea") || p.includes("grid-map")) return "map";
   if (p.includes("day-ahead")) return "dayahead";
   if (p.includes("forecast")) return "forecast";
@@ -4067,7 +4245,7 @@ function viewFromPath(pathname) {
   return "overview";
 }
 function pathForView(view) {
-  return view === "map" ? "/harta-retea" : view === "dayahead" ? "/day-ahead" : view === "forecast" ? "/forecast" : view === "battery" ? "/bess" : view === "settings" ? "/settings" : "/";
+  return view === "energyLab" ? "/energy-lab" : view === "map" ? "/harta-retea" : view === "dayahead" ? "/day-ahead" : view === "forecast" ? "/forecast" : view === "battery" ? "/bess" : view === "settings" ? "/settings" : "/";
 }
 
 function AppShell() {
@@ -4144,6 +4322,7 @@ function AppShell() {
             <h1 className="pagetitle">{TITLES[view]}</h1>
             <p className="pagesub">{
               view === "overview" ? "Imagine de ansamblu asupra pieței și bateriei — cu PZU selectabil OPCOM / ENTSO-E." :
+              view === "energyLab" ? "Upload enterprise pentru curbă de sarcină, producție PV sau fișier combinat. SERVIO detectează formatul, validează datele și afișează rezultatele disponibile." :
               view === "dayahead" ? "Prețuri Day-Ahead (PZU) la 15 minute, cu semnale de încărcare și descărcare." :
               view === "forecast" ? "Prognoză AI pentru producție, consum și preț, cu intervale P10 / P50 / P90." :
               view === "battery" ? "Simulator complet de venit BESS: arbitraj pe perioadă, ROI, payback și scenarii P10 / P50 / P90." :
@@ -4153,6 +4332,7 @@ function AppShell() {
           </div>
 
           {view === "overview" && <Overview go={go} md={md} />}
+          {view === "energyLab" && <EnergyLabView currentUser={currentUser} />}
           {view === "dayahead" && <DayAhead md={md} dayAheadSource={dayAheadSource} setDayAheadSource={setDayAheadSource} />}
           {view === "forecast" && <Forecast md={md} />}
           {view === "battery" && <Battery md={md} />}
@@ -4515,6 +4695,11 @@ const CSS = `
 .loginbrand{display:flex;align-items:center;gap:11px;margin-bottom:24px}.loginlogo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:var(--accent-fg)}.loginname{font-weight:680;font-size:16px}.loginsub{font-size:11.5px;color:var(--text-faint);margin-top:2px}.loginhead h1{font-size:20px;letter-spacing:-.02em;margin:0 0 18px}.loginfield{display:block;margin-top:12px}.loginfield span{display:block;font-size:11.5px;color:var(--text-dim);margin-bottom:6px}.loginfield input{width:100%;border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:10px;padding:11px 12px;outline:none}.loginfield input:focus{border-color:color-mix(in srgb,var(--accent) 65%,var(--border-strong));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 12%,transparent)}.loginremember{display:flex;align-items:center;gap:8px;margin-top:13px;color:var(--text-dim);font-size:12px}.loginremember input{accent-color:var(--accent)}.loginerr{display:flex;align-items:center;gap:7px;margin-top:13px;border:1px solid color-mix(in srgb,var(--red) 35%,transparent);background:color-mix(in srgb,var(--red) 10%,transparent);color:#fecaca;border-radius:10px;padding:9px 10px;font-size:12px}.loginbtn{width:100%;height:40px;margin-top:16px;border:0;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-weight:650;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}.loginbtn:disabled{opacity:.72;cursor:wait}
 .usermenu{position:relative}.usermenuBtn{display:flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:4px 8px 4px 5px;cursor:pointer}.usermenuBtn:hover{border-color:var(--border-strong);background:var(--hover)}.useravatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-size:11px;font-weight:760;letter-spacing:.02em;flex:none}.useravatar.big{width:40px;height:40px;font-size:13px}.usercopy{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}.usercopy b{font-size:12px;font-weight:620;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.usercopy em{font-style:normal;font-size:10.5px;color:var(--text-faint);margin-top:2px}.userpop{position:absolute;right:0;top:calc(100% + 9px);width:250px;border:1px solid var(--border-strong);background:color-mix(in srgb,var(--panel) 96%,transparent);backdrop-filter:blur(14px);border-radius:13px;padding:8px;box-shadow:0 20px 60px rgba(0,0,0,.46);z-index:70}.userpopHead{display:flex;gap:10px;padding:8px 8px 10px;border-bottom:1px solid var(--border);margin-bottom:6px}.userpopHead b,.userpopHead span,.userpopHead em{display:block;min-width:0}.userpopHead b{font-size:13px}.userpopHead span{font-size:11.5px;color:var(--text-dim);margin-top:2px;word-break:break-all}.userpopHead em{font-size:10.5px;color:var(--text-faint);font-style:normal;margin-top:3px}.userpop button{width:100%;border:0;background:transparent;color:var(--text-dim);text-align:left;border-radius:8px;padding:9px 10px;font-size:12.5px;cursor:pointer}.userpop button:hover{background:var(--hover);color:var(--text)}.userpop button.danger:hover{color:#fecaca;background:color-mix(in srgb,var(--red) 12%,transparent)}
 
+
+
+/* energy lab */
+.energylab{display:flex;flex-direction:column;gap:14px}.elhero{border-color:rgba(245,165,36,.22);background:linear-gradient(135deg,rgba(245,165,36,.09),rgba(15,23,42,.42) 45%,rgba(34,197,94,.055))}.elherogrid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(320px,.8fr);gap:16px;align-items:stretch}.elpills{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.elpills span{font-size:10.8px;border:1px solid var(--border);background:var(--card);color:var(--text-dim);border-radius:999px;padding:4px 8px}.eluploadpanel{border:1px solid var(--border);border-radius:14px;background:rgba(15,23,42,.34);padding:12px;display:flex;flex-direction:column;gap:10px}.elsegtitle{font-size:11px;font-weight:650;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}.elmode{display:flex;flex-wrap:wrap;gap:6px;background:transparent;padding:0}.elmode .segbtn{font-size:11px;padding:7px 9px}.eluploadbtn{justify-content:center;width:100%;height:38px}.eluploadbtn input{display:none}.elkpis{grid-template-columns:repeat(6,minmax(0,1fr))}.eltools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.elempty{border:1px dashed var(--border);border-radius:14px;background:rgba(15,23,42,.24);padding:28px;display:flex;flex-direction:column;align-items:center;gap:7px;color:var(--text-faint);text-align:center}.elempty b{color:var(--text);font-size:13px}.elempty span{max-width:620px;font-size:12px}.ellist{display:flex;flex-direction:column;gap:12px}.elitem{border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.28);padding:12px;display:flex;flex-direction:column;gap:10px}.elitemhead{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.elicn{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:rgba(245,165,36,.12);border:1px solid rgba(245,165,36,.22);color:var(--accent)}.elmeta{min-width:0}.elmeta b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elmeta span{display:block;margin-top:2px;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elbadges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.elgrid,.elresultgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.elresultgrid{grid-template-columns:repeat(8,minmax(0,1fr))}.elgrid div,.elresultgrid div{border:1px solid var(--border);border-radius:10px;background:var(--card);padding:8px;min-width:0}.elgrid b,.elresultgrid b{display:block;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elgrid span,.elresultgrid span{display:block;margin-top:3px;font-size:10.5px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.elcaps{display:flex;flex-wrap:wrap;gap:6px}.elcaps span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:4px 8px}.elcaps .ok{background:rgba(34,197,94,.08);color:var(--green)}.elcaps .blocked{background:rgba(239,68,68,.055);color:var(--text-faint)}.eldetails{display:flex;flex-direction:column;gap:8px}.elactions{display:flex;justify-content:flex-end;border-top:1px solid var(--border);padding-top:9px}
+@media(max-width:1100px){.elherogrid{grid-template-columns:1fr}.elkpis{grid-template-columns:repeat(2,minmax(0,1fr))}.elresultgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.elgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.elitemhead{grid-template-columns:auto minmax(0,1fr)}.elbadges{grid-column:1/-1;justify-content:flex-start}.eltools{justify-content:flex-start}}
 
 /* data learning center */
 .dlchead{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:14px}
