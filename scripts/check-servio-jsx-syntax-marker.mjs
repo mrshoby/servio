@@ -5,7 +5,7 @@ const worker = fs.readFileSync("src/worker.js", "utf8");
 const workflow = fs.readFileSync(".github/workflows/opcom-pzu-cache.yml", "utf8");
 
 const checks = [
-  ["build version v4.42.3 KPI-only settings cleanup", worker.includes("servio-grid-map-v4.42.3-data-learning-kpi-only")],
+  ["build version v4.42.4 BESS real PV dataset mode", worker.includes("servio-grid-map-v4.42.4-bess-real-pv-dataset-mode")],
   ["xlsx import support", app.includes('import * as XLSX from "xlsx"') && worker.includes('xlsx@0.18.5') && worker.includes('XLSX')],
   ["auth endpoints preserved", worker.includes('path === "/api/servio/auth/login"') && worker.includes('path === "/api/servio/auth/me"') && worker.includes('path === "/api/servio/auth/logout"')],
   ["auth frontend preserved", app.includes("function AuthGate") && app.includes("function LoginView") && app.includes("function UserMenu") && worker.includes("function AuthGate")],
@@ -40,6 +40,13 @@ const checks = [
   ["combined analyzer real vs estimated rule", app.includes('autoconsumptionBasis') && app.includes('exportBasis') && app.includes('Nu există import/export: autoconsumul, surplusul și deficitul sunt estimate, nu reale.')],
   ["combined analyzer surplus deficit balance fields", app.includes('surplusKwh') && app.includes('deficitKwh') && app.includes('energyBalanceKwh')],
 
+  ["BESS real PV toggle", app.includes("BESS cu productie PV reala") && app.includes("realPvEnabled") && app.includes("besspvtoggle")],
+  ["BESS real PV file parser", app.includes("readBessRealPvWorkbook") && app.includes("buildBessRealPvDataset") && app.includes('accept=".csv,.xlsx,.xls,.txt"')],
+  ["BESS example mapping defaults", app.includes('timestampColumn: "A"') && app.includes('timeColumn: "B"') && app.includes('productionColumn: "C"') && app.includes('consumptionColumn: "D"') && app.includes('dataStartRow: 3')],
+  ["BESS PV per kWp scaling", app.includes("pvCurvePerKwp") && app.includes("pvInstalledKwp") && app.includes("Curba PV normalizata la 1 kWp")],
+  ["BESS interval simulation uses PV and load", app.includes("runRevenueWithRealPv") && app.includes("pvToBatteryKwh") && app.includes("batteryToLoadKwh") && app.includes("importReducedKwh") && app.includes("exportReducedKwh")],
+  ["BESS import export not marked real", app.includes('importExportBasis: "estimated"') && app.includes("nu sunt marcate drept valori reale")],
+  ["BESS real PV curve chart", app.includes("Curbe energetice si SOC") && app.includes('dataKey="productionKwh"') && app.includes('dataKey="consumptionKwh"') && app.includes('dataKey="socPct"')],
   ["energy lab navigation exists", app.includes('id: "energyLab"') && app.includes('label: "Energy Lab"') && app.includes('view === "energyLab"') && app.includes('/energy-lab')],
   ["energy lab clean upload exists", app.includes('function EnergyLabView') && app.includes('EnergyLabUploadButton') && app.includes('Încarcă fișier') && app.includes('elonlyupload')],
   ["energy lab chart results exist", app.includes('function EnergyLabChart') && app.includes('Curbă de sarcină') && app.includes('Curbă de producție PV') && app.includes('Consum + producție') && app.includes('elcleanstats')],
@@ -53,7 +60,7 @@ const checks = [
   ["old removed sections stay removed", !app.includes("Necesită atenție") && !app.includes("Surse de date · OPCOM & ENTSO-E") && !app.includes("Conformitate") && !app.includes("Price Thresholds · Inowattio old engine")],
   ["no old Inowattio debugging in UI", !app.includes("Inowattio old engine") && !app.includes("Inowattio parity") && !app.includes("DB locked")],
   ["day-ahead strict source preserved", app.includes('strict: dayAheadSource === "opcom" ? "1" : ""') && app.includes("warningToday") && app.includes("warningTomorrow")],
-  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.42.3-data-learning-kpi-only")],
+  ["Electricity Maps live grid preserved", worker.includes('GRID_MAP_PROVIDER || "electricitymaps"') && worker.includes("/v4/electricity-mix/latest") && worker.includes("GRID_MAP_ZONES.length") && worker.includes("full-europe-single-signal-v4.42.4-bess-real-pv-dataset-mode")],
   ["live-flow and inspector preserved", app.includes("gridflowgeo") && app.includes("gridhoverflows") && app.includes("gridhoverflowcol") && worker.includes("gridflowgeo")],
   ["mouse wheel zoom preserved", app.includes("handleMapWheel") && app.includes("onWheel={handleMapWheel}") && worker.includes("handleMapWheel")],
   ["OPCOM auto refresh schedule preserved", workflow.includes("*/15 * * * *") && workflow.includes("workflow_dispatch")],
@@ -65,4 +72,4 @@ for (const [name, ok] of checks) {
   else console.log(`OK: ${name}`);
 }
 if (failed) process.exit(1);
-console.log("SERVIO v4.42.3 data learning KPI-only guards OK.");
+console.log("SERVIO v4.42.4 BESS real PV dataset mode guards OK.");

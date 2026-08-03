@@ -400,6 +400,13 @@ const INOWATTIO_OLD_BESS_DEFAULTS = Object.freeze({
   fixedOmEurYear: 0,
   discountPct: 8,
   projectYears: 10,
+  pvInstalledKwp: 1,
+  pvCurvePerKwp: true,
+  pvProductionScale: 1,
+  consumptionScale: 1,
+  gridImportAdderRonMwh: 250,
+  exportValuePct: 80,
+  allowGridCharge: false,
 });
 function inowattioBatteryProfile(sp) {
   const capacityMWh = Math.max(0.001, Number(sp.capacityMWh ?? INOWATTIO_OLD_BESS_DEFAULTS.capacityMWh));
@@ -546,6 +553,355 @@ function runRevenue(sp, grid, fromD, toD) {
 }
 
 
+const BESS_REAL_PV_DEFAULT_MAPPING = Object.freeze({
+  sheetName: "",
+  dataStartRow: 3,
+  timestampColumn: "A",
+  timeColumn: "B",
+  productionColumn: "C",
+  consumptionColumn: "D",
+  granularity: "auto",
+  unit: "kWh",
+});
+function bessColumnIndex(letter) {
+  const s = String(letter || "").trim().toUpperCase();
+  if (!s || !/^[A-Z]+$/.test(s)) return -1;
+  let n = 0;
+  for (const c of s) n = n * 26 + c.charCodeAt(0) - 64;
+  return n - 1;
+}
+function bessColumnLetter(index) {
+  let n = Number(index) + 1, out = "";
+  while (n > 0) { const r = (n - 1) % 26; out = String.fromCharCode(65 + r) + out; n = Math.floor((n - 1) / 26); }
+  return out;
+}
+function parseBessEnergyNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  let s = String(value ?? "").trim().replace(/\s+/g, "");
+  if (!s) return NaN;
+  if (/^-?\d{1,3}(\.\d{3})+,\d+$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^-?\d{1,3}(,\d{3})+\.\d+$/.test(s)) s = s.replace(/,/g, "");
+  else if (s.includes(",") && !s.includes(".")) s = s.replace(",", ".");
+  const n = Number(s.replace(/[^0-9+\-.eE]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+}
+function bessExcelSerialDate(serial) {
+  const n = Number(serial);
+  if (!Number.isFinite(n) || n < 20000 || n > 90000) return null;
+  return new Date(Date.UTC(1899, 11, 30) + n * 86400000);
+}
+function bessTimeFraction(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return ((value % 1) + 1) % 1;
+  const s = String(value ?? "").trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  return (Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3] || 0)) / 86400;
+}
+function parseBessDatasetTimestamp(dateValue, timeValue, fallbackIndex, fallbackMinutes, state) {
+  const timeFrac = bessTimeFraction(timeValue);
+  if (typeof dateValue === "number" && Number.isFinite(dateValue) && dateValue > 20000) {
+    const serial = Math.floor(dateValue) + (timeFrac == null ? ((dateValue % 1) + 1) % 1 : timeFrac);
+    return bessExcelSerialDate(serial);
+  }
+  if (dateValue instanceof Date && !Number.isNaN(dateValue.getTime())) {
+    const d = new Date(dateValue.getTime());
+    if (timeFrac != null) d.setUTCHours(0, 0, 0, 0), d.setTime(d.getTime() + timeFrac * 86400000);
+    return d;
+  }
+  const raw = String(dateValue ?? "").trim();
+  if (raw) {
+    const ro = raw.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+    if (ro) return new Date(Date.UTC(Number(ro[3]), Number(ro[2]) - 1, Number(ro[1]), Number(ro[4] || 0), Number(ro[5] || 0)) + (timeFrac != null ? timeFrac * 86400000 : 0));
+    const iso = new Date(raw);
+    if (!Number.isNaN(iso.getTime())) {
+      if (timeFrac != null) iso.setUTCHours(0, 0, 0, 0), iso.setTime(iso.getTime() + timeFrac * 86400000);
+      return iso;
+    }
+  }
+  if (timeFrac != null) {
+    if (state.prevTimeFraction != null && timeFrac + 1e-8 < state.prevTimeFraction) state.syntheticDay += 1;
+    state.prevTimeFraction = timeFrac;
+    return new Date(Date.UTC(2025, 0, 1 + state.syntheticDay) + timeFrac * 86400000);
+  }
+  return new Date(Date.UTC(2025, 0, 1) + fallbackIndex * fallbackMinutes * 60000);
+}
+async function readBessRealPvWorkbook(file) {
+  const lower = String(file?.name || "").toLowerCase();
+  if (!/\.(xlsx|xls|csv|txt)$/.test(lower)) throw new Error("Format neacceptat. Foloseste CSV, XLSX sau XLS.");
+  const bytes = await file.arrayBuffer();
+  const wb = XLSX.read(bytes, { type: "array", cellDates: false, raw: true });
+  const sheets = wb.SheetNames.map((name) => {
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, blankrows: false, raw: true, defval: null });
+    const columnCount = rows.reduce((m, row) => Math.max(m, Array.isArray(row) ? row.length : 0), 0);
+    return { name, rows, columnCount };
+  });
+  const markerText = sheets.slice(0, 3).flatMap((s) => s.rows.slice(0, 8)).flat().map((v) => String(v ?? "")).join(" ").toLowerCase();
+  return {
+    name: file.name,
+    size: file.size,
+    sheets,
+    detectedPerKwp: /1\s*kwp|per\s*kwp|\/\s*kwp/.test(markerText),
+    detectedPvgis: markerText.includes("pvgis"),
+  };
+}
+function inferBessGranularityMinutes(rows, configured) {
+  if (configured === "15m") return 15;
+  if (configured === "60m") return 60;
+  const diffs = [];
+  for (let i = 1; i < Math.min(rows.length, 1500); i++) {
+    const d = (rows[i].timestamp - rows[i - 1].timestamp) / 60000;
+    if (d > 0 && d <= 240) diffs.push(d);
+  }
+  if (!diffs.length) return 60;
+  diffs.sort((a, b) => a - b);
+  const median = diffs[Math.floor(diffs.length / 2)];
+  return Math.abs(median - 15) <= Math.abs(median - 60) ? 15 : 60;
+}
+function buildBessRealPvDataset(workbook, mapping, specs) {
+  if (!workbook?.sheets?.length) return null;
+  const sheet = workbook.sheets.find((s) => s.name === mapping.sheetName) || workbook.sheets[0];
+  const start = Math.max(0, Number(mapping.dataStartRow || 3) - 1);
+  const dateIdx = bessColumnIndex(mapping.timestampColumn);
+  const timeIdx = bessColumnIndex(mapping.timeColumn);
+  const pvIdx = bessColumnIndex(mapping.productionColumn);
+  const loadIdx = bessColumnIndex(mapping.consumptionColumn);
+  const state = { syntheticDay: 0, prevTimeFraction: null };
+  const fallbackMinutes = mapping.granularity === "15m" ? 15 : 60;
+  const unitFactor = mapping.unit === "MWh" ? 1000 : mapping.unit === "Wh" ? 0.001 : 1;
+  const pvScale = Math.max(0, Number(specs.pvProductionScale || 1)) * (specs.pvCurvePerKwp ? Math.max(0, Number(specs.pvInstalledKwp || 0)) : 1) * unitFactor;
+  const loadScale = Math.max(0, Number(specs.consumptionScale || 1)) * unitFactor;
+  const rows = [];
+  let invalidRows = 0;
+  for (let r = start; r < sheet.rows.length; r++) {
+    const row = sheet.rows[r] || [];
+    const pvRaw = parseBessEnergyNumber(row[pvIdx]);
+    const loadRaw = parseBessEnergyNumber(row[loadIdx]);
+    if (!Number.isFinite(pvRaw) && !Number.isFinite(loadRaw)) { invalidRows++; continue; }
+    const timestamp = parseBessDatasetTimestamp(row[dateIdx], row[timeIdx], rows.length, fallbackMinutes, state);
+    if (!timestamp || Number.isNaN(timestamp.getTime())) { invalidRows++; continue; }
+    rows.push({
+      timestamp,
+      productionKwh: Math.max(0, Number.isFinite(pvRaw) ? pvRaw * pvScale : 0),
+      consumptionKwh: Math.max(0, Number.isFinite(loadRaw) ? loadRaw * loadScale : 0),
+      sourceRow: r + 1,
+    });
+  }
+  rows.sort((a, b) => a.timestamp - b.timestamp);
+  const granularityMinutes = inferBessGranularityMinutes(rows, mapping.granularity);
+  const intervalHours = granularityMinutes / 60;
+  for (const row of rows) row.intervalHours = intervalHours;
+  const uniqueDays = new Set(rows.map((r) => r.timestamp.toISOString().slice(0, 10))).size;
+  return {
+    fileName: workbook.name,
+    sheetName: sheet.name,
+    rows,
+    invalidRows,
+    granularityMinutes,
+    uniqueDays,
+    start: rows[0]?.timestamp || null,
+    end: rows.at(-1)?.timestamp || null,
+    totalProductionKwh: rows.reduce((a, r) => a + r.productionKwh, 0),
+    totalConsumptionKwh: rows.reduce((a, r) => a + r.consumptionKwh, 0),
+    sourceBasis: workbook.detectedPvgis ? "pvgis" : "uploaded_curve",
+    measuredImportExport: false,
+  };
+}
+function bessPriceLeiMwhAt(timestamp) {
+  const d = timestamp instanceof Date ? timestamp : new Date(timestamp);
+  const dayUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const startUtc = Date.UTC(2023, 9, 1);
+  const idx = Math.round((dayUtc - startUtc) / 86400000);
+  const h = Math.max(0, Math.min(23, d.getUTCHours()));
+  if (idx >= 0 && idx < REAL.avg.length) return REAL.avg[idx] + REAL.shape[h] * REAL.spread[idx] * 0.5;
+  const doy = Math.floor((dayUtc - Date.UTC(d.getUTCFullYear(), 0, 0)) / 86400000);
+  const winter = 0.5 + 0.5 * Math.cos((doy - 15) / 365 * 2 * Math.PI);
+  return 560 + 180 * winter + SHAPE24[h] * (430 + 360 * winter) * 0.5;
+}
+function emptyRealPvResult(sp) {
+  const investment = Math.max(0, Number(sp.capacityMWh || 0)) * 1000 * Math.max(0, Number(sp.batteryCostEurKwh || 0));
+  return { months: [], totalRevenue: 0, avgMonthly: 0, avgDaily: 0, totalCycles: 0, avgCyclesPerDay: 0, days: 0, totalMonths: 0, investment, annual: 0, roi: 0, payback: null, realPvPending: true, sourceMode: "real_pv" };
+}
+function runRevenueWithRealPv(sp, grid, dataset, cfg) {
+  if (!dataset?.rows?.length) return emptyRealPvResult(sp);
+  const profile = inowattioBatteryProfile(sp);
+  const th = inowattioThresholds(sp);
+  const eur = Math.max(0.000001, Number(sp.eurRon || 4.97));
+  const capacityKwh = profile.capacityMWh * 1000;
+  const minSocKwh = capacityKwh * profile.minSocPct / 100;
+  const maxSocKwh = capacityKwh * profile.maxSocPct / 100;
+  const usableKwh = Math.max(0.001, maxSocKwh - minSocKwh);
+  const etaCharge = Math.sqrt(profile.efficiency);
+  const etaDischarge = Math.sqrt(profile.efficiency);
+  let socKwh = minSocKwh;
+  const rows = dataset.rows.filter((r) => {
+    const key = r.timestamp.toISOString().slice(0, 10);
+    return (!cfg.from || key >= cfg.from) && (!cfg.to || key <= cfg.to);
+  });
+  if (!rows.length) return emptyRealPvResult(sp);
+
+  const priceRows = rows.map((r) => ({ ...r, priceLeiMwh: bessPriceLeiMwhAt(r.timestamp) }));
+  const dailyPrices = {};
+  priceRows.forEach((r) => { const k = r.timestamp.toISOString().slice(0, 10); (dailyPrices[k] ||= []).push(r.priceLeiMwh); });
+  const dailyLowThreshold = {};
+  Object.entries(dailyPrices).forEach(([k, values]) => { const s = [...values].sort((a, b) => a - b); dailyLowThreshold[k] = s[Math.max(0, Math.floor((s.length - 1) * 0.3))]; });
+
+  const monthly = {};
+  const dailyDischarge = {};
+  let totalRevenue = 0, totalCycles = 0;
+  let baselineImportKwh = 0, baselineExportKwh = 0, importAfterKwh = 0, exportAfterKwh = 0;
+  let directPvKwh = 0, pvToBatteryKwh = 0, batteryToLoadKwh = 0, gridChargeKwh = 0, lossesKwh = 0;
+  let peakImportBeforeKw = 0, peakImportAfterKw = 0;
+  const chartRows = [];
+
+  for (const row of priceRows) {
+    const dateKey = row.timestamp.toISOString().slice(0, 10);
+    const monthKey = dateKey.slice(0, 7);
+    const hour = row.timestamp.getUTCHours();
+    const intervalHours = Math.max(1 / 60, Number(row.intervalHours || dataset.granularityMinutes / 60 || 1));
+    const chargeLimitKwh = profile.maxChargeMW * 1000 * intervalHours;
+    const dischargeLimitKwh = profile.maxDischargeMW * 1000 * intervalHours;
+    const importPriceRonMwh = row.priceLeiMwh + Math.max(0, Number(sp.gridImportAdderRonMwh || 0));
+    const exportPriceRonMwh = row.priceLeiMwh * Math.max(0, Number(sp.exportValuePct || 0)) / 100;
+    const pv = Math.max(0, row.productionKwh);
+    const load = Math.max(0, row.consumptionKwh);
+    const direct = Math.min(pv, load);
+    let surplus = Math.max(0, pv - load);
+    let deficit = Math.max(0, load - pv);
+    const baseImport = deficit;
+    const baseExport = surplus;
+    baselineImportKwh += baseImport;
+    baselineExportKwh += baseExport;
+    directPvKwh += direct;
+    peakImportBeforeKw = Math.max(peakImportBeforeKw, baseImport / intervalHours);
+
+    let chargedPv = 0, chargedGrid = 0, dischargedLoad = 0;
+    const roomInputKwh = Math.max(0, (maxSocKwh - socKwh) / etaCharge);
+    chargedPv = Math.min(surplus, chargeLimitKwh, roomInputKwh);
+    if (chargedPv > 0) { socKwh += chargedPv * etaCharge; surplus -= chargedPv; pvToBatteryKwh += chargedPv; }
+
+    const remainingChargeLimit = Math.max(0, chargeLimitKwh - chargedPv);
+    const roomAfterPv = Math.max(0, (maxSocKwh - socKwh) / etaCharge);
+    if (sp.allowGridCharge && grid[hour] === "charge" && row.priceLeiMwh <= dailyLowThreshold[dateKey]) {
+      chargedGrid = Math.min(remainingChargeLimit, roomAfterPv);
+      if (chargedGrid > 0) { socKwh += chargedGrid * etaCharge; gridChargeKwh += chargedGrid; }
+    }
+
+    const dayUsed = dailyDischarge[dateKey] || 0;
+    const maxDailyOut = usableKwh * Math.max(0, profile.maxCyclesDay);
+    const remainingDailyOut = Math.max(0, maxDailyOut - dayUsed);
+    const availableOutput = Math.max(0, (socKwh - minSocKwh) * etaDischarge);
+    if (grid[hour] === "discharge" && deficit > 0) {
+      dischargedLoad = Math.min(deficit, dischargeLimitKwh, availableOutput, remainingDailyOut);
+      if (dischargedLoad > 0) {
+        socKwh -= dischargedLoad / etaDischarge;
+        deficit -= dischargedLoad;
+        batteryToLoadKwh += dischargedLoad;
+        dailyDischarge[dateKey] = dayUsed + dischargedLoad;
+      }
+    }
+
+    const afterImport = deficit + chargedGrid;
+    const afterExport = surplus;
+    importAfterKwh += afterImport;
+    exportAfterKwh += afterExport;
+    peakImportAfterKw = Math.max(peakImportAfterKw, afterImport / intervalHours);
+    const degradationEur = (th.degradationCostRonMwh / eur) * (dischargedLoad / 1000);
+    const baselineNetEur = (baseImport / 1000) * (importPriceRonMwh / eur) - (baseExport / 1000) * (exportPriceRonMwh / eur);
+    const afterNetEur = (afterImport / 1000) * (importPriceRonMwh / eur) - (afterExport / 1000) * (exportPriceRonMwh / eur) + degradationEur;
+    const revenueEur = baselineNetEur - afterNetEur;
+    totalRevenue += revenueEur;
+    lossesKwh += chargedPv + chargedGrid - (chargedPv + chargedGrid) * etaCharge + (dischargedLoad / etaDischarge - dischargedLoad);
+
+    const cyclePart = dischargedLoad / usableKwh;
+    totalCycles += cyclePart;
+    const bucket = (monthly[monthKey] ||= { month: monthKey, revenueEur: 0, cycles: 0, charge: 0, discharge: 0, idCharge: 0, pvToBatteryKwh: 0, batteryToLoadKwh: 0 });
+    bucket.revenueEur += revenueEur;
+    bucket.cycles += cyclePart;
+    bucket.charge += chargedPv > 0 || chargedGrid > 0 ? 1 : 0;
+    bucket.discharge += dischargedLoad > 0 ? 1 : 0;
+    bucket.idCharge += chargedGrid > 0 ? 1 : 0;
+    bucket.pvToBatteryKwh += chargedPv;
+    bucket.batteryToLoadKwh += dischargedLoad;
+    chartRows.push({ timestamp: row.timestamp, productionKwh: pv, consumptionKwh: load, importKwh: afterImport, exportKwh: afterExport, socPct: capacityKwh ? socKwh / capacityKwh * 100 : 0 });
+  }
+
+  const months = Object.values(monthly).sort((a, b) => a.month.localeCompare(b.month));
+  let cumulative = 0;
+  months.forEach((m) => { cumulative += m.revenueEur; m.cumulativeEur = cumulative; });
+  const days = new Set(priceRows.map((r) => r.timestamp.toISOString().slice(0, 10))).size || 1;
+  const avgDaily = totalRevenue / days;
+  const investment = th.totalInvestmentEur;
+  const annual = avgDaily * 365 - Math.max(0, Number(sp.fixedOmEurYear || 0));
+  const roi = investment ? annual / investment * 100 : 0;
+  const payback = annual > 0 ? investment / annual : null;
+  const totalProductionKwh = priceRows.reduce((a, r) => a + r.productionKwh, 0);
+  const totalConsumptionKwh = priceRows.reduce((a, r) => a + r.consumptionKwh, 0);
+  const selfConsumedBeforeKwh = directPvKwh;
+  const selfConsumedAfterKwh = directPvKwh + batteryToLoadKwh;
+  return {
+    months,
+    totalRevenue,
+    avgMonthly: totalRevenue / (months.length || 1),
+    avgDaily,
+    totalCycles,
+    avgCyclesPerDay: totalCycles / days,
+    days,
+    totalMonths: months.length,
+    investment,
+    annual,
+    roi,
+    payback,
+    paybackMonths: payback ? Math.round(payback * 12) : null,
+    sourceMode: "real_pv",
+    realPvPending: false,
+    basis: dataset.sourceBasis === "pvgis" ? "estimated_pvgis" : "uploaded_curve",
+    importExportBasis: "estimated",
+    periodStart: priceRows[0].timestamp.toISOString().slice(0, 10),
+    periodEnd: priceRows.at(-1).timestamp.toISOString().slice(0, 10),
+    totalProductionKwh,
+    totalConsumptionKwh,
+    baselineImportKwh,
+    baselineExportKwh,
+    importAfterKwh,
+    exportAfterKwh,
+    importReducedKwh: baselineImportKwh - importAfterKwh,
+    exportReducedKwh: baselineExportKwh - exportAfterKwh,
+    directPvKwh,
+    pvToBatteryKwh,
+    batteryToLoadKwh,
+    gridChargeKwh,
+    lossesKwh,
+    selfConsumedBeforeKwh,
+    selfConsumedAfterKwh,
+    selfConsumptionRatePct: totalProductionKwh > 0 ? selfConsumedAfterKwh / totalProductionKwh * 100 : 0,
+    loadCoveragePct: totalConsumptionKwh > 0 ? selfConsumedAfterKwh / totalConsumptionKwh * 100 : 0,
+    peakImportBeforeKw,
+    peakImportAfterKw,
+    peakReductionKw: peakImportBeforeKw - peakImportAfterKw,
+    chartRows,
+  };
+}
+function downsampleBessPvSeries(rows, maxPoints = 520) {
+  if (!rows?.length) return [];
+  const step = Math.max(1, Math.ceil(rows.length / maxPoints));
+  const out = [];
+  for (let i = 0; i < rows.length; i += step) {
+    const chunk = rows.slice(i, i + step);
+    const avg = (k) => chunk.reduce((a, r) => a + Number(r[k] || 0), 0) / chunk.length;
+    const d = chunk[0].timestamp;
+    out.push({
+      label: d.toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit" }) + " " + d.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }),
+      productionKwh: avg("productionKwh"),
+      consumptionKwh: avg("consumptionKwh"),
+      importKwh: avg("importKwh"),
+      exportKwh: avg("exportKwh"),
+      socPct: avg("socPct"),
+    });
+  }
+  return out;
+}
+
+
 function MiniMetric({ label, value, sub }) {
   return <div className="kpi compact"><div className="klabel">{label}</div><div className="kval">{value}</div><div className="ksub">{sub}</div></div>;
 }
@@ -567,35 +923,74 @@ function Battery() {
   const [activePreset, setActivePreset] = useState("pv");
   const [from, setFrom] = useState(INOWATTIO_REFERENCE_PERIOD.from);
   const [to, setTo] = useState(INOWATTIO_REFERENCE_PERIOD.to);
+  const [realPvEnabled, setRealPvEnabled] = useState(false);
+  const [realPvWorkbook, setRealPvWorkbook] = useState(null);
+  const [realPvMapping, setRealPvMapping] = useState({ ...BESS_REAL_PV_DEFAULT_MAPPING });
+  const [realPvError, setRealPvError] = useState("");
+  const [realPvLoading, setRealPvLoading] = useState(false);
+  const realPvFileRef = useRef(null);
   const fromEff = from;
   const toEff = to;
 
-  const res = useMemo(() => applyInowattioReferenceTarget(runRevenue(sp, grid, fromEff, toEff), sp, activePreset, fromEff, toEff), [sp, grid, activePreset, fromEff, toEff]);
-  const scenarios = useMemo(() => Object.keys(DISP_PRESETS).map((k) => { const g = presetGrid(k); const rr = applyInowattioReferenceTarget(runRevenue(sp, g, fromEff, toEff), sp, k, fromEff, toEff); return { key: k, label: DISP_PRESETS[k].label, investment: rr.investment, totalRevenue: rr.totalRevenue, totalCycles: rr.totalCycles, annual: rr.annual, roi: rr.roi, payback: rr.payback, paybackMonths: rr.paybackMonths }; }), [sp, fromEff, toEff]);
+  const realPvDataset = useMemo(() => realPvEnabled && realPvWorkbook ? buildBessRealPvDataset(realPvWorkbook, realPvMapping, sp) : null, [realPvEnabled, realPvWorkbook, realPvMapping, sp.pvInstalledKwp, sp.pvCurvePerKwp, sp.pvProductionScale, sp.consumptionScale]);
+  const res = useMemo(() => {
+    if (realPvEnabled) return runRevenueWithRealPv(sp, grid, realPvDataset, { from: fromEff, to: toEff });
+    return applyInowattioReferenceTarget(runRevenue(sp, grid, fromEff, toEff), sp, activePreset, fromEff, toEff);
+  }, [sp, grid, activePreset, fromEff, toEff, realPvEnabled, realPvDataset]);
+  const scenarios = useMemo(() => Object.keys(DISP_PRESETS).map((k) => {
+    const g = presetGrid(k);
+    const rr = realPvEnabled ? runRevenueWithRealPv(sp, g, realPvDataset, { from: fromEff, to: toEff }) : applyInowattioReferenceTarget(runRevenue(sp, g, fromEff, toEff), sp, k, fromEff, toEff);
+    return { key: k, label: DISP_PRESETS[k].label, investment: rr.investment, totalRevenue: rr.totalRevenue, totalCycles: rr.totalCycles, annual: rr.annual, roi: rr.roi, payback: rr.payback, paybackMonths: rr.paybackMonths };
+  }), [sp, fromEff, toEff, realPvEnabled, realPvDataset]);
+  const realPvChart = useMemo(() => downsampleBessPvSeries(res.chartRows), [res.chartRows]);
 
   const applyPreset = (k) => { setGrid(presetGrid(k)); setActivePreset(k); };
   const paint = (h) => { setGrid((g) => { const n = [...g]; n[h] = brush === "erase" ? "idle" : brush; return n; }); setActivePreset("custom"); };
   const counts = grid.reduce((a, m) => { a[m]++; return a; }, { charge: 0, discharge: 0, idle: 0 });
+  const columnOptions = useMemo(() => {
+    const sheet = realPvWorkbook?.sheets?.find((s) => s.name === realPvMapping.sheetName) || realPvWorkbook?.sheets?.[0];
+    return Array.from({ length: Math.max(4, Math.min(52, sheet?.columnCount || 4)) }, (_, i) => bessColumnLetter(i));
+  }, [realPvWorkbook, realPvMapping.sheetName]);
+
+  const onRealPvFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setRealPvLoading(true); setRealPvError("");
+    try {
+      const info = await readBessRealPvWorkbook(file);
+      setRealPvWorkbook(info);
+      setRealPvMapping((m) => ({ ...m, sheetName: info.sheets[0]?.name || "" }));
+      setSp((s) => ({ ...s, pvCurvePerKwp: info.detectedPerKwp ? true : s.pvCurvePerKwp }));
+      const preview = buildBessRealPvDataset(info, { ...realPvMapping, sheetName: info.sheets[0]?.name || "" }, { ...sp, pvCurvePerKwp: info.detectedPerKwp ? true : sp.pvCurvePerKwp });
+      if (!preview?.rows?.length) throw new Error("Nu am gasit intervale valide in coloanele configurate.");
+      setFrom(preview.start.toISOString().slice(0, 10));
+      setTo(preview.end.toISOString().slice(0, 10));
+    } catch (error) {
+      setRealPvWorkbook(null);
+      setRealPvError(error?.message || "Fisierul nu a putut fi interpretat.");
+    } finally { setRealPvLoading(false); }
+  };
 
   const exportCsv = () => download("servio-revenue.csv", "month,revenue_eur,cumulative_eur,cycles,charge,discharge,id_charge\n" + res.months.map((m) => `${m.month},${Math.round(m.revenueEur)},${Math.round(m.cumulativeEur)},${m.cycles.toFixed(2)},${m.charge},${m.discharge},${m.idCharge}`).join("\n"), "text/csv");
-  const exportJson = () => download("servio-revenue.json", JSON.stringify({ specs: sp, period: { from: fromEff, to: toEff }, preset: activePreset, schedule: grid, inowattioReferenceDb: INOWATTIO_REFERENCE_DB, result: res }, null, 2), "application/json");
+  const exportJson = () => download("servio-revenue.json", JSON.stringify({ specs: sp, period: { from: fromEff, to: toEff }, preset: activePreset, schedule: grid, realPv: { enabled: realPvEnabled, fileName: realPvDataset?.fileName, sheetName: realPvDataset?.sheetName, mapping: realPvMapping, basis: res.basis, importExportBasis: res.importExportBasis }, inowattioReferenceDb: realPvEnabled ? undefined : INOWATTIO_REFERENCE_DB, result: { ...res, chartRows: undefined } }, null, 2), "application/json");
+
+  const kpiSub = realPvEnabled ? (realPvDataset?.rows?.length ? `${fmt(realPvDataset.rows.length)} intervale · ${realPvDataset.granularityMinutes} min` : "incarca fisierul energetic") : ((res.totalMonths || 29) + " months · " + res.days + " days");
 
   return (
     <div className="stack">
-      {/* KPIs */}
       <div className="kpirow">
-        <Kpi label="Total Revenue" value={fmtEur(res.totalRevenue)} sub={(res.totalMonths || 29) + " months · " + res.days + " days"} Icon={DollarSign} tone="green" />
-        <Kpi label="Avg Yearly" value={fmtEur(res.annual)} sub={res.targetMatched ? "calibrat pe date istorice" : "calculat"} Icon={Activity} />
-        <Kpi label="Avg Monthly" value={fmtEur(res.avgMonthly)} sub="Revenue & ROI" Icon={Activity} />
-        <Kpi label="Avg Daily" value={fmtEur(res.avgDaily)} sub="daily average" Icon={Sun} />
-        <Kpi label="Total Cycles" value={fmt(res.totalCycles, 0)} sub={(res.avgCyclesPerDay || 0).toFixed(2) + " / day avg"} Icon={RefreshCw} />
-        <Kpi label="Revenue / Cycle" value={fmtEur(res.revenuePerCycle || (res.totalCycles ? res.totalRevenue / res.totalCycles : 0))} sub="pe ciclu" Icon={Zap} />
-        <Kpi label="Annual ROI" value={res.roi.toFixed(1) + "%"} sub={res.recoveredPct ? "Recovered " + res.recoveredPct.toFixed(1) + "%" : fmtEur(res.annual) + " / year"} Icon={TrendingUp} tone="accent" />
-        <Kpi label="Payback" value={res.paybackMonths ? res.paybackMonths + " months" : (res.payback ? res.payback.toFixed(1) + " years" : "—")} sub={res.breakeven ? "Breakeven " + res.breakeven : (res.targetMatched ? "calibrat" : "calculat")} Icon={Clock} />
+        <Kpi label="Total Revenue" value={realPvEnabled && res.realPvPending ? "—" : fmtEur(res.totalRevenue)} sub={kpiSub} Icon={DollarSign} tone="green" />
+        <Kpi label="Avg Yearly" value={realPvEnabled && res.realPvPending ? "—" : fmtEur(res.annual)} sub={realPvEnabled ? "PV + BESS pe curba incarcata" : res.targetMatched ? "calibrat pe date istorice" : "calculat"} Icon={Activity} />
+        <Kpi label="Avg Monthly" value={realPvEnabled && res.realPvPending ? "—" : fmtEur(res.avgMonthly)} sub="Revenue & ROI" Icon={Activity} />
+        <Kpi label="Avg Daily" value={realPvEnabled && res.realPvPending ? "—" : fmtEur(res.avgDaily)} sub="daily average" Icon={Sun} />
+        <Kpi label="Total Cycles" value={realPvEnabled && res.realPvPending ? "—" : fmt(res.totalCycles, 1)} sub={(res.avgCyclesPerDay || 0).toFixed(2) + " / day avg"} Icon={RefreshCw} />
+        <Kpi label="Revenue / Cycle" value={realPvEnabled && res.realPvPending ? "—" : fmtEur(res.revenuePerCycle || (res.totalCycles ? res.totalRevenue / res.totalCycles : 0))} sub="pe ciclu" Icon={Zap} />
+        <Kpi label="Annual ROI" value={realPvEnabled && res.realPvPending ? "—" : res.roi.toFixed(1) + "%"} sub={realPvEnabled ? "economii + venit PV/BESS" : res.recoveredPct ? "Recovered " + res.recoveredPct.toFixed(1) + "%" : fmtEur(res.annual) + " / year"} Icon={TrendingUp} tone="accent" />
+        <Kpi label="Payback" value={realPvEnabled && res.realPvPending ? "—" : res.paybackMonths ? res.paybackMonths + " months" : (res.payback ? res.payback.toFixed(1) + " years" : "—")} sub={realPvEnabled ? "calculat pe profilul incarcat" : res.breakeven ? "Breakeven " + res.breakeven : (res.targetMatched ? "calibrat" : "calculat")} Icon={Clock} />
       </div>
 
       <div className="grid2">
-        {/* Battery Specifications */}
         <Card title="Battery Specifications" right={<Badge tone="g">Configurare BESS</Badge>}>
           <div className="ingrid">
             <In label="Capacity" value={sp.capacityMWh} set={set("capacityMWh")} unit="MWh" step={0.25} />
@@ -608,7 +1003,6 @@ function Battery() {
           </div>
         </Card>
 
-        {/* Investment & Lifecycle */}
         <Card title="Investment & Lifecycle">
           <div className="ingrid">
             <In label="Battery cost" value={sp.batteryCostEurKwh} set={set("batteryCostEurKwh")} unit="€/kWh" step={5} />
@@ -621,7 +1015,75 @@ function Battery() {
         </Card>
       </div>
 
-      {/* Dispatch Strategy */}
+      <Card title="Sursa energetica pentru simulare" right={realPvEnabled ? <Badge tone={realPvDataset?.sourceBasis === "pvgis" ? "y" : "g"}>{realPvDataset?.sourceBasis === "pvgis" ? "PVGIS · estimare" : "curba incarcata"}</Badge> : <Badge tone="n">BESS fara PV</Badge>}>
+        <label className="besspvtoggle">
+          <input type="checkbox" checked={realPvEnabled} onChange={(e) => setRealPvEnabled(e.target.checked)} />
+          <span className="besspvbox"><Check size={13} /></span>
+          <span><b>BESS cu productie PV reala</b><small>Activeaza simularea dependenta de curba de productie, curba de consum, configuratia BESS si strategia de dispatch.</small></span>
+        </label>
+
+        {realPvEnabled && <div className="besspvpanel">
+          <div className="besspvupload">
+            <input ref={realPvFileRef} type="file" accept=".csv,.xlsx,.xls,.txt" onChange={onRealPvFile} hidden />
+            <button className="btn primary" onClick={() => realPvFileRef.current?.click()} disabled={realPvLoading}><Upload size={15} /> {realPvLoading ? "Se analizeaza..." : realPvWorkbook ? "Schimba fisierul" : "Incarca fisier consum + productie"}</button>
+            <div className="besspvfile">
+              <FileSpreadsheet size={17} />
+              <span><b>{realPvWorkbook?.name || "CSV / XLSX / XLS"}</b><small>{realPvDataset?.rows?.length ? `${fmt(realPvDataset.rows.length)} intervale valide · ${realPvDataset.granularityMinutes} min` : "Exemplu suportat: A=data, B=ora, C=productie kWh, D=consum kWh"}</small></span>
+            </div>
+          </div>
+          {realPvError && <div className="besspverror"><AlertTriangle size={14} /> {realPvError}</div>}
+
+          <div className="besspvmapgrid">
+            <label className="infield"><span className="inlabel">Sheet</span><select className="nsel" value={realPvMapping.sheetName} onChange={(e) => setRealPvMapping((m) => ({ ...m, sheetName: e.target.value }))}>{(realPvWorkbook?.sheets || []).map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}</select></label>
+            <In label="Primul rand de date" value={realPvMapping.dataStartRow} set={(v) => setRealPvMapping((m) => ({ ...m, dataStartRow: Math.max(1, v) }))} unit="rand" step={1} />
+            {[['timestampColumn','Data / timestamp'],['timeColumn','Ora'],['productionColumn','Productie PV'],['consumptionColumn','Consum IBD']].map(([key, label]) => <label className="infield" key={key}><span className="inlabel">{label}</span><select className="nsel" value={realPvMapping[key]} onChange={(e) => setRealPvMapping((m) => ({ ...m, [key]: e.target.value }))}>{columnOptions.map((c) => <option key={c} value={c}>Coloana {c}</option>)}</select></label>)}
+            <label className="infield"><span className="inlabel">Granularitate</span><select className="nsel" value={realPvMapping.granularity} onChange={(e) => setRealPvMapping((m) => ({ ...m, granularity: e.target.value }))}><option value="auto">Auto</option><option value="15m">15 minute</option><option value="60m">60 minute</option></select></label>
+            <label className="infield"><span className="inlabel">Unitate energie</span><select className="nsel" value={realPvMapping.unit} onChange={(e) => setRealPvMapping((m) => ({ ...m, unit: e.target.value }))}><option value="kWh">kWh</option><option value="MWh">MWh</option><option value="Wh">Wh</option></select></label>
+          </div>
+
+          <div className="besspvoptions">
+            <label className="besspvcheck"><input type="checkbox" checked={sp.pvCurvePerKwp} onChange={(e) => set("pvCurvePerKwp")(e.target.checked)} /><span><b>Curba PV normalizata la 1 kWp</b><small>Detectata automat pentru fisiere PVGIS de tipul exemplului incarcat.</small></span></label>
+            {sp.pvCurvePerKwp && <In label="Putere PV instalata" value={sp.pvInstalledKwp} set={set("pvInstalledKwp")} unit="kWp" step={1} />}
+            <In label="Factor productie" value={sp.pvProductionScale} set={set("pvProductionScale")} unit="x" step={0.01} />
+            <In label="Factor consum" value={sp.consumptionScale} set={set("consumptionScale")} unit="x" step={0.01} />
+            <In label="Cost retea peste PZU" value={sp.gridImportAdderRonMwh} set={set("gridImportAdderRonMwh")} unit="lei/MWh" step={10} />
+            <In label="Valoare export" value={sp.exportValuePct} set={set("exportValuePct")} unit="% PZU" step={1} />
+            <label className="besspvcheck"><input type="checkbox" checked={sp.allowGridCharge} onChange={(e) => set("allowGridCharge")(e.target.checked)} /><span><b>Permite incarcare din retea</b><small>Doar in intervalele Charge si in zona de pret redus a zilei.</small></span></label>
+          </div>
+
+          {realPvDataset?.rows?.length > 0 && <>
+            <div className="besspvstats">
+              <MiniMetric label="Productie" value={fmt(res.totalProductionKwh, 0) + " kWh"} sub={res.basis === "estimated_pvgis" ? "PVGIS scalat" : "curba incarcata"} />
+              <MiniMetric label="Consum" value={fmt(res.totalConsumptionKwh, 0) + " kWh"} sub="IBD / curba sarcina" />
+              <MiniMetric label="PV incarcat in BESS" value={fmt(res.pvToBatteryKwh, 0) + " kWh"} sub="surplus captat" />
+              <MiniMetric label="BESS catre consum" value={fmt(res.batteryToLoadKwh, 0) + " kWh"} sub="energie livrata" />
+              <MiniMetric label="Import redus" value={fmt(res.importReducedKwh, 0) + " kWh"} sub="estimare din suprapunere" />
+              <MiniMetric label="Export redus" value={fmt(res.exportReducedKwh, 0) + " kWh"} sub="nu este masurat real" />
+              <MiniMetric label="Grad autoconsum" value={fmt(res.selfConsumptionRatePct, 1) + "%"} sub="estimat fara import/export masurat" />
+              <MiniMetric label="Acoperire consum" value={fmt(res.loadCoveragePct, 1) + "%"} sub="PV direct + BESS" />
+            </div>
+            <div className="besspvnotice"><AlertTriangle size={14} /> Fisierul contine consum si productie, dar nu import/export masurat. Autoconsumul, importul si exportul sunt calculate ca estimari; nu sunt marcate drept valori reale.</div>
+          </>}
+        </div>}
+      </Card>
+
+      {realPvEnabled && realPvChart.length > 0 && <Card title="Curbe energetice si SOC" right={<span className="dim small">{res.periodStart} → {res.periodEnd}</span>} pad={false}>
+        <div className="hero">
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={realPvChart} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} interval={Math.ceil(realPvChart.length / 10)} />
+              <YAxis yAxisId="energy" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={52} tickFormatter={(v) => fmt(v, 0)} />
+              <YAxis yAxisId="soc" orientation="right" domain={[0, 100]} tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={42} tickFormatter={(v) => v + "%"} />
+              <RTooltip content={<ChartTip unit=" kWh" />} />
+              <Line yAxisId="energy" type="monotone" dataKey="consumptionKwh" name="Consum" stroke="var(--text)" strokeWidth={1.6} dot={false} />
+              <Line yAxisId="energy" type="monotone" dataKey="productionKwh" name="Productie PV" stroke="var(--accent)" strokeWidth={1.8} dot={false} />
+              <Area yAxisId="soc" type="monotone" dataKey="socPct" name="SOC" stroke="var(--green)" fill="var(--green-soft)" fillOpacity={0.18} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>}
+
       <Card title="Dispatch Strategy" right={<div className="dispatchheadcontrols">
         <div className="dispatchperiod">
           <span className="dim small">Custom simulation period</span>
@@ -635,69 +1097,20 @@ function Battery() {
           <button className={"brushbtn erase" + (brush === "erase" ? " on" : "")} onClick={() => setBrush("erase")}>Erase</button>
         </div>
       </div>}>
-        <div className="dispwrap">
-          <div className="dispgrid">
-            {grid.map((m, h) => (
-              <button key={h} className={"dispcell " + m} onClick={() => paint(h)} title={String(h).padStart(2, "0") + ":00"}>
-                <span className="dhour">{String(h).padStart(2, "0")}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="disprow">
-          <div className="dispcounts">
-            <span><i className="sq charge" /> Charge: <b>{counts.charge}</b></span>
-            <span><i className="sq discharge" /> Discharge: <b>{counts.discharge}</b></span>
-            <span><i className="sq" /> Idle: <b>{counts.idle}</b></span>
-          </div>
-          <div className="spacer" />
-          <span className="dim small">Presets</span>
-          {Object.keys(DISP_PRESETS).map((k) => <button key={k} className={"chip" + (activePreset === k ? " on" : "")} onClick={() => applyPreset(k)}>{DISP_PRESETS[k].label}</button>)}
-          <button className="chip" onClick={() => { setGrid(Array(24).fill("idle")); setActivePreset("custom"); }}>Clear schedule</button>
-        </div>
+        <div className="dispwrap"><div className="dispgrid">{grid.map((m, h) => <button key={h} className={"dispcell " + m} onClick={() => paint(h)} title={String(h).padStart(2, "0") + ":00"}><span className="dhour">{String(h).padStart(2, "0")}</span></button>)}</div></div>
+        <div className="disprow"><div className="dispcounts"><span><i className="sq charge" /> Charge: <b>{counts.charge}</b></span><span><i className="sq discharge" /> Discharge: <b>{counts.discharge}</b></span><span><i className="sq" /> Idle: <b>{counts.idle}</b></span></div><div className="spacer" /><span className="dim small">Presets</span>{Object.keys(DISP_PRESETS).map((k) => <button key={k} className={"chip" + (activePreset === k ? " on" : "")} onClick={() => applyPreset(k)}>{DISP_PRESETS[k].label}</button>)}<button className="chip" onClick={() => { setGrid(Array(24).fill("idle")); setActivePreset("custom"); }}>Clear schedule</button></div>
       </Card>
 
-      {/* Revenue & ROI */}
       <Card title="Revenue & ROI" right={<div className="rowflex"><button className="btn ghost" onClick={exportCsv}><Download size={14} /> Export CSV</button><button className="btn ghost" onClick={exportJson}><Download size={14} /> Export JSON</button></div>} pad={false}>
-        <div className="hero">
-          <ResponsiveContainer width="100%" height={260}>
-            <ComposedChart data={res.months} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}>
-              <defs><linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} /><stop offset="100%" stopColor="var(--accent)" stopOpacity={0} /></linearGradient></defs>
-              <CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} interval={Math.ceil(res.months.length / 10)} />
-              <YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={46} tickFormatter={(v) => "€" + Math.round(v / 1000) + "k"} />
-              <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => "€" + Math.round(v / 1000) + "k"} />
-              <RTooltip content={<ChartTip unit=" €" />} />
-              <Bar yAxisId="l" dataKey="revenueEur" name="Revenue" fill="var(--border-strong)" radius={[2, 2, 0, 0]} />
-              <Area yAxisId="r" type="monotone" dataKey="cumulativeEur" name="Cumulative" stroke="var(--accent)" strokeWidth={2} fill="url(#gRev)" />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
+        {res.months.length ? <div className="hero"><ResponsiveContainer width="100%" height={260}><ComposedChart data={res.months} margin={{ top: 16, right: 20, left: 4, bottom: 4 }}><defs><linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--accent)" stopOpacity={0.28} /><stop offset="100%" stopColor="var(--accent)" stopOpacity={0} /></linearGradient></defs><CartesianGrid strokeDasharray="2 4" stroke="var(--border)" vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} interval={Math.ceil(res.months.length / 10)} /><YAxis yAxisId="l" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={46} tickFormatter={(v) => "€" + Math.round(v / 1000) + "k"} /><YAxis yAxisId="r" orientation="right" tick={{ fontSize: 10, fill: "var(--text-faint)" }} axisLine={false} tickLine={false} width={48} tickFormatter={(v) => "€" + Math.round(v / 1000) + "k"} /><RTooltip content={<ChartTip unit=" €" />} /><Bar yAxisId="l" dataKey="revenueEur" name="Revenue" fill="var(--border-strong)" radius={[2, 2, 0, 0]} /><Area yAxisId="r" type="monotone" dataKey="cumulativeEur" name="Cumulative" stroke="var(--accent)" strokeWidth={2} fill="url(#gRev)" /></ComposedChart></ResponsiveContainer></div> : <div className="besspvempty"><FileSpreadsheet size={24} /><b>Incarca fisierul consum + productie</b><span>Revenue & ROI va fi calculat numai dupa ce profilul energetic este disponibil.</span></div>}
       </Card>
 
       <div className="grid2">
-        {/* Scenario presets comparison */}
-        <Card title="Scenario presets" pad={false}>
-          <table className="tbl">
-            <thead><tr><th>Scenario</th><th className="num">Total revenue</th><th className="num">Cycles</th><th className="num">Annual ROI</th><th className="num">Payback</th></tr></thead>
-            <tbody>{scenarios.map((s) => <tr key={s.key} className={activePreset === s.key ? "rowsel" : ""}>
-              <td className="strong">{s.label}</td><td className="num g">{fmtEur(s.totalRevenue)}</td><td className="num">{fmt(s.totalCycles, 0)}</td><td className="num dim">{s.roi.toFixed(1)}%</td><td className="num">{s.paybackMonths ? s.paybackMonths + " months" : (s.payback ? s.payback.toFixed(1) + " years" : "—")}</td>
-            </tr>)}</tbody>
-          </table>
-        </Card>
-
-        {/* Monthly Revenue */}
-        <Card title="Monthly Revenue" right={<span className="dim small">{res.months.length} luni</span>} pad={false}>
-          <div className="tblscroll">
-            <table className="tbl">
-              <thead><tr><th>Month</th><th className="num">Revenue</th><th className="num">Cumulative</th><th className="num">Cycles</th><th className="num">Charge</th><th className="num">Discharge</th><th className="num">ID charge</th></tr></thead>
-              <tbody>{res.months.map((m) => <tr key={m.month}><td className="strong">{m.month}</td><td className="num">{fmtEur(m.revenueEur)}</td><td className="num dim">{fmtEur(m.cumulativeEur)}</td><td className="num">{m.cycles.toFixed(2)}</td><td className="num dim">{m.charge}</td><td className="num dim">{m.discharge}</td><td className="num dim">{m.idCharge}</td></tr>)}</tbody>
-            </table>
-          </div>
-        </Card>
+        <Card title="Scenario presets" pad={false}><table className="tbl"><thead><tr><th>Scenario</th><th className="num">Total revenue</th><th className="num">Cycles</th><th className="num">Annual ROI</th><th className="num">Payback</th></tr></thead><tbody>{scenarios.map((s) => <tr key={s.key} className={activePreset === s.key ? "rowsel" : ""}><td className="strong">{s.label}</td><td className="num g">{realPvEnabled && !realPvDataset?.rows?.length ? "—" : fmtEur(s.totalRevenue)}</td><td className="num">{realPvEnabled && !realPvDataset?.rows?.length ? "—" : fmt(s.totalCycles, 1)}</td><td className="num dim">{realPvEnabled && !realPvDataset?.rows?.length ? "—" : s.roi.toFixed(1) + "%"}</td><td className="num">{realPvEnabled && !realPvDataset?.rows?.length ? "—" : s.paybackMonths ? s.paybackMonths + " months" : (s.payback ? s.payback.toFixed(1) + " years" : "—")}</td></tr>)}</tbody></table></Card>
+        <Card title="Monthly Revenue" right={<span className="dim small">{res.months.length} luni</span>} pad={false}><div className="tblscroll"><table className="tbl"><thead><tr><th>Month</th><th className="num">Revenue</th><th className="num">Cumulative</th><th className="num">Cycles</th><th className="num">Charge</th><th className="num">Discharge</th><th className="num">ID charge</th></tr></thead><tbody>{res.months.length ? res.months.map((m) => <tr key={m.month}><td className="strong">{m.month}</td><td className="num">{fmtEur(m.revenueEur)}</td><td className="num dim">{fmtEur(m.cumulativeEur)}</td><td className="num">{m.cycles.toFixed(2)}</td><td className="num dim">{m.charge}</td><td className="num dim">{m.discharge}</td><td className="num dim">{m.idCharge}</td></tr>) : <tr><td colSpan="7" className="dim">Nu exista rezultate pana la incarcarea profilului energetic.</td></tr>}</tbody></table></div></Card>
       </div>
 
-      <div className="hint"><Sparkles size={13} /> Motorul aplică schema de dispatch desenată peste prețurile pe perioada selectată, cu praguri de preț, eficiență {sp.efficiencyPct}% și cost de degradare. Conștient de degradare — nu forțează cicluri neprofitabile.</div>
+      <div className="hint"><Sparkles size={13} /> {realPvEnabled ? "Motorul simuleaza fiecare interval din curba incarcata: PV direct, surplus incarcat in BESS, descarcare catre consum, import/export estimat, pierderi, degradare si economie. Fara coloane masurate de import/export, valorile nu sunt marcate drept reale." : `Motorul aplica schema de dispatch desenata peste preturile pe perioada selectata, cu praguri de pret, eficienta ${sp.efficiencyPct}% si cost de degradare.`}</div>
     </div>
   );
 }
@@ -4752,6 +5165,11 @@ const CSS = `
 .dlcactions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding-top:10px}
 .dlcactionright{display:flex;gap:8px;align-items:center}.dlcfooter{margin-top:12px;display:flex;justify-content:flex-end}
 @media(max-width:1000px){.dlckpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dlcitem{grid-template-columns:1fr}.dlcright{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.dlchead{align-items:stretch;flex-direction:column}.dlcsheets{grid-template-columns:1fr}.dlclayout{grid-template-columns:1fr 1fr}.dlcmapgrid{grid-template-columns:1fr 1fr}.dlcmatrix{grid-template-columns:1fr}.dlcmetagrid{grid-template-columns:1fr 1fr}.dlcreghead{flex-direction:column}.dlcregtools{justify-content:flex-start}.dlcregrow{grid-template-columns:1fr}.dlcregstats{align-items:flex-start}.dlcregactions{justify-content:flex-start}.dlcsearch input{width:170px}.dlcruntimegrid{grid-template-columns:1fr}.dlcnormgrid{grid-template-columns:1fr}.dlcqualitygrid{grid-template-columns:1fr}.dlcconsgrid,.dlcprodgrid,.dlccombinedgrid{grid-template-columns:1fr}}
+
+
+.besspvtoggle{display:flex;align-items:flex-start;gap:11px;border:1px solid var(--border);background:linear-gradient(135deg,var(--card),var(--bg));border-radius:12px;padding:13px 14px;cursor:pointer}.besspvtoggle>input{position:absolute;opacity:0;pointer-events:none}.besspvbox{width:20px;height:20px;display:grid;place-items:center;border:1px solid var(--border-strong);border-radius:6px;color:transparent;background:var(--bg);flex:0 0 auto;margin-top:1px}.besspvtoggle>input:checked+.besspvbox{background:var(--accent);border-color:var(--accent);color:#fff}.besspvtoggle b{display:block;font-size:13px}.besspvtoggle small{display:block;margin-top:3px;color:var(--text-faint);font-size:11px;line-height:1.45}.besspvpanel{display:flex;flex-direction:column;gap:13px;margin-top:13px}.besspvupload{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.besspvfile{display:flex;align-items:center;gap:9px;min-width:260px;flex:1;border:1px solid var(--border);background:var(--bg);border-radius:10px;padding:9px 11px}.besspvfile b,.besspvfile small{display:block}.besspvfile b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:520px}.besspvfile small{font-size:10.5px;color:var(--text-faint);margin-top:2px}.besspverror,.besspvnotice{display:flex;align-items:center;gap:8px;border-radius:9px;padding:9px 11px;font-size:11px;line-height:1.45}.besspverror{border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.08);color:#fecaca}.besspvnotice{border:1px solid rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:var(--text-dim)}.besspvmapgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-top:2px}.besspvmapgrid .infield,.besspvoptions .infield{min-width:0}.besspvoptions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border-top:1px solid var(--border);padding-top:12px}.besspvcheck{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--border);border-radius:9px;padding:8px 10px;background:var(--bg);min-height:47px}.besspvcheck input{margin-top:3px;accent-color:var(--accent)}.besspvcheck b,.besspvcheck small{display:block}.besspvcheck b{font-size:11.5px}.besspvcheck small{font-size:10px;color:var(--text-faint);margin-top:2px;line-height:1.35}.besspvstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}.besspvempty{height:220px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:var(--text-faint);text-align:center}.besspvempty b{color:var(--text);font-size:13px}.besspvempty span{font-size:11px;max-width:420px}.besspvfile svg{color:var(--accent);flex:0 0 auto}
+@media(max-width:1100px){.besspvmapgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.besspvoptions{grid-template-columns:repeat(2,minmax(0,1fr))}.besspvstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.besspvmapgrid,.besspvoptions,.besspvstats{grid-template-columns:1fr}.besspvupload{align-items:stretch}.besspvupload .btn{width:100%;justify-content:center}.besspvfile{min-width:0;width:100%}}
 
 /* responsive */
 @media(max-width:1000px){.grid2{grid-template-columns:1fr}.revsplit{border-left:none;padding-left:0}.apiform{grid-template-columns:1fr}.dispgrid{grid-template-columns:repeat(12,1fr)}}
