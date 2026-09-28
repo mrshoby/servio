@@ -973,6 +973,6 @@
   "deliveryDay": "2026-09-28",
   "sourceUrl": "https://www.opcom.ro/rapoarte-pzu-raportPIP-export-csv/28/9/2026/ro",
   "pageUrl": "https://www.opcom.ro/grafice-ip-raportPIP-si-volumTranzactionat/ro",
-  "updatedAtUtc": "2026-09-28T17:00:44.360Z",
+  "updatedAtUtc": "2026-09-28T22:32:07.359Z",
   "generatedBy": "GitHub Actions / scripts/fetch-opcom-pzu-cache.mjs"
 }
